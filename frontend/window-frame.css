@@ -1,0 +1,238 @@
+:root {
+    --ewp-titlebar-height: 33px;
+    --ewp-titlebar-minimal-height: 24px;
+    --ewp-surface: #f8fafc;
+    --ewp-surface-strong: #ffffff;
+    --ewp-border: #d7dee8;
+    --ewp-text: #1e293b;
+    --ewp-muted: #64748b;
+    --ewp-accent: #2563eb;
+    --ewp-close: #e81123;
+}
+
+[data-ewp-window-frame] {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--ewp-surface);
+    color: var(--ewp-text);
+}
+
+[data-ewp-window-frame] .ewp-titlebar {
+    z-index: 10;
+    display: flex;
+    flex: 0 0 var(--ewp-titlebar-height);
+    align-items: center;
+    justify-content: space-between;
+    height: var(--ewp-titlebar-height);
+    min-height: var(--ewp-titlebar-height);
+    padding-left: 8px;
+    border-bottom: 1px solid var(--ewp-border);
+    background: var(--ewp-surface-strong);
+    user-select: none;
+}
+
+[data-ewp-window-frame] .ewp-titlebar-identity {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: 8px;
+    height: 100%;
+    font: 600 12px/1.2 system-ui, sans-serif;
+}
+
+[data-ewp-window-frame] .ewp-titlebar-icon {
+    display: none;
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+}
+
+[data-ewp-window-frame] [data-ewp-title] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+[data-ewp-window-frame] .ewp-window-controls {
+    z-index: 11;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: auto;
+}
+
+[data-ewp-window-frame] .ewp-window-control {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 46px;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+[data-ewp-window-frame] .ewp-window-control:hover {
+    background: #e2e8f0;
+}
+
+[data-ewp-window-frame] .ewp-window-control-close:hover {
+    background: var(--ewp-close);
+    color: #fff;
+}
+
+[data-ewp-window-frame] .ewp-control-glyph {
+    position: relative;
+    display: block;
+    width: 12px;
+    height: 12px;
+}
+
+[data-ewp-window-frame] .ewp-glyph-minimize::before {
+    position: absolute;
+    right: 0;
+    bottom: 2px;
+    left: 0;
+    height: 1px;
+    background: currentColor;
+    content: "";
+}
+
+[data-ewp-window-frame] .ewp-glyph-maximize {
+    border: 1px solid currentColor;
+}
+
+[data-ewp-window-frame] .ewp-glyph-restore::before,
+[data-ewp-window-frame] .ewp-glyph-restore::after {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border: 1px solid currentColor;
+    background: var(--ewp-surface-strong);
+    content: "";
+}
+
+[data-ewp-window-frame] .ewp-glyph-restore::before {
+    top: 0;
+    right: 0;
+}
+
+[data-ewp-window-frame] .ewp-glyph-restore::after {
+    bottom: 0;
+    left: 0;
+}
+
+[data-ewp-window-frame] .ewp-glyph-close::before,
+[data-ewp-window-frame] .ewp-glyph-close::after {
+    position: absolute;
+    top: 5px;
+    left: -1px;
+    width: 14px;
+    height: 1px;
+    background: currentColor;
+    content: "";
+}
+
+[data-ewp-window-frame] .ewp-glyph-close::before { transform: rotate(45deg); }
+[data-ewp-window-frame] .ewp-glyph-close::after { transform: rotate(-45deg); }
+
+[data-ewp-window-frame] .ewp-content {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+}
+
+[data-ewp-window-frame] .ewp-resize-handle {
+    position: fixed;
+    z-index: 20;
+    display: block;
+}
+
+[data-ewp-window-frame].ewp-window-maximized .ewp-resize-handle,
+[data-ewp-window-frame][data-resizable="false"] .ewp-resize-handle,
+[data-ewp-window-frame][data-titlebar-mode="native"] .ewp-resize-handle {
+    display: none;
+}
+
+[data-ewp-window-frame] .ewp-resize-left,
+[data-ewp-window-frame] .ewp-resize-right {
+    top: 7px;
+    bottom: 7px;
+    width: 7px;
+}
+
+[data-ewp-window-frame] .ewp-resize-top,
+[data-ewp-window-frame] .ewp-resize-bottom {
+    right: 7px;
+    left: 7px;
+    height: 7px;
+}
+
+[data-ewp-window-frame] .ewp-resize-left { left: 0; cursor: ew-resize; }
+[data-ewp-window-frame] .ewp-resize-right { right: 0; cursor: ew-resize; }
+[data-ewp-window-frame] .ewp-resize-top { top: 0; cursor: ns-resize; }
+[data-ewp-window-frame] .ewp-resize-bottom { bottom: 0; cursor: ns-resize; }
+
+[data-ewp-window-frame] .ewp-resize-top-left,
+[data-ewp-window-frame] .ewp-resize-top-right,
+[data-ewp-window-frame] .ewp-resize-bottom-left,
+[data-ewp-window-frame] .ewp-resize-bottom-right {
+    width: 10px;
+    height: 10px;
+}
+
+[data-ewp-window-frame] .ewp-resize-top-left { top: 0; left: 0; cursor: nwse-resize; }
+[data-ewp-window-frame] .ewp-resize-top-right { top: 0; right: 0; cursor: nesw-resize; }
+[data-ewp-window-frame] .ewp-resize-bottom-left { bottom: 0; left: 0; cursor: nesw-resize; }
+[data-ewp-window-frame] .ewp-resize-bottom-right { right: 0; bottom: 0; cursor: nwse-resize; }
+
+[data-ewp-window-frame][data-titlebar-mode="minimal"] {
+    --ewp-titlebar-height: var(--ewp-titlebar-minimal-height);
+}
+
+[data-ewp-window-frame][data-titlebar-mode="minimal"] .ewp-titlebar {
+    padding-left: 4px;
+}
+
+[data-ewp-window-frame][data-titlebar-mode="minimal"] .ewp-titlebar-identity {
+    display: none;
+}
+
+[data-ewp-window-frame][data-titlebar-mode="minimal"] .ewp-window-control {
+    flex-basis: 32px;
+    width: 32px;
+}
+
+[data-ewp-window-frame][data-titlebar-mode="native"] .ewp-titlebar {
+    display: none;
+}
+
+[data-ewp-window-frame][data-titlebar-mode="native"] .ewp-content {
+    height: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ewp-surface: #0f172a;
+        --ewp-surface-strong: #111827;
+        --ewp-border: #334155;
+        --ewp-text: #e2e8f0;
+        --ewp-muted: #94a3b8;
+    }
+
+    [data-ewp-window-frame] .ewp-window-control:hover {
+        background: #334155;
+    }
+}
