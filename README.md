@@ -1,4 +1,18 @@
+<div align="center">
+
 # easy-windows-pack
+
+### 可复用的 Windows WebView 桌面窗口框架
+
+[![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![pywebview](https://img.shields.io/badge/pywebview-5.4%2B-0f766e)](https://pywebview.flowrl.com/)
+[![Version](https://img.shields.io/badge/version-0.2.0-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
+
+[中文](README.md) · [English](README.en.md) · [构建工具](#构建工具) · [架构](#架构)
+
+</div>
 
 `easy-windows-pack` 是一个面向 Windows + pywebview 的可复用 WebView 桌面窗口框架。它把窗口外壳从业务应用中拆出来，提供：
 
@@ -12,8 +26,13 @@
 - 可选关闭策略：退出进程或隐藏窗口
 - 业务 API 委托，窗口 API 与应用 API 可以共用同一个 pywebview `js_api`
 - 不依赖前端框架的 HTML/CSS/JavaScript 组件
+- 内置 CLI、PowerShell 构建脚本、wheel 和 source bundle 输出
 
-当前包位于 `easy-windows-pack/`，目标分支为 `easy-windows-pack`。
+## 架构
+
+![easy-windows-pack 架构图](docs/images/architecture.svg)
+
+前端组件通过 pywebview API 发送窗口命令，`WindowController` 管理生命周期与状态，`win32.py` 将非客户区拖拽、缩放、吸附和置顶交给 Windows。
 
 ## 目录结构
 
@@ -22,10 +41,13 @@ easy-windows-pack/
 ├── easy_windows_pack/
 │   ├── __init__.py       # 公共导出
 │   ├── api.py            # 暴露给 JavaScript 的 API
+│   ├── cli.py            # CLI：build/test/bundle/clean/info
 │   ├── config.py         # WindowConfig 和标题栏模式
 │   ├── controller.py     # 窗口状态、按钮、关闭和拖拽控制
 │   ├── create.py         # pywebview 窗口创建器
 │   └── win32.py          # Win32 非客户区拖拽、缩放、吸附和置顶
+├── .github/workflows/    # 跨平台测试和 Windows 构建
+├── docs/images/          # README 架构图和构建流程图
 ├── frontend/
 │   ├── window-frame.html # 可复制的标题栏与缩放句柄标记
 │   ├── window-frame.css  # 窗口外壳样式
@@ -34,35 +56,94 @@ easy-windows-pack/
 │   ├── demo.py
 │   └── index.html
 ├── tests/test_window_pack.py
+├── build.ps1
+├── LICENSE
 ├── pyproject.toml
 └── requirements.txt
 ```
 
 ## 安装
 
-在应用自己的虚拟环境中安装：
+从 PyPI 安装：
 
 ```powershell
-pip install -e .\easy-windows-pack
+pip install easy-windows-pack
+```
+
+从源码安装：
+
+```powershell
+pip install -e .
 ```
 
 或者只安装运行时依赖：
 
 ```powershell
-pip install -r .\easy-windows-pack\requirements.txt
+pip install -r .\requirements.txt
 ```
 
 运行示例：
 
 ```powershell
-python .\easy-windows-pack\examples\demo.py
+python .\examples\demo.py
 ```
 
 运行包测试：
 
 ```powershell
-python -m unittest discover -s .\easy-windows-pack\tests -p "test_*.py" -v
+python -m unittest discover -s .\tests -p "test_*.py" -v
 ```
+
+## 构建工具
+
+从 `0.2.0` 开始，项目提供可安装的 CLI 和 Windows PowerShell 构建脚本，不依赖 Node.js 构建链。
+
+```powershell
+# 完整构建：测试 + wheel + source bundle
+python -m easy_windows_pack.cli build
+
+# 安装项目后也可直接使用命令
+easy-windows-pack build
+
+# Windows 快捷入口
+.\build.ps1
+```
+
+![easy-windows-pack 构建流程](docs/images/build-flow.svg)
+
+默认产物位于 `dist/`：
+
+```text
+dist/
+├── easy_windows_pack-0.2.0-py3-none-any.whl
+├── easy-windows-pack-0.2.0-bundle.zip
+└── easy-windows-pack-0.2.0-bundle/
+    ├── easy_windows_pack/
+    ├── frontend/
+    ├── examples/
+    ├── docs/
+    └── easy-windows-pack.manifest.json
+```
+
+| 命令 | 用途 |
+| --- | --- |
+| `build` | 运行测试并构建 wheel 与 source bundle |
+| `test` | 运行 `unittest` 测试 |
+| `bundle` | 只构建包含 Python、前端、示例和文档的 zip bundle |
+| `clean` | 删除 `build/`、`dist/`、`*.egg-info/` 和 `__pycache__/` |
+| `info` | 输出版本、Python 路径和产物元数据 |
+
+常用参数：
+
+```powershell
+python -m easy_windows_pack.cli build --output-dir .\artifacts
+python -m easy_windows_pack.cli build --skip-tests
+python -m easy_windows_pack.cli build --skip-tests --skip-bundle
+python -m easy_windows_pack.cli bundle --output-dir .\artifacts
+.\build.ps1 -Python .\.venv\Scripts\python.exe
+```
+
+`build.ps1` 依次查找 `-Python` 参数、项目内 `.venv`、PATH 中的 `python.exe` 和 `py.exe`。
 
 ## 最小集成
 

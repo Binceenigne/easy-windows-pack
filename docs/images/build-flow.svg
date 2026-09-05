@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">easy-windows-pack build flow</title>
+  <desc id="desc">Build flow from CLI or PowerShell to tests, wheel, and source bundle artifacts.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font: 700 25px 'Segoe UI', sans-serif; fill: #0f172a; }
+      .label { font: 700 17px 'Segoe UI', sans-serif; fill: #0f172a; }
+      .text { font: 14px 'Segoe UI', sans-serif; fill: #334155; }
+      .box { stroke: #94a3b8; stroke-width: 2; rx: 16; }
+      .line { stroke: #64748b; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="360" fill="#ffffff"/>
+  <text x="600" y="45" text-anchor="middle" class="title">构建流程 / Build flow</text>
+  <rect x="65" y="125" width="220" height="115" class="box" fill="#eff6ff"/>
+  <text x="175" y="165" text-anchor="middle" class="label">CLI / build.ps1</text>
+  <text x="175" y="195" text-anchor="middle" class="text">build · test · bundle</text>
+  <text x="175" y="217" text-anchor="middle" class="text">clean · info</text>
+  <rect x="370" y="125" width="220" height="115" class="box" fill="#ecfdf5"/>
+  <text x="480" y="165" text-anchor="middle" class="label">Tests</text>
+  <text x="480" y="195" text-anchor="middle" class="text">unittest discover</text>
+  <text x="480" y="217" text-anchor="middle" class="text">syntax + behavior</text>
+  <rect x="675" y="75" width="220" height="115" class="box" fill="#fffbeb"/>
+  <text x="785" y="115" text-anchor="middle" class="label">Python wheel</text>
+  <text x="785" y="145" text-anchor="middle" class="text">dist/*.whl</text>
+  <text x="785" y="167" text-anchor="middle" class="text">pip installable</text>
+  <rect x="675" y="215" width="220" height="115" class="box" fill="#fef2f2"/>
+  <text x="785" y="255" text-anchor="middle" class="label">Source bundle</text>
+  <text x="785" y="285" text-anchor="middle" class="text">dist/*-bundle.zip</text>
+  <text x="785" y="307" text-anchor="middle" class="text">Python + frontend + docs</text>
+  <rect x="980" y="125" width="155" height="115" class="box" fill="#f8fafc"/>
+  <text x="1057" y="165" text-anchor="middle" class="label">Release</text>
+  <text x="1057" y="195" text-anchor="middle" class="text">CI artifact</text>
+  <text x="1057" y="217" text-anchor="middle" class="text">or local use</text>
+  <path d="M285 182 H370" class="line"/>
+  <path d="M590 182 H650 V132 H675" class="line"/>
+  <path d="M590 182 H650 V272 H675" class="line"/>
+  <path d="M895 132 H980" class="line"/>
+  <path d="M895 272 H940 V205 H980" class="line"/>
+</svg>

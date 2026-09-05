@@ -4,11 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "easy-windows-pack"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reusable pywebview Windows title bar and native window controls"
 readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = ["pywebview>=5.4,<7"]
+
+[project.scripts]
+easy-windows-pack = "easy_windows_pack.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["easy_windows_pack*"]
