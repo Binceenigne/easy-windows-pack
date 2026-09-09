@@ -7,7 +7,7 @@
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![pywebview](https://img.shields.io/badge/pywebview-5.4%2B-0f766e)](https://pywebview.flowrl.com/)
-[![Version](https://img.shields.io/badge/version-0.2.0-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
+[![Version](https://img.shields.io/badge/version-0.2.1-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
 
 [中文](README.md) · [English](README.en.md) · [构建工具](#构建工具) · [架构](#架构)
@@ -115,9 +115,9 @@ easy-windows-pack build
 
 ```text
 dist/
-├── easy_windows_pack-0.2.0-py3-none-any.whl
-├── easy-windows-pack-0.2.0-bundle.zip
-└── easy-windows-pack-0.2.0-bundle/
+├── easy_windows_pack-0.2.1-py3-none-any.whl
+├── easy-windows-pack-0.2.1-bundle.zip
+└── easy-windows-pack-0.2.1-bundle/
     ├── easy_windows_pack/
     ├── frontend/
     ├── examples/
@@ -144,6 +144,10 @@ python -m easy_windows_pack.cli bundle --output-dir .\artifacts
 ```
 
 `build.ps1` 依次查找 `-Python` 参数、项目内 `.venv`、PATH 中的 `python.exe` 和 `py.exe`。
+
+### WebView2 并发安全
+
+`WindowController` 通过单一后台 dispatcher 串行执行 JavaScript。重复的窗口状态事件会合并，不会并发调用 `evaluate_js`。最小化或隐藏窗口时，待发送的 JavaScript 会被取消，原生窗口消息会立即发出；窗口切换期间不会在 pywebview 的原生事件回调中同步等待 WebView2。
 
 ## 最小集成
 

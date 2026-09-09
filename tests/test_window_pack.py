@@ -72,6 +72,61 @@ class WindowControllerTests(unittest.TestCase):
         self.assertEqual(closed["action"], "exit")
         self.window.destroy.assert_called_once_with()
 
+    @patch.object(win32, "post_minimize", return_value=True)
+    def test_minimize_event_does_not_evaluate_js_during_transition(self, post_minimize: Mock) -> None:
+        self.window.evaluate_js.reset_mock()
+        result = self.controller.window_action("minimize")
+        self.controller._on_minimized()
+
+        self.assertFalse(result["visible"])
+        self.assertTrue(self.controller._wait_for_js_idle())
+        post_minimize.assert_called_once()
+        self.window.evaluate_js.assert_not_called()
+
+    @patch.object(win32, "post_minimize", return_value=True)
+    def test_minimize_does_not_wait_for_an_inflight_js_call(self, post_minimize: Mock) -> None:
+        js_started = __import__("threading").Event()
+        release_js = __import__("threading").Event()
+
+        def blocking_evaluate(_script: str) -> None:
+            js_started.set()
+            release_js.wait(1)
+
+        self.window.evaluate_js.side_effect = blocking_evaluate
+        self.controller._sync_state()
+        self.assertTrue(js_started.wait(1))
+
+        result = self.controller.window_action("minimize")
+
+        self.assertFalse(result["visible"])
+        post_minimize.assert_called_once()
+        release_js.set()
+        self.assertTrue(self.controller._wait_for_js_idle())
+
+    def test_javascript_dispatcher_serializes_evaluations(self) -> None:
+        active_calls = 0
+        maximum_active_calls = 0
+        calls_lock = __import__("threading").Lock()
+        release_js = __import__("threading").Event()
+
+        def tracked_evaluate(_script: str) -> None:
+            nonlocal active_calls, maximum_active_calls
+            with calls_lock:
+                active_calls += 1
+                maximum_active_calls = max(maximum_active_calls, active_calls)
+            release_js.wait(1)
+            with calls_lock:
+                active_calls -= 1
+
+        self.window.evaluate_js.side_effect = tracked_evaluate
+        self.controller._run_js("window.first();")
+        self.assertTrue(self.controller._wait_for_js_idle(0.5) is False)
+        self.controller._run_js("window.second();")
+        self.assertEqual(maximum_active_calls, 1)
+        release_js.set()
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.assertEqual(maximum_active_calls, 1)
+
     @patch("easy_windows_pack.controller.threading.Timer")
     def test_native_close_to_hide_is_deferred(self, timer_class: Mock) -> None:
         self.controller.config = WindowConfig(close_action="hide").normalized()
@@ -90,6 +145,7 @@ class WindowControllerTests(unittest.TestCase):
 
     def test_switching_between_custom_modes_is_immediate(self) -> None:
         result = self.controller.set_titlebar_mode("minimal")
+        self.assertTrue(self.controller._wait_for_js_idle())
         self.assertFalse(result["restartRequired"])
         self.assertEqual(result["activeTitleBarMode"], "minimal")
         scripts = [call.args[0] for call in self.window.evaluate_js.call_args_list]

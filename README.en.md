@@ -7,7 +7,7 @@
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![pywebview](https://img.shields.io/badge/pywebview-5.4%2B-0f766e)](https://pywebview.flowrl.com/)
-[![Version](https://img.shields.io/badge/version-0.2.0-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
+[![Version](https://img.shields.io/badge/version-0.2.1-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
 
 [中文](README.md) · [English](README.en.md) · [Build tool](#build-tool) · [Architecture](#architecture)
@@ -79,7 +79,7 @@ Copy `frontend/window-frame.html`, `frontend/window-frame.css`, and `frontend/wi
 
 ## Build tool
 
-Version `0.2.0` includes an installable CLI and a PowerShell wrapper. No Node.js build chain is required.
+Version `0.2.0` includes an installable CLI and a PowerShell wrapper. Version `0.2.1` also serializes WebView2 state updates and suppresses JavaScript evaluation during native minimize transitions. No Node.js build chain is required.
 
 ```powershell
 # Tests + wheel + source bundle
@@ -98,9 +98,9 @@ Artifacts are written to `dist/` by default:
 
 ```text
 dist/
-├── easy_windows_pack-0.2.0-py3-none-any.whl
-├── easy-windows-pack-0.2.0-bundle.zip
-└── easy-windows-pack-0.2.0-bundle/
+├── easy_windows_pack-0.2.1-py3-none-any.whl
+├── easy-windows-pack-0.2.1-bundle.zip
+└── easy-windows-pack-0.2.1-bundle/
     ├── easy_windows_pack/
     ├── frontend/
     ├── examples/
@@ -127,6 +127,10 @@ python -m easy_windows_pack.cli bundle --output-dir .\artifacts
 ```
 
 `build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH.
+
+### WebView2 synchronization
+
+`WindowController` sends JavaScript through one background dispatcher. State updates are coalesced, so repeated native window events do not start concurrent `evaluate_js` calls. During a minimize or hide transition, queued JavaScript is discarded and the native message is sent immediately. This avoids blocking the WinForms/WebView2 dispatch thread while the window is changing state.
 
 ## Title bar modes
 

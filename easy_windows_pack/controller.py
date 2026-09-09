@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import replace
 from typing import Any, Callable
 
@@ -31,6 +32,18 @@ class WindowController:
         self.always_on_top = self.config.always_on_top
         self._closing = False
         self._lock = threading.RLock()
+        self._js_condition = threading.Condition()
+        self._js_commands: dict[str, tuple[float, int, str, str | None]] = {}
+        self._js_sequence = 0
+        self._js_in_flight = 0
+        self._js_stopped = False
+        self._js_suspended_until = 0.0
+        self._js_worker = threading.Thread(
+            target=self._js_worker_loop,
+            name="window-js-dispatcher",
+            daemon=True,
+        )
+        self._js_worker.start()
 
     def bind_window(self, window: Any) -> None:
         self.window = window
@@ -73,9 +86,12 @@ class WindowController:
 
         if clean == "minimize":
             self.visible = False
+            self._suspend_state_sync(0.25)
             hwnd = self._window_handle()
             if not win32.post_minimize(hwnd):
                 self._call_window("minimize")
+            self._notify_state()
+            return self.get_state()
         elif clean in {"maximize", "restore"}:
             requested_maximized = clean == "maximize"
             if clean == "maximize":
@@ -87,10 +103,11 @@ class WindowController:
             self.maximized = self._is_zoomed(fallback=requested_maximized)
             win32.set_corner(self._window_handle(), self.maximized)
             self.visible = True
+            self._resume_state_sync()
         else:
             return self._request_close()
 
-        self._sync_state()
+        self._sync_state(delay=0.05)
         return self.get_state()
 
     def native_drag(self, direction: object) -> dict[str, Any]:
@@ -144,7 +161,10 @@ class WindowController:
                 "restartRequired": True,
             }
         self.config = replace(self.config, titlebar_mode=requested)
-        self._run_js(f"window.easyWindowsPackSetTitleBarMode({json.dumps(requested)});")
+        self._run_js(
+            f"window.easyWindowsPackSetTitleBarMode({json.dumps(requested)});",
+            key="titlebar-mode",
+        )
         self._sync_state()
         return {
             "ok": True,
@@ -169,16 +189,18 @@ class WindowController:
 
     def hide_window(self) -> dict[str, Any]:
         self.visible = False
+        self._suspend_state_sync(0.25)
         self._call_window("hide")
-        self._sync_state()
+        self._notify_state()
         return self.get_state()
 
     def show_window(self) -> dict[str, Any]:
         self.visible = True
+        self._resume_state_sync()
         self._call_window("show")
         if self._is_iconic():
             win32.user32.ShowWindow(self._window_handle(), win32.SW_RESTORE)
-        self._sync_state()
+        self._sync_state(delay=0.05)
         return self.get_state()
 
     def _request_close(self, from_native_event: bool = False) -> dict[str, Any]:
@@ -200,6 +222,7 @@ class WindowController:
                 self.hide_window()
             return {"ok": True, "action": "hide"}
         self._closing = True
+        self._stop_js_dispatcher()
         if not from_native_event:
             self._call_window("destroy")
         return {"ok": True, "action": "exit"}
@@ -213,26 +236,101 @@ class WindowController:
 
     def _on_minimized(self, *_args: Any) -> None:
         self.visible = False
-        self._sync_state()
+        self._suspend_state_sync(0.25)
+        self._notify_state()
 
     def _on_maximized(self, *_args: Any) -> None:
         self.maximized = True
         self.visible = True
+        self._resume_state_sync()
         win32.set_corner(self._window_handle(), True)
-        self._sync_state()
+        self._sync_state(delay=0.05)
 
     def _on_restored(self, *_args: Any) -> None:
         self.maximized = False
         self.visible = True
+        self._resume_state_sync()
         win32.set_corner(self._window_handle(), False)
-        self._sync_state()
+        self._sync_state(delay=0.05)
 
     def _on_resized(self, *_args: Any) -> None:
         if not self._is_zoomed():
             self._notify_state()
 
-    def _sync_state(self) -> None:
-        self._run_js(
+    def _sync_state(self, delay: float = 0.0) -> None:
+        with self._js_condition:
+            self._js_sequence += 1
+            self._js_commands["state"] = (
+                time.monotonic() + max(0.0, delay),
+                self._js_sequence,
+                "state",
+                None,
+            )
+            self._js_condition.notify_all()
+        self._notify_state()
+
+    def _notify_state(self) -> None:
+        if self.on_state_change is not None:
+            self.on_state_change(self.get_state())
+
+    def _run_js(
+        self, script: str, *, delay: float = 0.0, key: str | None = None
+    ) -> None:
+        with self._js_condition:
+            self._js_sequence += 1
+            command_key = key or f"command-{self._js_sequence}"
+            self._js_commands[command_key] = (
+                time.monotonic() + max(0.0, delay),
+                self._js_sequence,
+                "script",
+                script,
+            )
+            self._js_condition.notify_all()
+
+    def _js_worker_loop(self) -> None:
+        while True:
+            with self._js_condition:
+                while not self._js_commands and not self._js_stopped:
+                    self._js_condition.wait()
+                if self._js_stopped:
+                    return
+                command_key, command = min(
+                    self._js_commands.items(), key=lambda item: (item[1][0], item[1][1])
+                )
+                wait_seconds = command[0] - time.monotonic()
+                if wait_seconds > 0:
+                    self._js_condition.wait(wait_seconds)
+                    continue
+                del self._js_commands[command_key]
+                self._js_in_flight += 1
+
+            try:
+                self._dispatch_js_command(command[2], command[3])
+            finally:
+                with self._js_condition:
+                    self._js_in_flight -= 1
+                    self._js_condition.notify_all()
+
+    def _dispatch_js_command(self, command_type: str, script: str | None) -> None:
+        with self._js_condition:
+            suspended = time.monotonic() < self._js_suspended_until
+            visible = self.visible
+            stopped = self._js_stopped
+        if self._closing or stopped or self.window is None or not visible or suspended:
+            return
+        if command_type == "state":
+            if not self.visible or time.monotonic() < self._js_suspended_until:
+                return
+            script = self._window_state_script()
+        if not script:
+            return
+        try:
+            self.window.evaluate_js(script)
+        except (AttributeError, RuntimeError):
+            pass
+
+    def _window_state_script(self) -> str:
+        return (
             "window.easyWindowsPackApplyState(%s);"
             % json.dumps(
                 {
@@ -243,19 +341,35 @@ class WindowController:
                 }
             )
         )
-        self._notify_state()
 
-    def _notify_state(self) -> None:
-        if self.on_state_change is not None:
-            self.on_state_change(self.get_state())
+    def _suspend_state_sync(self, seconds: float) -> None:
+        with self._js_condition:
+            self._js_suspended_until = max(
+                self._js_suspended_until, time.monotonic() + max(0.0, seconds)
+            )
+            self._js_commands.pop("state", None)
+            self._js_condition.notify_all()
 
-    def _run_js(self, script: str) -> None:
-        if self.window is None:
-            return
-        try:
-            self.window.evaluate_js(script)
-        except (AttributeError, RuntimeError):
-            pass
+    def _resume_state_sync(self) -> None:
+        with self._js_condition:
+            self._js_suspended_until = 0.0
+            self._js_condition.notify_all()
+
+    def _stop_js_dispatcher(self) -> None:
+        with self._js_condition:
+            self._js_stopped = True
+            self._js_commands.clear()
+            self._js_condition.notify_all()
+
+    def _wait_for_js_idle(self, timeout: float = 2.0) -> bool:
+        deadline = time.monotonic() + timeout
+        with self._js_condition:
+            while self._js_commands or self._js_in_flight:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._js_condition.wait(remaining)
+        return True
 
     def _call_window(self, method_name: str) -> None:
         method = getattr(self.window, method_name, None) if self.window else None
