@@ -244,6 +244,99 @@ await window.easyWindowsPack.setTitleBarMode('minimal');
 { ok: false, error: 'pywebview API is not ready' }
 ```
 
+## 新增桌面组件
+
+组件使用原生 JavaScript，不要求 Vue、React 或 CSS 框架。复制并引入
+[组件样式](frontend/desktop-components.css)和[组件脚本](frontend/desktop-components.js)，
+在 DOM 创建后初始化。需要更新功能时再引入[更新客户端](frontend/desktop-updates.js)。
+
+### 点阵进度条
+
+```html
+<link rel="stylesheet" href="desktop-components.css">
+<div id="quotaProgress"></div>
+<script src="desktop-components.js"></script>
+<script>
+const progress = EasyWindowsPackComponents.createMatrixProgress(
+    document.getElementById('quotaProgress'),
+    { value: 70, remaining: 30, size: 4, label: '已用额度' }
+);
+progress.update({ value: 75, remaining: 25 });
+// 页面或组件卸载时调用，释放 ResizeObserver 和生成的 DOM。
+// progress.dispose();
+</script>
+```
+
+`value` 是填充百分比，`remaining` 是决定告警颜色的剩余百分比，两者独立；
+显示剩余额度时应传相同值，显示已用额度时可传 `value: 70, remaining: 30`，并相应修改 `label`。
+`size` 支持 `2`、`3`、`4`，表示每个点阵块的行列数，默认 `4`。
+`unlimited: true` 显示满格无限额度，可用 `unlimitedLabel` 设置辅助文本。
+容器需要可测量的宽度；组件自动监听尺寸变化，空间不足时回退为线性进度条。
+
+### 开屏遮罩与组件渐入
+
+在页面显示前创建渐入控制器，给需要依次出现的元素添加 `data-ewp-enter`。
+遮罩退出后再触发渐入，避免两段动画同时播放：
+
+```html
+<div id="boot" hidden>正在启动</div>
+<main id="workspace">
+    <header data-ewp-enter>工作台</header>
+    <section data-ewp-enter>业务内容</section>
+</main>
+<script>
+const components = EasyWindowsPackComponents;
+const entrance = components.createEntrance(document.getElementById('workspace'));
+const curtain = components.createBootCurtain(document.getElementById('boot'), {
+    timeout: 12000,
+    onComplete: ({ reason }) => {
+        entrance.reveal();
+        if (reason === 'timeout') console.warn('启动遮罩已超时，请检查初始化状态');
+    }
+});
+// 完成宿主 API 连接、首屏数据加载和必要渲染后调用：
+// curtain.setReady();
+// 卸载时：curtain.dispose(); entrance.dispose();
+</script>
+```
+
+`createEntrance()` 会立即隐藏并暂时禁用内容交互，`reveal()` 触发错峰进入；
+需要再次播放时先调用 `prepare()`。`createBootCurtain()` 默认提供 12 秒超时兜底，
+超时只代表移除遮罩，不代表业务初始化成功，页面应另行呈现失败或重试状态。
+组件支持系统 `prefers-reduced-motion`，也可设置 `document.documentElement.dataset.motion = 'off'` 关闭动效。
+
+### 更新客户端
+
+在宿主通过 `ApiToolsAdapter` 或 `TurtleClawAdapter` 暴露对应接口后使用：
+
+```javascript
+const updates = createDesktopUpdateClient({
+    host: 'turtleclaw', // API_TOOLS 使用 'api-tools'
+    onState: state => console.log('Update state:', state),
+    onError: error => console.error(error)
+});
+// 仅在首屏真正可用后确认就绪；启动检查不会自动下载或安装。
+await updates.markFrontendReady({ checkOnStartup: true });
+// 用户明确操作时调用：await updates.check(); await updates.download();
+// TurtleClaw 安装必须传入宿主提供的有效令牌：await updates.install(token);
+// API_TOOLS 使用 await updates.install() 请求重启应用更新。
+// 卸载时调用 updates.dispose()，停止轮询并移除监听器。
+```
+
+`cancel()` 需要宿主支持 `cancel_update_download`，不可假定两种宿主都支持。
+`restart()` 需要宿主提供 `restart_app`；TurtleClaw 普通重启必须显式注入回调。
+完整 Python 接入、白名单与返回值契约见[桌面集成说明](docs/desktop-integrations.md)，
+可运行的视觉示例见[组件演示](examples/components.html)。
+
+### 使用建议
+
+- **建议使用 SCSS，不建议使用 Tailwind CSS** 作为本框架项目的主要样式组织方式。窗口外壳、点阵、遮罩和渐入包含联动状态与动画规则，SCSS 分模块维护更容易追踪这些关系，也能减少 HTML 中大量工具类和动态类名的维护成本。这是项目维护建议，不是兼容性限制。
+- SCSS 需在开发或构建阶段编译成 CSS，WebView 只加载编译后的 CSS。框架目前分发的是普通 CSS，并不内置 SCSS 源文件或 Sass 构建流程；直接使用组件无需安装 Sass。
+- 将业务样式放在独立 SCSS 模块中，编译后的业务 CSS 在组件 CSS 之后加载；优先使用组件已有的 CSS 自定义属性和带作用域的选择器，不要直接修改供应组件或全局覆盖 `span`、`i` 等标签。
+- 已有 Tailwind CSS 项目可以继续集成，但应检查 Preflight 对按钮、边框等默认样式的影响，避免在组件内部同时用工具类控制其动画、尺寸或可见性。
+- 一个 DOM 容器只创建一个组件实例，数据变化调用 `update()`，卸载时调用 `dispose()`。遮罩只用于必要的首屏初始化，不应等待非关键网络任务；高频数据刷新不要反复触发整页渐入。
+- 在窄窗口、DPI 缩放、键盘操作及减弱动画模式下验证界面。下载、安装、重启仍由宿主管理权限和确认，不要将动画完成视为更新成功。
+
 ## WindowConfig 参数
 
 | 参数 | 默认值 | 说明 |

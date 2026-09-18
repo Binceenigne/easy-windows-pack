@@ -207,6 +207,104 @@ create_window(
 
 Both `window_action` and `get_profile` are available through `window.pywebview.api`.
 
+## New Desktop Components
+
+The components use plain JavaScript and require no Vue, React or CSS framework.
+Load [component CSS](frontend/desktop-components.css) and
+[component JavaScript](frontend/desktop-components.js), then initialize after the DOM exists.
+Load [the update client](frontend/desktop-updates.js) only when needed.
+
+### Dot-Matrix Progress
+
+```html
+<link rel="stylesheet" href="desktop-components.css">
+<div id="quotaProgress"></div>
+<script src="desktop-components.js"></script>
+<script>
+const progress = EasyWindowsPackComponents.createMatrixProgress(
+    document.getElementById('quotaProgress'),
+    { value: 70, remaining: 30, size: 4, label: 'Used quota' }
+);
+progress.update({ value: 75, remaining: 25 });
+// On unmount: progress.dispose();
+</script>
+```
+
+`value` controls the filled percentage; `remaining` independently controls warning
+colors. To display remaining quota, pass the same percentage to both and adjust
+`label`. `size` is the number of rows and columns per block: `2`, `3`, or `4`
+(default). `unlimited: true` displays full unlimited quota; use `unlimitedLabel`
+for its accessible text. Give the container a measurable width. A ResizeObserver
+handles resizing, with automatic linear fallback when space is insufficient.
+`dispose()` releases the observer and generated DOM.
+
+### Boot Curtain and Staggered Entrance
+
+Initialize the entrance controller before showing the page and mark the items
+with `data-ewp-enter`. Reveal them after the curtain finishes:
+
+```html
+<div id="boot" hidden>Starting</div>
+<main id="workspace">
+    <header data-ewp-enter>Workspace</header>
+    <section data-ewp-enter>Application content</section>
+</main>
+<script>
+const components = EasyWindowsPackComponents;
+const entrance = components.createEntrance(document.getElementById('workspace'));
+const curtain = components.createBootCurtain(document.getElementById('boot'), {
+    timeout: 12000,
+    onComplete: ({ reason }) => {
+        entrance.reveal();
+        if (reason === 'timeout') console.warn('Boot curtain timed out; check initialization');
+    }
+});
+// After the bridge, initial data and essential rendering are ready:
+// curtain.setReady();
+// On unmount: curtain.dispose(); entrance.dispose();
+</script>
+```
+
+`createEntrance()` immediately hides the content and temporarily disables its
+interaction. Call `reveal()` to enter, or `prepare()` before playing again.
+The curtain has a default 12-second watchdog. A timeout removes the curtain but
+does not mean initialization succeeded; present a separate error or retry state.
+Components respect `prefers-reduced-motion`. Set
+`document.documentElement.dataset.motion = 'off'` to disable motion explicitly.
+
+### Update Client
+
+First expose the matching host APIs through `ApiToolsAdapter` or `TurtleClawAdapter`:
+
+```javascript
+const updates = createDesktopUpdateClient({
+    host: 'turtleclaw', // Use 'api-tools' for API_TOOLS.
+    onState: state => console.log('Update state:', state),
+    onError: error => console.error(error)
+});
+// Acknowledge only when the frontend is usable. Checking does not download/install.
+await updates.markFrontendReady({ checkOnStartup: true });
+// On explicit user action: await updates.check(); await updates.download();
+// TurtleClaw requires a valid host-issued token: await updates.install(token);
+// API_TOOLS uses await updates.install() to request restart and apply the update.
+// On unmount: updates.dispose();
+```
+
+`cancel()` requires host support for `cancel_update_download`; do not assume both
+hosts support it. `restart()` requires `restart_app`; ordinary TurtleClaw restart
+needs an explicitly injected callback. See [integration contracts](docs/desktop-integrations.md)
+for Python wiring, allowlists and response contracts, and the
+[component demo](examples/components.html) for a runnable visual example.
+
+### Usage Recommendations
+
+- **Use SCSS; Tailwind CSS is not recommended** as the primary styling approach for projects built on this framework. Window chrome, matrix progress, curtains and entrance animations have related state and animation rules. SCSS modules keep these relationships easier to follow and reduce utility-class and dynamic-class maintenance in HTML. This is a maintainability recommendation, not a compatibility restriction.
+- Compile SCSS to CSS during development or builds; WebView loads the generated CSS only. The framework currently ships plain CSS, not SCSS sources or a Sass build pipeline. Using the shipped components does not require Sass.
+- Keep application styles in separate SCSS modules and load their compiled CSS after component CSS. Prefer existing component custom properties and scoped selectors; avoid editing vendor components or globally overriding tags such as `span` and `i`.
+- Existing Tailwind CSS projects can still integrate these components. Check Preflight effects on defaults such as buttons and borders, and avoid using utility classes to compete with internal animation, sizing or visibility rules.
+- Create one instance per container, use `update()` for data changes and `dispose()` on unmount. Reserve the curtain for essential initial loading, not optional network requests; do not replay page-wide entrance animations on frequent refreshes.
+- Validate narrow windows, DPI scaling, keyboard access and reduced-motion mode. The host remains responsible for download, installation and restart authorization and confirmation; animation completion is not proof of update success.
+
 ## Development
 
 ```powershell
