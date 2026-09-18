@@ -29,6 +29,11 @@ class CliTests(unittest.TestCase):
                 root = "easy-windows-pack-0.2.1-bundle/"
                 self.assertIn(root + "easy_windows_pack/controller.py", names)
                 self.assertIn(root + "frontend/window-frame.js", names)
+                self.assertIn(root + "frontend/desktop-components.js", names)
+                self.assertIn(root + "frontend/desktop-updates.js", names)
+                self.assertIn(root + "frontend/desktop-components.css", names)
+                self.assertIn(root + "easy_windows_pack/adapters.py", names)
+                self.assertIn(root + "tests/frontend.html", names)
                 self.assertIn(root + "examples/demo.py", names)
                 self.assertIn(root + "LICENSE", names)
                 self.assertFalse(any("__pycache__" in name for name in names))

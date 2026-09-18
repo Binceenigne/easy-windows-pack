@@ -16,3 +16,6 @@ easy-windows-pack = "easy_windows_pack.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["easy_windows_pack*"]
+
+[tool.setuptools.data-files]
+"share/easy-windows-pack/frontend" = ["frontend/*.js", "frontend/*.css", "frontend/*.html"]

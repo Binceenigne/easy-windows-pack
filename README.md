@@ -2,6 +2,14 @@
 
 # easy-windows-pack
 
+可选桌面集成现支持 `ApiToolsAdapter` 后台管理、设置与更新接口，以及
+`TurtleClawAdapter` 令牌安装、前端就绪确认和宿主提供的普通重启回调。
+两者均不硬依赖源项目，保留宿主权限检查与更新流程。
+
+前端组件库新增响应式点阵进度条、开屏遮罩、错峰渐入及可释放的更新轮询客户端。
+现有窗口单线程 JS dispatcher 和最小化防死锁逻辑保持不变。
+参见[双语接口契约](docs/desktop-integrations.md)和[离线组件示例](examples/components.html)。
+
 ### 可复用的 Windows WebView 桌面窗口框架
 
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)

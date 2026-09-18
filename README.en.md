@@ -178,6 +178,21 @@ Uses the same behavior as `default` with a compact 24px title bar.
 
 ## API delegation
 
+### Optional desktop integrations
+
+`ApiToolsAdapter` exposes API_TOOLS management/settings/update methods through an
+explicit allowlist. `TurtleClawAdapter` preserves the desktop updater's install
+token and frontend-ready acknowledgement, with an optional host-owned restart
+callback. Neither imports or requires either application.
+
+The frontend library now includes responsive dot-matrix progress, a boot curtain,
+staggered entrance animations and an optional update polling client. Existing
+window frame assets and the single JavaScript dispatcher remain unchanged.
+
+See [integration contracts and examples](docs/desktop-integrations.md) and open
+[the offline component demo](examples/components.html). The source bundle includes
+the demo; the wheel also ships frontend assets under `share/easy-windows-pack/frontend`.
+
 ```python
 class AppApi:
     def get_profile(self):

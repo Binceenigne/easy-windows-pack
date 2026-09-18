@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Desktop components</title><link rel="stylesheet" href="../frontend/desktop-components.css">
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f7f8;color:#24272a;font:15px/1.5 system-ui;letter-spacing:0}
+main{max-width:1000px;margin:auto;padding:32px 24px}header{display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #d7dadd;padding-bottom:20px}
+h1{font-size:24px;margin:0}h2{font-size:17px}section{padding:24px 0;border-bottom:1px solid #d7dadd}label{display:flex;gap:16px;align-items:center;flex-wrap:wrap}input[type=range]{width:min(320px,100%);accent-color:#059669}button,select{font:inherit;padding:7px 12px;border:1px solid #b8bec3;border-radius:4px;background:white;color:inherit}button{cursor:pointer}.metric{display:flex;justify-content:space-between;margin-bottom:12px}.ewp-progress{margin:12px 0}#narrow{width:110px}output{font-variant-numeric:tabular-nums}
+@media(max-width:480px){main{padding:20px 16px}header{align-items:flex-start;flex-wrap:wrap}}
+</style></head><body>
+<div id="curtain" class="ewp-curtain" aria-label="Loading desktop"><span class="ewp-curtain-word">Desktop workspace</span><i class="ewp-curtain-line" aria-hidden="true"></i></div>
+<main id="workspace" data-ewp-entry="pending" inert aria-hidden="true">
+<header data-ewp-enter><h1>Desktop workspace</h1><button id="replay">Replay entrance</button></header>
+<section data-ewp-enter><h2>API quota</h2><div class="metric"><span>Remaining balance</span><output id="amount">68%</output></div><div id="quota"></div>
+<label>Remaining <input id="value" aria-label="Remaining quota" type="range" min="0" max="100" value="68"></label>
+<label>Matrix size <select id="size"><option>2</option><option>3</option><option selected>4</option></select></label></section>
+<section data-ewp-enter><h2>Download</h2><div id="download"></div><label><input id="unlimited" type="checkbox"> Unlimited quota</label><div id="limit"></div></section>
+<section data-ewp-enter><h2>Compact progress</h2><div id="narrow"></div><button id="motion" aria-pressed="false">Reduce motion</button></section>
+</main><script src="../frontend/desktop-components.js"></script><script src="components-demo.js"></script></body></html>
