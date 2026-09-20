@@ -34,6 +34,12 @@ class WindowApi:
     def set_always_on_top(self, enabled: bool) -> dict[str, Any]:
         return self._controller.set_always_on_top(enabled)
 
+    def toggle_always_on_top(self) -> dict[str, Any]:
+        return self._controller.toggle_always_on_top()
+
+    def get_always_on_top(self) -> dict[str, Any]:
+        return self._controller.get_always_on_top()
+
     def set_window_size(self, width: Any, height: Any) -> dict[str, Any]:
         return self._controller.set_window_size(width, height)
 

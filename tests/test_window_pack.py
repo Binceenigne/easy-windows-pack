@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -58,6 +59,85 @@ class WindowControllerTests(unittest.TestCase):
         )
         self.controller = WindowController(WindowConfig(title="Test"))
         self.controller.bind_window(self.window)
+        self.addCleanup(self.controller._stop_js_dispatcher)
+
+    @patch.object(win32, "set_topmost", return_value=True)
+    def test_topmost_api_notifies_and_syncs_without_direct_js(self, native: Mock) -> None:
+        from easy_windows_pack.api import WindowApi
+
+        listener = Mock()
+        existing = Mock()
+        self.controller.on_state_change = existing
+        self.controller.add_state_listener(listener)
+        api = WindowApi(self.controller)
+        self.assertTrue(api.toggle_always_on_top()["alwaysOnTop"])
+        self.assertEqual(api.get_always_on_top(), {"ok": True, "alwaysOnTop": True})
+        listener.assert_called_once()
+        existing.assert_called_once()
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.assertIn('"alwaysOnTop": true', self.controller._window_state_script())
+        self.controller.remove_state_listener(listener)
+        api.set_always_on_top(False)
+        listener.assert_called_once()
+        self.assertFalse(api.get_always_on_top()["alwaysOnTop"])
+
+    @patch.object(win32, "IS_WINDOWS", True)
+    @patch.object(win32, "set_topmost", return_value=False)
+    def test_failed_topmost_keeps_previous_state(self, native: Mock) -> None:
+        listener = Mock()
+        self.controller.add_state_listener(listener)
+        self.assertEqual(self.controller.set_always_on_top(True),
+                         {"ok": False, "alwaysOnTop": False})
+        listener.assert_not_called()
+
+    @patch.object(win32, "set_topmost", return_value=True)
+    def test_concurrent_topmost_toggles_are_serialized(self, native: Mock) -> None:
+        threads = [threading.Thread(target=self.controller.toggle_always_on_top)
+                   for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+        self.assertFalse(self.controller.always_on_top)
+        self.assertEqual([call.args[1] for call in native.call_args_list], [True, False] * 5)
+
+    @patch.object(win32, "set_topmost")
+    def test_native_topmost_can_notify_from_another_thread(self, native: Mock) -> None:
+        completed = threading.Event()
+
+        def native_call(*args):
+            def notify():
+                self.controller._notify_state()
+                completed.set()
+
+            worker = threading.Thread(target=notify, daemon=True)
+            worker.start()
+            self.assertTrue(completed.wait(1), "Native event blocked on the topmost lock")
+            worker.join(1)
+            return True
+
+        native.side_effect = native_call
+        self.assertTrue(self.controller.toggle_always_on_top()["ok"])
+
+    def test_listener_failure_does_not_prevent_close_or_other_listeners(self) -> None:
+        listener = Mock()
+        self.controller.add_state_listener(Mock(side_effect=ValueError("broken listener")))
+        self.controller.add_state_listener(listener)
+        self.controller.on_state_change = Mock(side_effect=ValueError("broken observer"))
+        with self.assertLogs("easy_windows_pack.controller", level="ERROR"):
+            self.controller.window_action("close")
+        listener.assert_called_once()
+        self.window.destroy.assert_called_once()
+
+    @patch.object(win32, "set_topmost", return_value=True)
+    def test_topmost_while_hidden_does_not_evaluate_js(self, native: Mock) -> None:
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.controller.hide_window()
+        self.window.evaluate_js.reset_mock()
+        self.controller.toggle_always_on_top()
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.window.evaluate_js.assert_not_called()
 
     @patch.object(win32, "window_handle", return_value=0)
     def test_three_window_buttons_delegate_to_pywebview(self, _handle: Mock) -> None:

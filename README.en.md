@@ -305,6 +305,103 @@ for Python wiring, allowlists and response contracts, and the
 - Create one instance per container, use `update()` for data changes and `dispose()` on unmount. Reserve the curtain for essential initial loading, not optional network requests; do not replay page-wide entrance animations on frequent refreshes.
 - Validate narrow windows, DPI scaling, keyboard access and reduced-motion mode. The host remains responsible for download, installation and restart authorization and confirmation; animation completion is not proof of update success.
 
+## Tray Menu and Always-on-Top
+
+Install the optional Windows tray dependencies (`pystray` and Pillow):
+
+```powershell
+pip install "easy-windows-pack[tray]"
+# From this checkout:
+pip install -e ".[tray]"
+```
+
+This example uses the shipped window page. Replace the generated icon with a PNG/ICO
+path or a Pillow image in your application:
+
+```python
+from pathlib import Path
+from threading import Event
+
+import webview
+from PIL import Image
+from easy_windows_pack import (
+    TRAY_SEPARATOR, TrayController, TrayMenuItem, WindowConfig, create_window,
+)
+
+exiting = Event()
+instance = create_window(
+    WindowConfig(title="Tray example"),
+    url=Path("examples/index.html").resolve().as_uri(),
+    on_close=lambda controller: "hide" if tray.running and not exiting.is_set() else "exit",
+)
+
+def exit_app():
+    exiting.set()
+    instance.controller.window_action("close")
+
+image = Image.new("RGBA", (64, 64), "#0f766e")
+tray = TrayController(instance.controller, icon=image, title="Tray example", on_exit=exit_app)
+tray.set_menu([
+    *tray.window_menu(),
+    TRAY_SEPARATOR,
+    TrayMenuItem("Print state", lambda: print(instance.controller.get_state()),
+                 enabled=lambda: instance.controller.visible),
+])
+
+def start_tray():
+    try:
+        tray.start()
+    except Exception as error:
+        print(f"Tray unavailable: {error}")
+
+try:
+    webview.start(start_tray, gui="edgechromium")
+finally:
+    tray.stop()
+    image.close()
+```
+
+The default menu provides Show (also the left-click action), Hide, Always on top,
+and Exit when `on_exit` is supplied. `menu=[]` creates an empty menu;
+`set_menu(items)` replaces it while running. `TrayMenuItem(text, callback,
+enabled=True, checked=None, default=False)` accepts a zero-argument Python
+callback. `enabled` and `checked` can be booleans or zero-argument functions;
+`checked=None` omits the checkmark. Use `TRAY_SEPARATOR` between groups and at
+most one default item. Call `refresh_menu()` after changing custom state outside
+a menu callback. Window visibility and topmost changes refresh it automatically.
+
+`start(timeout=5.0)` starts a background tray loop and waits for readiness; it is
+idempotent while running and raises on missing dependencies, failure, or timeout.
+`stop()` requests removal and detaches state listeners without closing the window
+or joining the tray loop; the native loop releases its image on exit. A stopped
+tray can restart unless the window is closed. Closing the window stops the tray;
+hiding it keeps the tray alive. `request_exit()` stops the tray and invokes the
+host's required `on_exit` callback once per start. Callback/state-refresh errors
+are logged and available as `last_error`. Keep callbacks and state getters short;
+they run on background/native threads and must marshal other GUI work as needed.
+
+The existing `set_always_on_top(enabled)` and the new `toggle_always_on_top()` /
+`get_always_on_top()` are available on both `WindowController` and `WindowApi`:
+
+```javascript
+// After pywebviewready:
+const state = await window.pywebview.api.toggle_always_on_top();
+if (state.ok) console.log(state.alwaysOnTop);
+await window.pywebview.api.set_always_on_top(false);
+const current = await window.pywebview.api.get_always_on_top();
+```
+
+They return `{ok, alwaysOnTop}`. A failed native update preserves the previous
+state. Updates reuse the Win32 implementation and the serialized JS dispatcher;
+hidden/minimized windows do not evaluate JS. State listeners receive `closed`
+and `alwaysOnTop` through `get_state()` / notifications. Additional listeners can
+be registered/removed with `add_state_listener()` / `remove_state_listener()`;
+observer exceptions are logged without interrupting window operations.
+
+Tray configuration is Python-only: do not pass `TrayController` as `app_api`.
+No tray command strings, shell execution, or arbitrary Python/JS evaluation API
+is exposed to the browser. The host owns shutdown policy and business callbacks.
+
 ## Development
 
 ```powershell
@@ -320,7 +417,7 @@ GitHub Actions tests Python 3.10 and 3.12 on Ubuntu and Windows. A Windows runne
 - Native dragging, resizing, Snap, and topmost behavior target Windows. Imports and unit tests can still run on other platforms.
 - The recommended pywebview GUI is `edgechromium`.
 - Switching between native and custom title bars requires recreating the pywebview window.
-- Tray icons, single-instance enforcement, window-position persistence, and application updates remain host application responsibilities.
+- Tray support is optional and targets Windows; the host supplies the icon, menu callbacks, and shutdown policy. Single-instance enforcement, window-position persistence, and application updates remain host responsibilities.
 
 <div align="center">
 

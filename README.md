@@ -521,6 +521,96 @@ instance = create_window(
 
 `on_state_change(state)` 会在最大化、还原、最小化、显示、隐藏和尺寸变化时收到状态字典，适合保存窗口尺寸或更新托盘状态。
 
+## 系统托盘菜单与窗口置顶
+
+托盘面向 Windows，使用可选的 `pystray` 和 Pillow 依赖；基础安装不会加载托盘库：
+
+```powershell
+pip install "easy-windows-pack[tray]"
+# 从本地仓库安装：
+pip install -e ".[tray]"
+```
+
+以下示例使用仓库自带窗口页面。实际应用可将生成的图标替换为 PNG/ICO 路径或 Pillow 图像：
+
+```python
+from pathlib import Path
+from threading import Event
+
+import webview
+from PIL import Image
+from easy_windows_pack import (
+    TRAY_SEPARATOR, TrayController, TrayMenuItem, WindowConfig, create_window,
+)
+
+exiting = Event()
+instance = create_window(
+    WindowConfig(title="Tray example"),
+    url=Path("examples/index.html").resolve().as_uri(),
+    on_close=lambda controller: "hide" if tray.running and not exiting.is_set() else "exit",
+)
+
+def exit_app():
+    exiting.set()
+    instance.controller.window_action("close")
+
+image = Image.new("RGBA", (64, 64), "#0f766e")
+tray = TrayController(instance.controller, icon=image, title="Tray example", on_exit=exit_app)
+tray.set_menu([
+    *tray.window_menu(),
+    TRAY_SEPARATOR,
+    TrayMenuItem("Print state", lambda: print(instance.controller.get_state()),
+                 enabled=lambda: instance.controller.visible),
+])
+
+def start_tray():
+    try:
+        tray.start()
+    except Exception as error:
+        print(f"Tray unavailable: {error}")
+
+try:
+    webview.start(start_tray, gui="edgechromium")
+finally:
+    tray.stop()
+    image.close()
+```
+
+默认菜单包含显示窗口（同时是左键默认动作）、隐藏窗口、置顶，以及提供 `on_exit` 时的退出项。
+传入 `menu=[]` 可创建空菜单；`set_menu(items)` 可在运行中替换菜单。
+`TrayMenuItem(text, callback, enabled=True, checked=None, default=False)` 接受无参数 Python 回调；
+`enabled` 和 `checked` 支持布尔值或无参数状态函数，`checked=None` 不显示勾选标记。
+用 `TRAY_SEPARATOR` 添加分隔符，一个菜单最多设置一个默认项。
+菜单回调之外的业务状态变更后调用 `refresh_menu()`；窗口显示、隐藏和置顶状态会自动同步。
+
+`start(timeout=5.0)` 启动后台托盘线程并等待就绪，运行中重复调用无副作用；缺少依赖、启动失败或超时会抛出异常。
+`stop()` 请求移除图标并解除状态监听，不关闭窗口、不等待托盘线程退出；原生循环退出时释放图像副本。
+窗口未关闭时可以重新启动托盘。关闭窗口会停止托盘，隐藏窗口则保留托盘。
+`request_exit()` 先停止托盘，再调用宿主必需的 `on_exit`，每次启动后只执行一次。
+菜单回调和状态刷新异常会记录日志，并保存在 `last_error`。
+回调和状态函数在后台或原生线程执行，应保持简短；其他 GUI 操作需按宿主框架要求切换线程。
+
+`WindowController` 与 `WindowApi` 都提供已有的 `set_always_on_top(enabled)`，
+以及新增的 `toggle_always_on_top()` / `get_always_on_top()`：
+
+```javascript
+// 在 pywebviewready 之后调用：
+const state = await window.pywebview.api.toggle_always_on_top();
+if (state.ok) console.log(state.alwaysOnTop);
+await window.pywebview.api.set_always_on_top(false);
+const current = await window.pywebview.api.get_always_on_top();
+```
+
+返回值为 `{ok, alwaysOnTop}`，原生设置失败时保留之前的状态。
+实现复用 Win32 置顶逻辑与串行 JS dispatcher，窗口隐藏或最小化时不会执行 JS。
+`get_state()` 与状态通知包含 `closed`、`alwaysOnTop`；可通过
+`add_state_listener()` / `remove_state_listener()` 增删额外监听器，不替换 `on_state_change`。
+监听器异常会被记录，不会阻断窗口操作。
+
+托盘配置仅供 Python 宿主使用，不能把 `TrayController` 作为 `app_api` 传入。
+浏览器接口不提供托盘命令字符串、Shell 执行或任意 Python/JS 执行能力。
+退出策略和业务回调仍由宿主管理；示例在托盘启动失败时允许正常关闭窗口，避免应用只能隐藏却无法从托盘恢复。
+
 ## 从现有应用迁移
 
 现有 pywebview 应用通常可以按以下顺序迁移：
@@ -537,9 +627,9 @@ instance = create_window(
 
 ## 限制与注意事项
 
-- 运行目标是 Windows；Win32 拖拽、缩放、Snap 和置顶在非 Windows 上会返回 `ok: false`。
+- 运行目标是 Windows；Win32 拖拽、缩放、Snap 和原生置顶只在 Windows 上生效。非 Windows 上置顶接口保留原有的状态模拟行为，不代表操作系统实际置顶。
 - 必须使用 pywebview 的 `edgechromium` GUI。`window.native` 和 Win32 handle 在 WebView2 创建后才可用。
 - 自绘标题栏必须保证按钮或输入控件不触发标题栏拖拽。组件已排除 `button`、`input`、`select`、`textarea` 和 `a`。
 - 不要把业务内容放在 resize handle 上方，否则边缘点击会被句柄截获。
 - `native` 模式下不要依赖自绘标题栏 DOM 来显示应用状态；系统标题栏由 Windows 管理。
-- 包不负责托盘图标、单实例、窗口位置持久化和应用更新，这些属于宿主应用生命周期。
+- 托盘是可选功能，宿主需提供图标、菜单回调和退出策略；单实例、窗口位置持久化和应用更新仍属于宿主应用生命周期。

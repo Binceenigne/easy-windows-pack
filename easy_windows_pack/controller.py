@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from dataclasses import replace
@@ -11,6 +12,7 @@ from . import win32
 
 CloseCallback = Callable[["WindowController"], str | bool | None]
 StateCallback = Callable[[dict[str, Any]], None]
+_log = logging.getLogger(__name__)
 
 
 class WindowController:
@@ -27,11 +29,13 @@ class WindowController:
         self.window: Any = None
         self.on_close = on_close
         self.on_state_change = on_state_change
+        self._state_listeners: list[StateCallback] = []
         self.maximized = False
         self.visible = True
         self.always_on_top = self.config.always_on_top
         self._closing = False
         self._lock = threading.RLock()
+        self._listeners_lock = threading.RLock()
         self._js_condition = threading.Condition()
         self._js_commands: dict[str, tuple[float, int, str, str | None]] = {}
         self._js_sequence = 0
@@ -55,6 +59,7 @@ class WindowController:
             "restored": self._on_restored,
             "resized": self._on_resized,
             "closing": self._on_closing,
+            "closed": self._on_closed,
         }
         for event_name, callback in bindings.items():
             event = getattr(events, event_name, None) if events else None
@@ -69,6 +74,7 @@ class WindowController:
         return {
             "ok": True,
             "visible": self.visible,
+            "closed": self._closing,
             "maximized": self.maximized,
             "alwaysOnTop": self.always_on_top,
             "resizable": self.config.resizable,
@@ -174,9 +180,35 @@ class WindowController:
         }
 
     def set_always_on_top(self, enabled: object) -> dict[str, Any]:
-        self.always_on_top = bool(enabled)
-        applied = win32.set_topmost(self._window_handle(), self.always_on_top)
-        return {"ok": applied or not win32.IS_WINDOWS, "alwaysOnTop": self.always_on_top}
+        return self._change_always_on_top(bool(enabled))
+
+    def _change_always_on_top(self, enabled: bool | None) -> dict[str, Any]:
+        with self._lock:
+            requested = not self.always_on_top if enabled is None else enabled
+            applied = win32.set_topmost(self._window_handle(), requested)
+            success = applied or not win32.IS_WINDOWS
+            if success:
+                self.always_on_top = requested
+            result = {"ok": success, "alwaysOnTop": self.always_on_top}
+        if success:
+            self._sync_state()
+        return result
+
+    def toggle_always_on_top(self) -> dict[str, Any]:
+        return self._change_always_on_top(None)
+
+    def get_always_on_top(self) -> dict[str, Any]:
+        return {"ok": True, "alwaysOnTop": self.always_on_top}
+
+    def add_state_listener(self, callback: StateCallback) -> None:
+        with self._listeners_lock:
+            if callback not in self._state_listeners:
+                self._state_listeners.append(callback)
+
+    def remove_state_listener(self, callback: StateCallback) -> None:
+        with self._listeners_lock:
+            if callback in self._state_listeners:
+                self._state_listeners.remove(callback)
 
     def set_window_size(self, width: object, height: object) -> dict[str, Any]:
         size = self._normalize_size(width, height)
@@ -223,6 +255,7 @@ class WindowController:
             return {"ok": True, "action": "hide"}
         self._closing = True
         self._stop_js_dispatcher()
+        self._notify_state()
         if not from_native_event:
             self._call_window("destroy")
         return {"ok": True, "action": "exit"}
@@ -230,6 +263,11 @@ class WindowController:
     def _on_closing(self, *_args: Any) -> bool:
         result = self._request_close(from_native_event=True)
         return result["action"] == "exit"
+
+    def _on_closed(self, *_args: Any) -> None:
+        self._closing = True
+        self._stop_js_dispatcher()
+        self._notify_state()
 
     def _on_loaded(self, *_args: Any) -> None:
         self._sync_state()
@@ -270,8 +308,15 @@ class WindowController:
         self._notify_state()
 
     def _notify_state(self) -> None:
+        with self._listeners_lock:
+            listeners = tuple(self._state_listeners)
         if self.on_state_change is not None:
-            self.on_state_change(self.get_state())
+            listeners += (self.on_state_change,)
+        for callback in listeners:
+            try:
+                callback(self.get_state())
+            except Exception:
+                _log.exception("Window state listener failed")
 
     def _run_js(
         self, script: str, *, delay: float = 0.0, key: str | None = None
@@ -336,6 +381,7 @@ class WindowController:
                 {
                     "maximized": self.maximized,
                     "visible": self.visible,
+                    "alwaysOnTop": self.always_on_top,
                     "resizable": self.config.resizable,
                     "titleBarMode": self.config.titlebar_mode,
                 }

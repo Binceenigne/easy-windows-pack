@@ -11,6 +11,9 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = ["pywebview>=5.4,<7"]
 
+[project.optional-dependencies]
+tray = ["pystray>=0.19.5,<0.20", "Pillow>=10"]
+
 [project.scripts]
 easy-windows-pack = "easy_windows_pack.cli:main"
 
