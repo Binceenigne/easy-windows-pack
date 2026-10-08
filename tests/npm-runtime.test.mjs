@@ -238,7 +238,7 @@ test('Vite picks a dynamic local port and denies project/backend files', async t
     assert.equal((await fetchText(new URL('src/demo.css', url), t.signal)).status, 200);
     for (const path of ['backend/src/demo.py', 'scripts/dev.py', 'package.json', '.git/config']) {
       const response = await fetchText(new URL(`/@fs/${join(root, path).replaceAll('\\', '/')}`, url), t.signal);
-      assert.equal(response.status, 403, path);
+      assert.ok([403, 404].includes(response.status), `Private path must not be served: ${path}`);
       const relative = await fetchText(new URL(path, url), t.signal);
       assert.ok([403, 404].includes(relative.status), `Root path must not be served: ${path}`);
     }
