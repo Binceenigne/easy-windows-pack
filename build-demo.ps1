@@ -10,17 +10,13 @@ if (-not $Python) {
 
 Push-Location $ProjectRoot
 try {
-    & $Python -m PyInstaller --noconfirm --onefile --windowed `
-        --name easy-windows-pack-demo --paths $ProjectRoot `
-        --distpath (Join-Path $ProjectRoot 'dist') `
-        --workpath (Join-Path $ProjectRoot 'build\demo-exe') `
-        --specpath (Join-Path $ProjectRoot 'build') `
-        --add-data "$(Join-Path $ProjectRoot 'examples\index.html');examples" `
-        --add-data "$(Join-Path $ProjectRoot 'frontend');frontend" `
-        (Join-Path $ProjectRoot 'examples\demo.py')
-    if ($LASTEXITCODE -ne 0) { throw "Demo build failed: $LASTEXITCODE" }
-    Write-Host "Demo EXE: $(Join-Path $ProjectRoot 'dist\easy-windows-pack-demo.exe')"
+    & $Python (Join-Path $ProjectRoot 'scripts\dev.py') exe
+    $BuildExitCode = $LASTEXITCODE
+    if ($BuildExitCode -eq 0) {
+        Write-Host "Demo EXE: $(Join-Path $ProjectRoot 'output\exe\easy-windows-pack-demo.exe')"
+    }
 }
 finally {
     Pop-Location
 }
+exit $BuildExitCode

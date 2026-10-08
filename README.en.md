@@ -10,7 +10,7 @@
 [![Version](https://img.shields.io/badge/version-0.2.1-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
 
-[中文](README.md) · [English](README.en.md) · [Build tool](#build-tool) · [Architecture](#architecture)
+[中文](README.md) · [English](README.en.md) · [npm / Vite guide](docs/npm-vite.md) · [Developer docs](docs/README.md) · [Build tool](#build-tool) · [Architecture](#architecture)
 
 </div>
 
@@ -21,6 +21,52 @@
 ![easy-windows-pack architecture](docs/images/architecture.svg)
 
 The browser frame sends commands through the pywebview API. `WindowController` owns lifecycle and state, while `win32.py` delegates non-client dragging, resizing, Snap behavior, and topmost state to Windows.
+
+Root [docs/](docs/README.md) is the development documentation center. Read the
+[development guide](docs/development.md) for setup, preview and builds, and the
+[architecture and migration guide](docs/architecture.md) for directory boundaries.
+Root [index.md](index.md) and [design.md](design.md) remain concise implementation and design summaries.
+
+## Repository layout
+
+```text
+easy-windows-pack/
+├── backend/
+│   ├── base/ewpcore/     # Framework source; public package: easy_windows_pack
+│   └── src/demo.py       # Desktop demo and host wiring
+├── frontend/
+│   ├── frame/ewpframe/   # window-frame.js and desktop-updates.js bridges
+│   ├── components/
+│   │   ├── titlebar/     # window-frame.html / .css
+│   │   └── desktop/      # desktop-components.js / .css
+│   ├── index.html       # Vite primary page
+│   ├── src/             # main.js, component demo; deprecated old index.html
+│   └── contracts/       # TypeScript contracts and integration notes
+├── packages/
+│   ├── easywindowspack/  # ESM runtime, CSS, wrappers and ewp CLI
+│   └── create-ewp/       # Interactive generator, common and six templates
+├── docs/                # Development docs, navigation and diagrams
+├── scripts/dev.py       # Standard-library development menu
+├── scripts/prepare-npm.mjs # Single-source npm resource generation
+├── tests/               # Python and browser tests
+├── .github/workflows/   # CI
+├── output/              # frontend/, wheels/, exe/, bundles/, npm/, logs/
+├── build/               # spec/, pyinstaller/ and other build caches
+├── build.cmd            # Windows development entry point
+├── build.ps1            # Compatible low-level CLI wrapper
+├── build-demo.ps1       # Delegates to the development exe task
+├── agent.md             # Development rules entry point
+├── index.md             # Implementation summary
+├── design.md            # Design summary
+├── package.json         # Private workspace; root package is not published
+├── vite.config.mjs      # Vite ^7.3.7; relative production URLs
+└── pyproject.toml
+```
+
+The source directory name `ewpcore` does not change public imports. Continue using
+`from easy_windows_pack import ...`; `pyproject.toml` maps that package to
+`backend/base/ewpcore` through `package-dir`. Reinstall the editable checkout after
+migration; do not switch public imports to `ewpcore`.
 
 ## Features
 
@@ -34,9 +80,48 @@ The browser frame sends commands through the pywebview API. `WindowController` o
 - Optional close-to-hide lifecycle
 - Business API delegation through one pywebview `js_api`
 - Framework-free HTML/CSS/JavaScript frontend assets
-- CLI, PowerShell build script, wheel, source bundle, and GitHub Actions CI
+- Private npm workspaces, ESM `easywindowspack@0.1.0` / `ewp` CLI, Vite HMR and six Vanilla / Vue / React templates in JS / TS
+- Bilingual development menu, compatible CLI / PowerShell wrappers, wheel, single-file EXE, source bundle, and GitHub Actions CI
 
-## Install
+## npm quick start
+
+Require Node.js **>=22.12.0**, **Python >=3.10** for desktop initialization and packaging, and **WebView2** for Windows desktop. The root npm workspace is private. Both npm packages are version `0.1.0`, independently of Python `easy-windows-pack@0.2.1`.
+
+**Publication is not verified.** The publisher must confirm availability and ownership of the public names `create-ewp` / `easywindowspack`. These registry commands are for use after both packages are published; global installation is optional:
+
+```powershell
+npm create ewp@latest
+npm create ewp@latest "My App" -- --template react-ts --no-install --no-start
+```
+
+Prompts select project name, Vanilla / Vue / React, JavaScript / TypeScript, installation and startup. Alternatively, after publication run `npm install -g easywindowspack`, then `ewp create`, which delegates to dependency `create-ewp/cli`. See the [bilingual guide](docs/npm-vite.md) for local generation before publication, tarball validation and manual publication order.
+
+In the checkout or a generated project whose dependencies are available:
+
+```powershell
+npm install
+npm run init
+npm run dev
+# Browser only, without desktop startup
+npm run dev -- --web
+npm run frontend:dev
+```
+
+`init` creates/reuses Python `.venv` and installs Python development and npm dependencies. `dev` starts Vite/HMR on a dynamic loopback port and passes the actual URL via `EWP_DEV_URL` to pywebview with debug enabled. Browser mode needs no Python and has no real native window bridge. The primary entry is [frontend/index.html](frontend/index.html); [frontend/src/index.html](frontend/src/index.html) is a deprecated compatibility entry.
+
+```powershell
+npm run frontend:build
+npm run build
+npm run build -- -w
+npm run build -- --wheel
+npm run build -- -e
+```
+
+Frontend compilation targets `output/frontend/` with relative production asset URLs. `build` defaults to Windows EXE; `-w` / `--wheel` selects wheel and `-e` explicitly selects EXE. **Put npm script arguments after `--`; bare `-w` is npm workspace selection.** Python/PyInstaller packages the EXE with compiled frontend assets only. Framework wheels retain core and source component/bridge assets; generated application wheels include compiled assets. See [build boundaries](docs/npm-vite.md#前端与-python-构建--frontend-and-python-builds).
+
+Use `mountFrame` / `update` / `dispose` from `easywindowspack` and explicitly import `easywindowspack/frame.css`. Desktop components, updates and optional `./vue` / `./react` exports are described in the [public API guide](docs/npm-vite.md#前端公共-api-与模板组合--frontend-public-api-and-template-composition). Vue >=3.3 and React >=18 are optional peers; Vanilla requires neither. Six templates share the runtime; Vue Teleport / React portals preserve reactive application content and events.
+
+## Python installation and compatible integration
 
 From PyPI:
 
@@ -50,7 +135,23 @@ From a local checkout:
 pip install -e .
 ```
 
-## Quick start
+For repository development, initialize the project environment and launch the demo:
+
+```powershell
+.\build.cmd init
+.\build.cmd demo --debug
+```
+
+Initialization creates or reuses `.venv`, runs `pip install -e ".[dev,tray]"`,
+and installs npm dependencies when a package manifest is present. Directly running
+`backend/src/demo.py` requires compiled frontend assets or a development URL.
+`build.cmd browser` now delegates browser development to Vite.
+
+## Python window integration
+
+Compile the Vite frontend with `npm run frontend:build` before this example.
+`ewp dev` supplies `EWP_DEV_URL` during development. A host using copied static
+components can instead supply its own HTML path.
 
 ```python
 from pathlib import Path
@@ -69,64 +170,97 @@ instance = create_window(
         min_height=480,
         close_action="exit",
     ),
-    url=(Path("frontend") / "index.html").resolve().as_uri(),
+    url=(Path("output") / "frontend" / "index.html").resolve().as_uri(),
 )
 
 webview.start(gui="edgechromium")
 ```
 
-Copy `frontend/window-frame.html`, `frontend/window-frame.css`, and `frontend/window-frame.js` into the application frontend. Put the application content inside `[data-ewp-content]`.
+Copy [the frame markup](frontend/components/titlebar/window-frame.html),
+[frame CSS](frontend/components/titlebar/window-frame.css), and
+[frame JavaScript](frontend/frame/ewpframe/window-frame.js) into the application
+frontend. Put the application content inside `[data-ewp-content]`.
 
 ## Build tool
 
-Version `0.2.0` includes an installable CLI and a PowerShell wrapper. Version `0.2.1` also serializes WebView2 state updates and suppresses JavaScript evaluation during native minimize transitions. No Node.js build chain is required.
+Root `build.cmd` invokes the standard-library `scripts/dev.py` entry point.
+Without arguments it opens a bilingual menu; task names also work directly.
+The menu keeps its legacy build semantics; current frontend development and
+compilation require Node.js/Vite. `init` installs Python build dependencies into
+project `.venv` and npm dependencies. See [development](docs/development.md) and
+the [npm / Vite guide](docs/npm-vite.md).
 
 ```powershell
-# Tests + wheel + source bundle
-python -m easy_windows_pack.cli build
-
-# Available after installing the project
-easy-windows-pack build
-
-# Windows wrapper
-.\build.ps1
+.\build.cmd
+.\build.cmd init
+.\build.cmd browser
+.\build.cmd frontend
+.\build.cmd demo --debug
+# Tests + wheel + single-file EXE + source bundle
+.\build.cmd build
 ```
 
 ![easy-windows-pack build flow](docs/images/build-flow.svg)
 
-Artifacts are written to `dist/` by default:
+Artifacts use category directories under `output/`; PyInstaller configuration and
+caches stay under `build/`:
 
 ```text
-dist/
-├── easy_windows_pack-0.2.1-py3-none-any.whl
-├── easy-windows-pack-0.2.1-bundle.zip
-└── easy-windows-pack-0.2.1-bundle/
-    ├── easy_windows_pack/
-    ├── frontend/
-    ├── examples/
-    ├── docs/
-    └── easy-windows-pack.manifest.json
+output/
+├── frontend/            # Compiled Vite pages and assets
+├── wheels/              # *.whl
+├── exe/                 # easy-windows-pack-demo.exe (single file)
+├── bundles/             # *-bundle.zip, staging directory and manifest
+├── npm/                 # npm pack tarballs
+└── logs/                # Initialization and build logs
+build/
+├── spec/                # PyInstaller specs
+└── pyinstaller/         # PyInstaller work cache
 ```
 
 | Command | Purpose |
 | --- | --- |
-| `build` | Run tests and build the wheel plus source bundle |
-| `test` | Run the unittest suite |
-| `bundle` | Build only the source bundle zip |
-| `clean` | Remove `build/`, `dist/`, `*.egg-info/`, and `__pycache__/` |
-| `info` | Print version, Python executable, and artifact metadata |
+| `init` | Create/reuse `.venv` and install `.[dev,tray]` plus npm dependencies |
+| `browser` | Vite browser development on a dynamic `127.0.0.1` port |
+| `frontend` | Compile into `output/frontend/` |
+| `demo --debug` | Build frontend and run desktop with developer tools; use `npm run dev` for HMR |
+| `wheel` | Build into `output/wheels/` |
+| `exe` | Build a PyInstaller single-file demo into `output/exe/`; Windows only |
+| `bundle` | Build the source bundle into `output/bundles/` |
+| `build` | Run test → wheel → exe → bundle; Windows only |
+| `test` | Run Python unittest; browser and native interaction checks are separate |
+| `info` | Show interpreter, project environment and output locations |
 
-Common options:
+Use `build.cmd browser --port 8080 --no-open` to choose a port without opening a
+browser automatically. Ctrl+C stops the server. Browser preview has no real native
+bridge; use a desktop host to verify window dragging, tray and native updates.
+Progress reports completed stages, not an estimated time percentage. Failed or
+interrupted stages do not mark subsequent work complete. Initialization and build
+logs are retained under `output/logs/`.
+
+`build.cmd build` keeps test → wheel → exe → bundle; `npm run build` selects EXE
+by default. The historical SVG shows the legacy build flow; the npm guide defines
+the current npm path.
+
+### Compatible entry points
+
+The original CLI and `build.ps1` remain available. Their `build` command still runs
+tests + wheel + source bundle, without EXE packaging, and defaults to categorized
+`output/` directories. `clean` belongs to the low-level CLI, not the development
+menu. An explicit `--output-dir` overrides the default artifact location.
 
 ```powershell
+python -m easy_windows_pack.cli build
+easy-windows-pack build
 python -m easy_windows_pack.cli build --output-dir .\artifacts
 python -m easy_windows_pack.cli build --skip-tests
 python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 python -m easy_windows_pack.cli bundle --output-dir .\artifacts
 .\build.ps1 -Python .\.venv\Scripts\python.exe
+.\build-demo.ps1 -Python .\.venv\Scripts\python.exe
 ```
 
-`build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH.
+`build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH. `build-demo.ps1` delegates to `scripts/dev.py exe`, sharing the same environment, logs and output directories.
 
 ### WebView2 synchronization
 
@@ -190,7 +324,7 @@ staggered entrance animations and an optional update polling client. Existing
 window frame assets and the single JavaScript dispatcher remain unchanged.
 
 See [integration contracts and examples](docs/desktop-integrations.md) and open
-[the offline component demo](examples/components.html). The source bundle includes
+[the offline component demo](frontend/src/components.html). The source bundle includes
 the demo; the wheel also ships frontend assets under `share/easy-windows-pack/frontend`.
 
 ```python
@@ -210,9 +344,9 @@ Both `window_action` and `get_profile` are available through `window.pywebview.a
 ## New Desktop Components
 
 The components use plain JavaScript and require no Vue, React or CSS framework.
-Load [component CSS](frontend/desktop-components.css) and
-[component JavaScript](frontend/desktop-components.js), then initialize after the DOM exists.
-Load [the update client](frontend/desktop-updates.js) only when needed.
+Load [component CSS](frontend/components/desktop/desktop-components.css) and
+[component JavaScript](frontend/components/desktop/desktop-components.js), then initialize after the DOM exists.
+Load [the update client](frontend/frame/ewpframe/desktop-updates.js) only when needed.
 
 ### Dot-Matrix Progress
 
@@ -294,7 +428,7 @@ await updates.markFrontendReady({ checkOnStartup: true });
 hosts support it. `restart()` requires `restart_app`; ordinary TurtleClaw restart
 needs an explicitly injected callback. See [integration contracts](docs/desktop-integrations.md)
 for Python wiring, allowlists and response contracts, and the
-[component demo](examples/components.html) for a runnable visual example.
+[component demo](frontend/src/components.html) for a runnable visual example.
 
 ### Usage Recommendations
 
@@ -331,7 +465,7 @@ from easy_windows_pack import (
 exiting = Event()
 instance = create_window(
     WindowConfig(title="Tray example"),
-    url=Path("examples/index.html").resolve().as_uri(),
+    url=Path("frontend/src/index.html").resolve().as_uri(),
     on_close=lambda controller: "hide" if tray.running and not exiting.is_set() else "exit",
 )
 
@@ -404,13 +538,19 @@ is exposed to the browser. The host owns shutdown policy and business callbacks.
 
 ## Development
 
+Use [docs/README.md](docs/README.md) as the documentation entry point. Detailed
+setup and troubleshooting live in [docs/development.md](docs/development.md);
+directory ownership and old-to-new paths live in [docs/architecture.md](docs/architecture.md).
+
 ```powershell
-python -m unittest discover -s tests -p "test_*.py" -v
-python -m easy_windows_pack.cli info
-python -m easy_windows_pack.cli build
+.\build.cmd test
+.\build.cmd info
+.\build.cmd build
 ```
 
-GitHub Actions tests Python 3.10 and 3.12 on Ubuntu and Windows. A Windows runner builds and uploads the wheel and source bundle.
+CI configuration is maintained in `.github/workflows/`. Historical local checks in
+the integration documentation do not certify the current migration or remote CI;
+record each current validation separately.
 
 ## Limitations
 

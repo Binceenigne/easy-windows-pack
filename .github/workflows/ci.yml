@@ -17,8 +17,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install npm workspace
+        run: npm ci
+      - name: Validate npm packages and Vite frontend
+        run: |
+          npm run test:npm
+          npm run frontend:build
       - name: Install package metadata
-        run: python -m pip install --upgrade pip setuptools
+        run: python -m pip install -e ".[dev]"
       - name: Run tests
         run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Validate CLI metadata
@@ -33,11 +43,25 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install npm workspace
+        run: npm ci
       - name: Build wheel and source bundle
         shell: pwsh
-        run: .\build.ps1 -SkipTests
+        run: |
+          .\build.cmd init
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\build.cmd wheel
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\build.cmd bundle
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: easy-windows-pack-artifacts
-          path: dist/*
+          path: |
+            output/wheels/*.whl
+            output/bundles/*.zip

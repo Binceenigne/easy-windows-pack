@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
   <title id="title">easy-windows-pack architecture</title>
-  <desc id="desc">A bilingual diagram showing browser controls connected to the Python API and Win32 window controller.</desc>
+  <desc id="desc">Frontend components and frame bridges connect through pywebview to the public easy_windows_pack package in backend/base/ewpcore and the Windows native controller.</desc>
   <defs>
     <linearGradient id="blue" x1="0" x2="1">
       <stop offset="0" stop-color="#eff6ff"/><stop offset="1" stop-color="#dbeafe"/>
@@ -28,19 +28,19 @@
 
   <rect x="65" y="125" width="300" height="250" class="box" fill="url(#blue)"/>
   <text x="215" y="170" text-anchor="middle" class="label">WebView 前端 / Frontend</text>
-  <text x="215" y="205" text-anchor="middle" class="text">window-frame.html</text>
-  <text x="215" y="232" text-anchor="middle" class="text">window-frame.css</text>
-  <text x="215" y="259" text-anchor="middle" class="text">window-frame.js</text>
+  <text x="215" y="205" text-anchor="middle" class="small">frontend/components/titlebar/</text>
+  <text x="215" y="232" text-anchor="middle" class="small">frontend/frame/ewpframe/</text>
+  <text x="215" y="259" text-anchor="middle" class="small">frontend/src/index.html</text>
   <text x="215" y="310" text-anchor="middle" class="small">三按钮 · 标题栏模式</text>
   <text x="215" y="334" text-anchor="middle" class="small">拖拽句柄 · 状态同步</text>
 
   <rect x="450" y="125" width="300" height="250" class="box" fill="url(#green)"/>
   <text x="600" y="170" text-anchor="middle" class="label">Python API / Controller</text>
-  <text x="600" y="205" text-anchor="middle" class="text">WindowApi</text>
-  <text x="600" y="232" text-anchor="middle" class="text">WindowController</text>
-  <text x="600" y="259" text-anchor="middle" class="text">WindowConfig</text>
+  <text x="600" y="205" text-anchor="middle" class="small">Source: backend/base/ewpcore/</text>
+  <text x="600" y="232" text-anchor="middle" class="small">Import: easy_windows_pack</text>
+  <text x="600" y="259" text-anchor="middle" class="text">WindowApi · WindowController</text>
   <text x="600" y="310" text-anchor="middle" class="small">业务 API delegate</text>
-  <text x="600" y="334" text-anchor="middle" class="small">测试 · 构建 · 生命周期</text>
+  <text x="600" y="334" text-anchor="middle" class="small">WindowConfig · 生命周期</text>
 
   <rect x="835" y="125" width="300" height="250" class="box" fill="url(#amber)"/>
   <text x="985" y="170" text-anchor="middle" class="label">Windows 原生层 / Native</text>

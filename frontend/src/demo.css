@@ -1,0 +1,7 @@
+html, body, #app { height: 100%; margin: 0; }
+body { font: 15px/1.5 system-ui, sans-serif; }
+.demo-content { padding: 32px; }
+.demo-content h1 { margin-top: 0; }
+.demo-content button, .demo-content select { font: inherit; padding: 8px 10px; }
+.demo-content a { color: var(--ewp-accent); }
+.demo-status { color: var(--ewp-muted); }

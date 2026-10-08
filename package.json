@@ -1,0 +1,29 @@
+{
+  "name": "easy-windows-pack-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=22.12.0" },
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "init": "node packages/easywindowspack/bin/ewp.mjs init",
+    "dev": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs dev",
+    "build": "node packages/easywindowspack/bin/ewp.mjs build",
+    "build:wheel": "node packages/easywindowspack/bin/ewp.mjs wheel",
+    "build:exe": "node packages/easywindowspack/bin/ewp.mjs exe",
+    "bundle": "node packages/easywindowspack/bin/ewp.mjs bundle",
+    "test": "node packages/easywindowspack/bin/ewp.mjs test",
+    "test:npm": "npm run prepare:npm && node --test tests/npm-runtime.test.mjs tests/create-ewp.test.mjs",
+    "test:pack": "node tests/npm-pack.integration.mjs",
+    "pack:npm": "npm run prepare:npm && npm pack --workspaces --pack-destination output/npm",
+    "prepare:npm": "node scripts/prepare-npm.mjs",
+    "frontend:dev": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs frontend:dev",
+    "frontend:build": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs frontend:build",
+    "frontend:preview": "node packages/easywindowspack/bin/ewp.mjs frontend:preview",
+    "check": "node packages/easywindowspack/bin/ewp.mjs check",
+    "prepack": "npm run prepare:npm"
+  },
+  "dependencies": { "easywindowspack": "0.1.0" },
+  "devDependencies": { "vite": "^7.3.7" }
+}

@@ -1,5 +1,14 @@
 # Optional desktop integrations / 可选桌面集成
 
+[Documentation / 文档导航](README.md) · [Development / 开发手册](development.md) · [Architecture / 目录迁移](architecture.md)
+
+Python source now lives in `backend/base/ewpcore/`; public imports remain
+`easy_windows_pack`. Host wiring is demonstrated in [backend/src/demo.py](../backend/src/demo.py).
+Type declarations live in [frontend/contracts/](../frontend/contracts/README.md).
+
+Python 源码迁移到 `backend/base/ewpcore/`，公开包名不变；不要改为导入 `ewpcore`。
+浏览器预览只有静态前端，没有真实宿主桥；原生更新、安装与重启需在对应宿主中验证。
+
 ## Python
 
 ```python
@@ -48,10 +57,17 @@ API_TOOLS 的进度字段为 `percent`，TurtleClaw 为 `progress`。TurtleClaw 
 
 ## Frontend
 
-Load `desktop-components.css`, `desktop-components.js` and, optionally,
-`desktop-updates.js`. They have no Vue, Node, network or icon dependencies.
+Load [desktop-components.css](../frontend/components/desktop/desktop-components.css),
+[desktop-components.js](../frontend/components/desktop/desktop-components.js) and, optionally,
+[desktop-updates.js](../frontend/frame/ewpframe/desktop-updates.js).
+They have no Vue, Node, network or icon dependencies.
 The source bundle includes all frontend resources; wheels install them under
-`share/easy-windows-pack/frontend` in the Python environment.
+`share/easy-windows-pack/frontend` in the Python environment, retaining the
+`components/`, `frame/`, `src/` and `contracts/` hierarchy.
+
+组件示例位于 [frontend/src/components.html](../frontend/src/components.html)。
+运行 `build.cmd browser` 后可在相同地址打开 `/src/components.html`；Ctrl+C 停止。
+该服务只暴露 `frontend/`，宿主接口由真实桌面应用提供。
 
 ```javascript
 const {createMatrixProgress, createEntrance, createBootCurtain} = EasyWindowsPackComponents;
@@ -100,7 +116,8 @@ await updates.markFrontendReady({checkOnStartup: true, includePrereleases: false
 
 ## Provenance and boundary / 来源与边界
 
-Reviewed source: API_TOOLS `backend/web_api.py`, `runtime.py`,
+Historical integration review sources (external projects, not paths in this repository):
+API_TOOLS `backend/web_api.py`, `runtime.py`,
 `controller_mixins/settings.py`, `updates.py`, `platform.py` RPC allowlist;
 `frontend/scripts/modules/10-dashboard-rendering.js` stableProgressSequence and
 renderProgressBar; `_quota-dashboard.scss`. TurtleClaw `backend/updates.py`,
@@ -109,5 +126,12 @@ renderProgressBar; `_quota-dashboard.scss`. TurtleClaw `backend/updates.py`,
 The framework preserves its existing single JS dispatcher and minimize/hide
 deadlock avoidance. No host window/controller implementation was transplanted.
 
-窗口 `controller.py`、`create.py`、`api.py` 和 `window-frame.*` 未改动。
-本任务不验证真实线上更新、EXE 替换或原生重启；测试使用受控桥，不会关闭用户程序。
+上述来源记录对应原集成任务，不是本次目录迁移的验证结果。原任务未改变窗口控制行为；
+当前窗口实现位于 `backend/base/ewpcore/`，标题栏资源在 `frontend/components/titlebar/`，
+窗口桥接在 `frontend/frame/ewpframe/window-frame.js`。
+历史验收见 [integration-validation.md](integration-validation.md)：其受控桥测试不验证
+真实线上更新、EXE 替换或原生重启，也不能作为当前迁移通过的证据。
+
+These provenance notes describe the original integration, not validation of the current
+layout migration. See the dated [validation record](integration-validation.md).
+Controlled-host tests do not certify live updates, executable replacement or native restart.

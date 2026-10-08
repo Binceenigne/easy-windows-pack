@@ -13,12 +13,17 @@ dependencies = ["pywebview>=5.4,<7"]
 
 [project.optional-dependencies]
 tray = ["pystray>=0.19.5,<0.20", "Pillow>=10"]
+dev = ["build>=1.2", "wheel>=0.43", "setuptools>=68", "pyinstaller==6.22.2; sys_platform == 'win32'"]
 
 [project.scripts]
 easy-windows-pack = "easy_windows_pack.cli:main"
 
-[tool.setuptools.packages.find]
-include = ["easy_windows_pack*"]
+[tool.setuptools]
+packages = ["easy_windows_pack"]
+package-dir = { easy_windows_pack = "backend/base/ewpcore" }
 
 [tool.setuptools.data-files]
-"share/easy-windows-pack/frontend" = ["frontend/*.js", "frontend/*.css", "frontend/*.html"]
+"share/easy-windows-pack/frontend/frame/ewpframe" = ["frontend/frame/ewpframe/*.js"]
+"share/easy-windows-pack/frontend/components/titlebar" = ["frontend/components/titlebar/*.html", "frontend/components/titlebar/*.css"]
+"share/easy-windows-pack/frontend/components/desktop" = ["frontend/components/desktop/*.js", "frontend/components/desktop/*.css"]
+"share/easy-windows-pack/frontend/contracts" = ["frontend/contracts/*.json", "frontend/contracts/*.md", "frontend/contracts/*.ts"]

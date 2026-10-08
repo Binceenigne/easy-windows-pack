@@ -2,6 +2,10 @@
   const results = [], C = window.EasyWindowsPackComponents;
   function check(name, value) { if (!value) throw new Error(name); results.push(name); }
   const next = () => new Promise(resolve => setTimeout(resolve, 30));
+  async function waitFor(predicate) {
+    const deadline = performance.now() + 3000;
+    while (!predicate() && performance.now() < deadline) await next();
+  }
   const root = document.createElement('div'); root.style.width = '500px'; document.body.append(root);
   const progress = C.createMatrixProgress(root, {value:50, size:4});
   try {
@@ -12,8 +16,8 @@
     progress.update({value:200}); check('upper clamp', root.getAttribute('aria-valuenow') === '100');
     progress.update({value:-20}); check('lower clamp', root.getAttribute('aria-valuenow') === '0');
     progress.update({unlimited:true}); check('unlimited', root.dataset.tone === 'unlimited' && root.getAttribute('aria-valuenow') === '100');
-    root.style.width = '80px'; await next(); check('narrow fallback', !!root.querySelector('.ewp-linear'));
-    root.style.width = '500px'; await next(); check('resize recovery', !!root.querySelector('.ewp-matrix'));
+    root.style.width = '80px'; await waitFor(() => root.querySelector('.ewp-linear')); check('narrow fallback', !!root.querySelector('.ewp-linear'));
+    root.style.width = '500px'; await waitFor(() => root.querySelector('.ewp-matrix')); check('resize recovery', !!root.querySelector('.ewp-matrix'));
     progress.dispose(); check('progress disposal', !root.children.length && !root.hasAttribute('role'));
     const workspace = document.createElement('div'); workspace.innerHTML = '<button data-ewp-enter>Work</button>'; document.body.append(workspace);
     const entrance = C.createEntrance(workspace);

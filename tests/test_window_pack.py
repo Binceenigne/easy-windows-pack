@@ -207,6 +207,88 @@ class WindowControllerTests(unittest.TestCase):
         self.assertTrue(self.controller._wait_for_js_idle())
         self.assertEqual(maximum_active_calls, 1)
 
+    def test_javascript_exception_does_not_stop_dispatcher_after_reload(self) -> None:
+        class JavascriptException(Exception):
+            pass
+
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.window.evaluate_js.reset_mock()
+        first_started = threading.Event()
+        release_first = threading.Event()
+        self.addCleanup(release_first.set)
+        active_calls = 0
+        maximum_active_calls = 0
+        evaluated_scripts = []
+        successful_scripts = []
+        evaluation_threads = []
+        calls_lock = threading.Lock()
+
+        def tracked_evaluate(script: str) -> None:
+            nonlocal active_calls, maximum_active_calls
+            with calls_lock:
+                active_calls += 1
+                maximum_active_calls = max(maximum_active_calls, active_calls)
+                evaluated_scripts.append(script)
+                evaluation_threads.append(threading.current_thread())
+                first_call = len(evaluated_scripts) == 1
+            try:
+                if first_call:
+                    first_started.set()
+                    if not release_first.wait(2):
+                        raise AssertionError("First JavaScript evaluation was not released")
+                    raise JavascriptException("State bridge is undefined during navigation")
+                successful_scripts.append(script)
+            finally:
+                with calls_lock:
+                    active_calls -= 1
+
+        self.window.evaluate_js.side_effect = tracked_evaluate
+        worker = self.controller._js_worker
+        with self.assertLogs("easy_windows_pack.controller", level="ERROR") as logs:
+            self.controller._on_loaded()
+            self.assertTrue(first_started.wait(1))
+            self.controller.maximized = True
+            self.controller._on_loaded()
+            self.controller._run_js("window.afterReload();")
+            release_first.set()
+            self.assertTrue(self.controller._wait_for_js_idle())
+
+        self.assertEqual(len(logs.records), 1)
+        self.assertEqual(logs.records[0].getMessage(), "Window JavaScript command failed (state)")
+        self.assertIs(logs.records[0].exc_info[0], JavascriptException)
+        self.assertEqual(successful_scripts, [
+            self.controller._window_state_script(), "window.afterReload();",
+        ])
+        self.assertIn('"maximized": true', successful_scripts[0])
+        self.assertEqual(evaluation_threads, [worker] * 3)
+        self.assertTrue(worker.is_alive())
+        self.assertEqual(maximum_active_calls, 1)
+        self.assertEqual(active_calls, 0)
+        with self.controller._js_condition:
+            self.assertFalse(self.controller._js_commands)
+            self.assertEqual(self.controller._js_in_flight, 0)
+
+    def test_state_script_guards_unavailable_bridge(self) -> None:
+        script = self.controller._window_state_script()
+        self.assertTrue(script.startswith(
+            "if (typeof window.easyWindowsPackApplyState === 'function') {"
+            "window.easyWindowsPackApplyState("
+        ))
+        self.assertTrue(script.endswith(");}"))
+
+    def test_closed_window_does_not_evaluate_pending_or_loaded_commands(self) -> None:
+        self.assertTrue(self.controller._wait_for_js_idle())
+        self.window.evaluate_js.reset_mock()
+        self.controller._sync_state(delay=60)
+        self.controller._on_closed()
+        self.controller._on_loaded()
+        self.controller._run_js("window.afterClose();")
+        self.controller._dispatch_js_command("state", None)
+        self.controller._dispatch_js_command("script", "window.afterClose();")
+        self.controller._js_worker.join(1)
+        self.assertFalse(self.controller._js_worker.is_alive())
+        self.window.evaluate_js.assert_not_called()
+
     @patch("easy_windows_pack.controller.threading.Timer")
     def test_native_close_to_hide_is_deferred(self, timer_class: Mock) -> None:
         self.controller.config = WindowConfig(close_action="hide").normalized()

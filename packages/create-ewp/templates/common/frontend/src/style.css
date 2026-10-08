@@ -1,0 +1,17 @@
+@import 'easywindowspack/frame.css';
+
+:root { font-family: Inter, 'Segoe UI', system-ui, sans-serif; color: #243247; background: #eaf0f7; font-synthesis: none; }
+body { margin: 0; }
+#app, .desktop-frame { height: 100dvh; }
+.app-view { box-sizing: border-box; min-height: 100%; display: grid; place-content: center; padding: 36px; background: radial-gradient(ellipse at top left, #d8f2ef, transparent 65%), linear-gradient(135deg, #edf3fb, #faf5ee); }
+.welcome-card { box-sizing: border-box; width: min(560px, 100%); padding: clamp(24px, 5vw, 44px); border: 1px solid #ffffffc9; border-radius: 24px; background: #ffffffbd; box-shadow: 0 24px 80px #273a6012; }
+.eyebrow { color: #387e79; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+.welcome-card h1 { margin: 14px 0; font-size: clamp(28px, 5vw, 42px); line-height: 1.1; letter-spacing: -.04em; }
+.description { color: #64748b; line-height: 1.7; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-top: 28px; }
+.controls label { display: grid; gap: 7px; font-size: 13px; color: #64748b; }
+.controls select, .counter { font: inherit; border-radius: 10px; padding: 11px 14px; border: 1px solid #d6e0ec; background: #fff; color: #243247; }
+.counter { cursor: pointer; align-self: end; border-color: #287b72; background: #287b72; color: #fff; }
+.counter:hover { background: #226a62; }
+.counter:focus-visible, .controls select:focus-visible { outline: 3px solid #89b9fa; outline-offset: 3px; }
+.hint { margin-top: 24px; font-size: 12px; color: #64748b; line-height: 1.7; }

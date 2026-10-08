@@ -4,3 +4,11 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+output/
+node_modules/
+packages/easywindowspack/assets/
+packages/create-ewp/templates/common/backend/base/
+packages/create-ewp/templates/common/scripts/
+packages/create-ewp/templates/common/build.cmd
+packages/create-ewp/templates/common/LICENSE
+packages/*/LICENSE

@@ -1,51 +1,31 @@
-# 项目设计规范
+# 项目设计摘要
 
-> 本文件记录宿主项目的视觉与交互意图及已确认实现。开发前参考；视觉/共用交互改变时增量维护。不要将本模板当作已有设计系统。
+面向桌面 WebView 应用开发者，窗口控件保持轻量、紧凑与清晰，提供 Windows / macOS 两套外观。详细规则在 [docs/window-styles.md](docs/window-styles.md) 和 [docs/desktop-integrations.md](docs/desktop-integrations.md) 维护；开发文档中心为 [docs/README.md](docs/README.md)，实现入口见 [index.md](index.md)。
 
-## 设计摘要
+## 视觉来源
 
-- 视觉定位与目标用户：桌面 WebView 应用开发者，可选 Windows 与 macOS 风格标题栏。
-- 风格关键词 / 信息密度：轻量、紧凑、清晰的窗口控制。
-- 浅色 / 深色 / 主题策略：通过 prefers-color-scheme 适配；data-window-style="macos" 启用 macOS 外观。
-- 参考页面或设计稿：examples/index.html；详细说明见 docs/window-styles.md。
-- 状态 / 覆盖范围：已确认窗口框架；其他组件尚未盘点。
-- 最近内容更新：首次填入实际内容时记录。
-
-## 色彩与语义 token
-
-| 角色 | token / 选择器 | 当前值或模式 | 代码来源 | 状态 |
-| --- | --- | --- | --- | --- |
-
-记录主色、表面、文字、边框、成功/警告/危险等实际使用的语义；不知道的留待确认。代码是数值实现来源，不在这里维护第二份完整调色板。
-
-## 排版、布局与形态
-
-| 项目 | 当前约定 | 来源 / 状态 |
+| 范围 | 当前约定 | 实现来源 |
 | --- | --- | --- |
-| 字体与字号层级 | 待确认 | 未核实 |
-| 间距与内容密度 | 待确认 | 未核实 |
-| 圆角、边框、阴影 | 待确认 | 未核实 |
-| 页面结构、断点或最小窗口 | 待确认 | 未核实 |
-| 图标体系 | Windows 控件采用 16×16 手写 SVG、1.25px 描边；macOS 控件隐藏 SVG | frontend/window-frame.html、window-frame.css |
+| 标题栏 | Windows 默认 33px、紧凑 24px；macOS 默认 40px、紧凑 28px | [window-frame.css](frontend/components/titlebar/window-frame.css) |
+| 语义 token | `--ewp-surface`、`--ewp-surface-strong`、`--ewp-border`、`--ewp-text`、`--ewp-muted`、`--ewp-accent`、`--ewp-close`；浅深色随 `prefers-color-scheme` | 同上；完整值以 CSS 为准 |
+| 图标与控件 | Windows 16×16 SVG、1.25px 描边；macOS 12px 彩色圆点、22px 点击区域，隐藏 SVG | [window-frame.html](frontend/components/titlebar/window-frame.html) 与标题栏 CSS |
+| 组件样式 | 点阵、遮罩与进入动效使用带作用域的规则，支持减弱动画 | [desktop-components.css](frontend/components/desktop/desktop-components.css) |
+| 示例 | 窗口页展示外观切换，组件页展示进度、遮罩和进入动画 | [Vite 窗口示例](frontend/index.html)、[组件示例](frontend/src/components.html) |
 
-## 组件家族
+框架分发普通 CSS；业务样式推荐模块化 CSS/SCSS，SCSS 需自行编译。已有 Tailwind 项目检查 reset 影响。示例页面的品牌、背景和布局不是宿主应用的强制设计规范；优先组件公开变量与作用域覆盖。
 
-| 家族 | 推荐实现 / 变体 | 尺寸、状态与使用约定 | 来源 / 状态 |
-| --- | --- | --- | --- |
-| 窗口标题栏 | frontend/window-frame.css；Windows / macOS | Windows 默认 33px；macOS 默认 40px、紧凑 28px；标题居中、左侧 12px 彩色圆点与 22px 点击区域 | 已实现 |
+## npm 外壳与框架组合
 
-## 共用交互与动效
+公开 `easywindowspack/frame.css` / `desktop.css` 由同一套权威 CSS 生成，不维护另一套主题。ESM `mountFrame` 管理外壳，使用实例 `update` 更新标题/外观，卸载时 `dispose`。六套 JS/TS 模板共用窗口语义；Vue 模板以 Teleport、React 模板以 portal 保留业务 slot/children、props 响应式与事件，不把业务内容转成静态 HTML。可选 `./vue` / `./react` 包装层只在对应宿主中使用，不构成全项目 Vue/React 规范。公开 API 和资源生成边界见 [npm / Vite 指南](docs/npm-vite.md)。
 
-| 场景 | 已确认行为 / 反馈 / 恢复方式 | 来源 / 状态 |
-| --- | --- | --- |
-| macOS 交通灯 | 红色关闭、黄色最小化、绿色最大化/还原；悬停和聚焦不显示 SVG，键盘焦点保留轮廓 | frontend/window-frame.css、window-frame.js；已验证 |
-| 外观切换 | setWindowStyle 即时切换，保留最大化状态；native 模式使用系统标题栏 | frontend/window-frame.js；已验证 |
+Vite HMR 仅改变开发体验；生产前端编译到 `output/frontend/` 并使用相对 URL。浏览器中的外观和交互不能作为 native 标题栏、Snap、托盘或宿主更新已成功的证据。旧 [frontend/src/index.html](frontend/src/index.html) 为弃用兼容入口，设计验收优先主页面与实际生成模板。
 
-包括实际存在的加载/空/失败反馈、表单、危险操作、导航、覆盖层焦点、动效与减弱动效。没有的能力不要伪称已支持。
+## 共用交互
 
-## 决策与待收敛差异
+- `setWindowStyle` 即时切换外观并保留最大化状态。外观与 `titleBarMode` 独立；`native` 使用系统标题栏，与自绘模式切换需要重建窗口。
+- macOS 红/黄/绿分别关闭、最小化、最大化或还原；绿色不表示 macOS 原生全屏。悬停和聚焦不显示 SVG，键盘焦点保留轮廓。
+- 点阵 `value` 表示填充量、`remaining` 表示剩余告警语义；空间不足回退线性进度。
+- 启动遮罩退出和超时不表示业务已就绪；失败状态独立呈现。渐入支持 `prefers-reduced-motion` 与 `data-motion="off"`，每容器单实例，卸载时释放。
+- 更新下载、安装、重启由宿主控制权限与确认；动画、轮询或浏览器预览不能作为原生成功证据。
 
-| 决策 / 差异 | 已实现 / 已确认待实现 / 提议 | 依据与影响范围 |
-| --- | --- | --- |
-
-只保留影响后续开发的决定。实现偏差与目标设计分开写，不靠修改规范掩盖偏差；一次性数值不自动成为公共 token。组件路径与库存见同目录 `index.md`。
+以上为当前实现与维护约定的摘要，不是本次迁移的验收报告。新设计决定同步相关 `docs/` 页面；提议与已实现规则分开记录，不把临时数值提升为公共 token。
