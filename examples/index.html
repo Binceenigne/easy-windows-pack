@@ -21,9 +21,18 @@
                 <span data-ewp-title>easy-windows-pack demo</span>
             </div>
             <div class="ewp-window-controls" role="group" aria-label="Window controls">
-                <button type="button" class="ewp-window-control" data-ewp-action="minimize" title="Minimize" aria-label="Minimize"><span class="ewp-control-glyph ewp-glyph-minimize" aria-hidden="true"></span></button>
-                <button type="button" class="ewp-window-control" data-ewp-action="maximize" title="Maximize" aria-label="Maximize"><span class="ewp-control-glyph ewp-glyph-maximize" data-ewp-maximize-glyph aria-hidden="true"></span></button>
-                <button type="button" class="ewp-window-control ewp-window-control-close" data-ewp-action="close" title="Close" aria-label="Close"><span class="ewp-control-glyph ewp-glyph-close" aria-hidden="true"></span></button>
+                <button type="button" class="ewp-window-control" data-ewp-action="minimize" title="Minimize" aria-label="Minimize">
+                    <svg class="ewp-control-glyph ewp-glyph-minimize" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 8h10"/></svg>
+                </button>
+                <button type="button" class="ewp-window-control" data-ewp-action="maximize" title="Maximize" aria-label="Maximize">
+                    <svg class="ewp-control-glyph ewp-glyph-maximize" data-ewp-maximize-glyph viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                        <rect class="ewp-icon-maximize" x="3" y="3" width="10" height="10" rx="1"/>
+                        <g class="ewp-icon-restore"><path d="M5.5 5V3.5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H11"/><rect x="2.5" y="5.5" width="8" height="8" rx="1"/></g>
+                    </svg>
+                </button>
+                <button type="button" class="ewp-window-control ewp-window-control-close" data-ewp-action="close" title="Close" aria-label="Close">
+                    <svg class="ewp-control-glyph ewp-glyph-close" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m3.5 3.5 9 9m0-9-9 9"/></svg>
+                </button>
             </div>
         </header>
         <span class="ewp-resize-handle ewp-resize-left" data-ewp-resize="left" aria-hidden="true"></span>
