@@ -1,0 +1,8 @@
+{
+  "name": "@easy-windows-pack/ui-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-neutral contracts for Easy Windows Pack UI libraries",
+  "types": "index.d.ts",
+  "files": ["index.d.ts", "README.md"]
+}

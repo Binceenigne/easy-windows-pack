@@ -1,11 +1,12 @@
 from pathlib import Path
+import sys
 
 import webview
 
 from easy_windows_pack import WindowConfig, create_window
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
 
 
 config = WindowConfig(

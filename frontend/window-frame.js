@@ -60,6 +60,9 @@
         frame.dataset.ewpBound = 'true';
         const mode = normalizeMode(options.mode || frame.dataset.titlebarMode);
         frame.dataset.titlebarMode = mode;
+        if (options.windowStyle) {
+            frame.dataset.windowStyle = options.windowStyle === 'macos' ? 'macos' : 'windows';
+        }
 
         if (options.title) {
             const title = frame.querySelector('[data-ewp-title]');
@@ -123,6 +126,12 @@
     window.easyWindowsPack = {
         bind: bindFrame,
         call: callApi,
+        setWindowStyle(style) {
+            const normalized = style === 'macos' ? 'macos' : 'windows';
+            document.querySelectorAll('[data-ewp-window-frame]').forEach(frame => {
+                frame.dataset.windowStyle = normalized;
+            });
+        },
         setTitleBarMode(mode) {
             return callApi('set_titlebar_mode', normalizeMode(mode));
         },

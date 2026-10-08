@@ -11,11 +11,11 @@
         .demo-content { padding: 32px; }
         .demo-content h1 { margin-top: 0; }
         .demo-content button, .demo-content select { padding: 8px 10px; }
-        .demo-status { color: #475569; }
+        .demo-status { color: var(--ewp-muted); }
     </style>
 </head>
 <body>
-    <div id="easyWindowsPackFrame" class="ewp-window-frame" data-ewp-window-frame data-titlebar-mode="default">
+    <div id="easyWindowsPackFrame" class="ewp-window-frame" data-ewp-window-frame data-titlebar-mode="default" data-window-style="macos">
         <header class="ewp-titlebar" data-ewp-drag-handle>
             <div class="ewp-titlebar-identity">
                 <span data-ewp-title>easy-windows-pack demo</span>
@@ -47,6 +47,7 @@
             <div class="demo-content">
                 <h1>Reusable WebView window</h1>
                 <p>Use the native frame for a system title bar, or choose a custom frame for full control.</p>
+                <p><label>Window style <select id="windowStyle"><option value="macos">macOS</option><option value="windows">Windows</option></select></label></p>
                 <label>Title bar mode <select id="mode"><option value="default">Default</option><option value="minimal">Minimal</option><option value="native">Native</option></select></label>
                 <button id="apply" type="button">Apply mode</button>
                 <p class="demo-status" id="status">Ready</p>
@@ -56,6 +57,9 @@
     <script src="../frontend/window-frame.js"></script>
     <script>
         const status = document.getElementById('status');
+        document.getElementById('windowStyle').addEventListener('change', event => {
+            window.easyWindowsPack.setWindowStyle(event.target.value);
+        });
         document.getElementById('apply').addEventListener('click', async () => {
             const result = await window.easyWindowsPack.setTitleBarMode(document.getElementById('mode').value);
             status.textContent = result.restartRequired

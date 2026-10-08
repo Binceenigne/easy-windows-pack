@@ -203,3 +203,103 @@
         background: #334155;
     }
 }
+
+/* Opt in with data-window-style="macos" on the frame. */
+[data-ewp-window-frame][data-window-style="macos"] {
+    --ewp-titlebar-height: 40px;
+    --ewp-titlebar-minimal-height: 28px;
+    --ewp-surface: #f5f5f7;
+    --ewp-surface-strong: #fafafa;
+    --ewp-border: #d8d8dc;
+    --ewp-text: #29292d;
+    --ewp-macos-titlebar: linear-gradient(#f5f5f6, #e9e9ec);
+}
+
+[data-ewp-window-frame][data-window-style="macos"][data-titlebar-mode="minimal"] {
+    --ewp-titlebar-height: var(--ewp-titlebar-minimal-height);
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-titlebar {
+    position: relative;
+    padding: 0 12px;
+    background: var(--ewp-macos-titlebar);
+    box-shadow: inset 0 1px 0 #ffffff60;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-titlebar-identity {
+    position: absolute;
+    inset: 0 100px;
+    justify-content: center;
+    gap: 6px;
+    font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    pointer-events: none;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-controls {
+    gap: 0;
+    margin: 0;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-control,
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-control:hover {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: transparent;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-control::before {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    box-sizing: border-box;
+    border: 1px solid #00000020;
+    border-radius: 50%;
+    background: var(--ewp-traffic-light);
+    content: "";
+}
+
+[data-ewp-window-frame][data-window-style="macos"] [data-ewp-action="close"] {
+    --ewp-traffic-light: #ff5f57;
+    order: -1;
+    color: #6d1812;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] [data-ewp-action="minimize"] {
+    --ewp-traffic-light: #febc2e;
+    color: #70500b;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] [data-ewp-action="maximize"] {
+    --ewp-traffic-light: #28c840;
+    color: #0b571b;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-control-glyph {
+    display: none;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-control:focus-visible {
+    outline: 2px solid var(--ewp-accent);
+    outline-offset: 1px;
+}
+
+[data-ewp-window-frame][data-window-style="macos"] .ewp-window-control:active::before {
+    filter: brightness(0.85);
+}
+
+@media (prefers-color-scheme: dark) {
+    [data-ewp-window-frame][data-window-style="macos"] {
+        --ewp-surface: #202023;
+        --ewp-surface-strong: #29292d;
+        --ewp-border: #161618;
+        --ewp-text: #ececef;
+        --ewp-macos-titlebar: linear-gradient(#39393d, #303034);
+    }
+
+    [data-ewp-window-frame][data-window-style="macos"] .ewp-titlebar {
+        box-shadow: inset 0 1px 0 #ffffff0d;
+    }
+}
+/* End of window themes. */
