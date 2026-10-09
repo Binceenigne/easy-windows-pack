@@ -21,9 +21,12 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install npm workspace
+        working-directory: frontend
         run: npm ci
       - name: Validate npm packages and Vite frontend
+        working-directory: frontend
         run: |
           npm run test:npm
           npm run frontend:build
@@ -47,16 +50,18 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       - name: Install npm workspace
+        working-directory: frontend
         run: npm ci
       - name: Build wheel and source bundle
         shell: pwsh
         run: |
-          .\build.cmd init
+          .\startup.cmd init
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\build.cmd wheel
+          .\startup.cmd wheel
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\build.cmd bundle
+          .\startup.cmd bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

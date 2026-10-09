@@ -4,9 +4,9 @@
 
 # 开发文档 / Developer documentation
 
-根 `docs/` 是本项目开发文档的维护中心。环境、命令、架构、迁移、设计细则与验收记录在这里维护；根 [index.md](../index.md) 和 [design.md](../design.md) 保留摘要与链接，无需迁移它们。
+根 `docs/` 是本项目开发文档与 AI 资源的维护中心。环境、命令、架构、迁移、设计细则与验收记录在这里维护；[index.md](index.md) 和 [design.md](design.md) 保留摘要与链接，[agent.md](agent.md) 声明项目根目录和按需读取路由。
 
-Root `docs/` is the development documentation center. Keep detailed setup, commands, architecture, migration, design rules and validation records here. Root [index.md](../index.md) and [design.md](../design.md) remain short summaries and links.
+Root `docs/` is the development documentation and AI resource center. Keep detailed setup, commands, architecture, migration, design rules and validation records here. [index.md](index.md) and [design.md](design.md) are short summaries; [agent.md](agent.md) defines the project root and reading routes.
 
 | 文档 / Document | 用途 / Purpose |
 | --- | --- |
@@ -19,13 +19,17 @@ Root `docs/` is the development documentation center. Keep detailed setup, comma
 | [桌面集成 / Desktop integrations](desktop-integrations.md) | 可选宿主适配器、组件与更新接口契约 / Host adapters, components and update contracts |
 | [历史集成验收 / Historical integration validation](integration-validation.md) | 2026-09-18 的检查记录与当前复验入口 / Dated evidence and current reproduction entry points |
 | [历史集成清单 / Historical integration checklist](integration-todo.md) | 原集成任务范围和当时的未完成项 / Original task scope and historical outstanding work |
-| [项目索引摘要 / Implementation summary](../index.md) | 当前实现定位与复用入口 / Current implementation and reuse entry points |
-| [设计摘要 / Design summary](../design.md) | 设计约定及详细文档入口 / Design conventions and detailed references |
+| [项目索引摘要 / Implementation summary](index.md) | 当前实现定位与复用入口 / Current implementation and reuse entry points |
+| [设计摘要 / Design summary](design.md) | 设计约定及详细文档入口 / Design conventions and detailed references |
 
 类型文件与紧邻资源的简短说明保留在 [frontend/contracts/](../frontend/contracts/README.md)，接口说明由本导航关联；不要复制出另一份开发手册。面向使用者的 API 和托盘示例继续保留在 [中文 README](../README.md) / [English README](../README.en.md)。
 
 Type declarations and short asset-local notes remain in [frontend/contracts/](../frontend/contracts/README.md). Link to them rather than duplicating the development guide. Public API and tray examples remain in the bilingual root READMEs.
 
-相关代码或目录变动时，同批更新对应的 `docs/` 页面及根摘要链接；新增详细文档时补本导航。记录验证的日期、范围、结果和限制，历史通过记录不能作为当前改动的测试成功证据。开发规则入口见 [agent.md](../agent.md)，只按任务加载所需 Skill 分片。
+相关代码或目录变动时，同批更新对应的 `docs/` 页面及摘要链接；新增详细文档时补本导航。记录验证的日期、范围、结果和限制，历史通过记录不能作为当前改动的测试成功证据。开发规则入口见 [agent.md](agent.md)，只按任务加载所需 Skill 分片。
 
-Update the affected page and summary links with the implementation change. Add new detailed documents to this navigation. Record validation date, scope, result and limitations; historical passes do not certify a later change. Start with [agent.md](../agent.md) and load only task-relevant skill references.
+Update the affected page and summary links with the implementation change. Add new detailed documents to this navigation. Record validation date, scope, result and limitations; historical passes do not certify a later change. Start with [agent.md](agent.md) and load only task-relevant skill references.
+
+AI 资源在 `docs/.agents`、`docs/.claude`、`docs/.easy-dev`；根 AGENTS.md / CLAUDE.md 仅保留标准薄入口。docs 下的 Skills 不属于工具默认自动发现目录，必须由入口显式读取。[主 Skill](.agents/skills/easy-dev/SKILL.md) 是唯一正文，[Claude 路由](.claude/skills/easy-dev/SKILL.md) 复用它；生成器按 AI 多选生成资源，默认全不选，布局见 [npm 指南](npm-vite.md#ai-资源布局--ai-resource-layout)。
+
+AI resources live under `docs/.agents`, `docs/.claude` and `docs/.easy-dev`; root AGENTS.md / CLAUDE.md remain standard thin entries. Skills under docs are not auto-discovered by default: entries must explicitly load the [single skill source](.agents/skills/easy-dev/SKILL.md), reused by the [Claude router](.claude/skills/easy-dev/SKILL.md). Generated AI resources are opt-in; see the [npm guide](npm-vite.md#ai-资源布局--ai-resource-layout).

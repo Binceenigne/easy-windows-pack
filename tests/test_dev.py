@@ -37,7 +37,8 @@ class DevTests(unittest.TestCase):
         self.addCleanup(npm_path.stop)
 
     def fake_package(self):
-        (self.root / "package.json").write_text('{"scripts":{}}', encoding="utf-8")
+        (self.root / "frontend").mkdir(exist_ok=True)
+        (self.root / "frontend/package.json").write_text('{"scripts":{}}', encoding="utf-8")
 
     def fake_venv(self):
         python = dev.venv_python(self.root)
@@ -50,7 +51,7 @@ class DevTests(unittest.TestCase):
         for command in ("demo", "wheel", "bundle", "test"):
             with self.subTest(command=command):
                 self.assertNotEqual(dev.main([command], root=self.root), 0)
-        self.assertIn("build.cmd init", self.output.getvalue())
+        self.assertIn("startup.cmd init", self.output.getvalue())
         self.assertEqual(dev.main(["info"], root=self.root), 0)
         self.assertFalse((self.root / "output").exists())
 
@@ -94,9 +95,9 @@ class DevTests(unittest.TestCase):
             elif command[1] == "-c":
                 self.assertTrue(dev.require_venv(self.root).is_file())
             elif command == [self.npm, "install"]:
-                (self.root / "node_modules").mkdir()
+                (self.root / "frontend/node_modules").mkdir()
             elif command == [self.npm, "run", "frontend:build"]:
-                self.assertTrue((self.root / "node_modules").is_dir())
+                self.assertTrue((self.root / "frontend/node_modules").is_dir())
                 compiled.parent.mkdir(parents=True)
                 compiled.write_text("<html>built</html>", encoding="utf-8")
             elif "pip" in command:
@@ -111,7 +112,9 @@ class DevTests(unittest.TestCase):
         self.assertEqual(commands[2:4], [[self.npm, "install"], [self.npm, "run", "frontend:build"]])
         self.assertEqual(commands[-1], [str(dev.venv_python(self.root)), "-m", "pip", "install", "-e", ".[dev,tray]"])
         self.assertEqual(child.call_args.kwargs["env"]["PIP_REQUIRE_VIRTUALENV"], "true")
-        self.assertTrue(all(call.kwargs["root"] == self.root for call in child.call_args_list))
+        for call in child.call_args_list:
+            expected = self.root / "frontend" if call.args[0][0] == self.npm else self.root
+            self.assertEqual(call.kwargs["root"], expected)
         text = self.output.getvalue()
         for label in ("创建或复用环境 / Create or reuse environment", "检查解释器 / Check interpreter",
                       "安装前端依赖 / Install frontend dependencies", "构建前端 / Build frontend",
@@ -214,7 +217,9 @@ class DevTests(unittest.TestCase):
             dev.task_command("wheel", self.root), [self.npm, "run", "frontend:build"],
             dev.task_command("exe", self.root), dev.task_command("bundle", self.root),
         ])
-        self.assertTrue(all(call.kwargs["root"] == self.root for call in run.call_args_list))
+        for call in run.call_args_list:
+            expected = self.root / "frontend" if call.args[0][0] == self.npm else self.root
+            self.assertEqual(call.kwargs["root"], expected)
         self.assertTrue(all(command[0] == str(dev.venv_python(self.root)) for command in
                             (commands[0], commands[2], commands[4], commands[5])))
         self.assertEqual(commands[2][3:], ["--wheel", "--no-isolation", "--outdir", str(self.root / "output/wheels"), str(self.root)])
@@ -366,7 +371,7 @@ class DevTests(unittest.TestCase):
             self.assertEqual(dev.main(["browser", "--no-open", "--port", "12345"], root=self.root), 0)
             run.assert_called_once_with(
                 [self.npm, "run", "frontend:dev", "--", "--port", "12345", "--no-open"],
-                root=self.root, log=None)
+                root=self.root / "frontend", log=None)
             enter.assert_not_called()
             create.assert_not_called()
             run.reset_mock()
@@ -386,7 +391,7 @@ class DevTests(unittest.TestCase):
             self.assertEqual(dev.main(["frontend"], root=self.root), 0)
         enter.assert_not_called()
         self.assertEqual(run.call_args.args[0], [self.npm, "run", "frontend:build"])
-        self.assertEqual(run.call_args.kwargs["root"], self.root)
+        self.assertEqual(run.call_args.kwargs["root"], self.root / "frontend")
         self.assertIn("构建前端 / Build frontend", dev.LABELS["frontend"])
         with patch("builtins.input", side_effect=[str(list(dev.LABELS).index("frontend") + 1), "0"]), \
                 patch.object(dev, "execute", return_value=0) as execute:
@@ -401,19 +406,20 @@ class DevTests(unittest.TestCase):
                     patch.object(dev, "run_command") as run:
                 dev.build_frontend(self.root)
                 which.assert_called_once_with(executable)
-                run.assert_called_once_with([executable, "run", "frontend:build"], root=self.root, log=None)
+                run.assert_called_once_with([executable, "run", "frontend:build"], root=self.root / "frontend", log=None)
         with patch.object(dev.shutil, "which", return_value=None), patch.object(dev, "run_command") as run:
             self.assertEqual(dev.main(["frontend"], root=self.root), 1)
         run.assert_not_called()
         self.assertIn("Missing npm", self.output.getvalue())
 
-    def test_npm_requires_root_manifest_before_lookup_or_execution(self):
-        # A nested package does not make this directory an npm project.
-        nested = self.root / "packages/child"
+    def test_npm_requires_frontend_manifest_before_lookup_or_execution(self):
+        # Neither a stale root manifest nor a workspace child is the frontend project.
+        (self.root / "package.json").touch()
+        nested = self.root / "frontend/packages/child"
         nested.mkdir(parents=True)
         (nested / "package.json").touch()
         with patch.object(dev.shutil, "which") as which, patch.object(dev, "run_command") as run:
-            with self.assertRaisesRegex(dev.DevError, "Missing package.json"):
+            with self.assertRaisesRegex(dev.DevError, "Missing frontend/package.json"):
                 dev.run_npm(self.root, ["install"])
         which.assert_not_called()
         run.assert_not_called()
@@ -428,8 +434,8 @@ class DevTests(unittest.TestCase):
                 with self.subTest(token=repr(token)), self.assertRaises(dev.DevError):
                     dev.process_command(["npm.cmd", token])
             unsafe = self.root / "project%PATH%"
-            unsafe.mkdir()
-            (unsafe / "package.json").touch()
+            (unsafe / "frontend").mkdir(parents=True)
+            (unsafe / "frontend/package.json").touch()
             with patch.object(dev, "run_command") as run, self.assertRaises(dev.DevError):
                 dev.run_npm(unsafe, ["install"])
             run.assert_not_called()
@@ -508,14 +514,32 @@ class DevTests(unittest.TestCase):
                 worker.join(timeout=3)
 
     def test_launcher_is_ascii_crlf_and_propagates_exit_code(self):
-        content = (PROJECT_ROOT / "build.cmd").read_bytes()
-        content.decode("ascii")
-        self.assertNotIn(b"\n", content.replace(b"\r\n", b""))
-        if os.name == "nt":
-            # Harmless real launch from another cwd; parser errors need no environment.
-            result = subprocess.run(["cmd.exe", "/d", "/c", str(PROJECT_ROOT / "build.cmd"), "unknown-command"],
-                                    cwd=self.root, capture_output=True)
-            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        for launcher in ("startup.cmd", "scripts/startup.cmd", "scripts/build.cmd"):
+            with self.subTest(launcher=launcher):
+                content = (PROJECT_ROOT / launcher).read_bytes()
+                content.decode("ascii")
+                self.assertNotIn(b"\n", content.replace(b"\r\n", b""))
+                if os.name == "nt":
+                    # Harmless real launch from another cwd; parser errors need no environment.
+                    result = subprocess.run(["cmd.exe", "/d", "/c", str(PROJECT_ROOT / launcher), "unknown-command"],
+                                            cwd=self.root, capture_output=True)
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+
+    @unittest.skipUnless(os.name == "nt", "Requires real Windows cmd.exe")
+    def test_startup_forwards_options_and_uses_project_root_from_another_cwd(self):
+        result = subprocess.run(
+            ["cmd.exe", "/d", "/c", str(PROJECT_ROOT / "startup.cmd"), "info"],
+            cwd=self.root, capture_output=True, encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn(str(PROJECT_ROOT), result.stdout)
+        self.assertIn(str(dev.venv_python(PROJECT_ROOT)), result.stdout)
+        result = subprocess.run(
+            ["cmd.exe", "/d", "/c", str(PROJECT_ROOT / "startup.cmd"), "browser", "--port", "-1"],
+            cwd=self.root, capture_output=True, encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("Port must be", result.stdout)
 
     @unittest.skipUnless(os.name == "nt", "Requires Windows PowerShell")
     def test_powershell_demo_wrapper_propagates_child_failure(self):
@@ -523,11 +547,26 @@ class DevTests(unittest.TestCase):
         batch.write_bytes(b"@echo off\r\nexit /b 29\r\n")
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
-             str(PROJECT_ROOT / "build-demo.ps1"), "-Python", str(batch)],
+             str(PROJECT_ROOT / "scripts/build-demo.ps1"), "-Python", str(batch)],
             cwd=self.root, capture_output=True,
         )
         self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
         self.assertNotIn(b"Demo EXE:", result.stdout)
+
+    @unittest.skipUnless(os.name == "nt", "Requires Windows PowerShell")
+    def test_powershell_build_wrapper_uses_project_root_and_propagates_failure(self):
+        batch = self.root / "fake python.cmd"
+        batch.write_bytes(b"@echo off\r\necho [%CD%]\r\necho [%*]\r\nexit /b 29\r\n")
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
+             str(PROJECT_ROOT / "scripts/build.ps1"), "-Command", "build", "-SkipTests",
+             "-SkipWheel", "-OutputDir", "output/custom artifacts", "-Python", str(batch)],
+            cwd=self.root, capture_output=True,
+        )
+        self.assertEqual(result.returncode, 29, result.stdout + result.stderr)
+        self.assertIn(str(PROJECT_ROOT).lower().encode(), result.stdout.lower())
+        self.assertIn(b"-m easy_windows_pack.cli build", result.stdout)
+        self.assertIn(b'--output-dir "output/custom artifacts" --skip-tests --skip-wheel', result.stdout)
 
 
 if __name__ == "__main__":

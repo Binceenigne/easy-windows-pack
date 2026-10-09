@@ -33,6 +33,7 @@ const report = existsSync(reportPath) ? json(reportPath) : {
   }))
 };
 const project = report.project;
+const frontend = join(project, 'frontend');
 const python = join(project, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
 const cleanEnv = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   !['NODE_PATH', 'PYTHONPATH', 'PYTHONHOME', 'EWP_DEV_URL', 'EWP_DEV_REENTRY', 'VIRTUAL_ENV'].includes(key.toUpperCase())));
@@ -101,18 +102,21 @@ function firstRun() {
     '--no-install', '--no-start'], report.harness, 'installed-ewp-create');
   assert.equal(existsSync(join(project, 'output/frontend')), false);
   assert.equal(existsSync(join(project, '.venv')), false);
-  const manifestPath = join(project, 'package.json');
+  const manifestPath = join(frontend, 'package.json');
+  for (const path of ['package.json', 'package-lock.json', 'vite.config.mjs', 'node_modules']) {
+    assert.equal(existsSync(join(project, path)), false, `Root must not contain ${path}`);
+  }
   const manifest = json(manifestPath);
   assert.equal(manifest.scripts.init, 'ewp init');
   assert.equal(manifest.scripts.build, 'ewp build');
   Object.assign(manifest.dependencies, dependencies);
   save(manifestPath, manifest);
-  npm(['install', '--prefer-offline', '--no-audit', '--no-fund'], project, 'consumer-install');
-  installedAudit(project);
+  npm(['install', '--prefer-offline', '--no-audit', '--no-fund'], frontend, 'consumer-install');
+  installedAudit(frontend);
   assert.equal(existsSync(join(project, 'output/frontend')), false, 'npm install must not prebuild the app');
   report.checks.noPrebuiltFrontend = true;
   flush();
-  const output = npm(['run', 'init'], project, 'first-init');
+  const output = npm(['run', 'init'], frontend, 'first-init');
   const npmAt = output.indexOf('Install frontend dependencies');
   const viteAt = output.search(/vite v[\d.]+ building/);
   const completeAt = output.indexOf('built in', viteAt);
@@ -133,7 +137,7 @@ print(json.dumps({'executable':sys.executable,'prefix':sys.prefix,'runtime':str(
 
 function buildWheel() {
   assert.equal(report.checks.firstInit?.status, 'passed', 'Successful first init is required');
-  npm(['run', 'build', '--', '-w'], project, 'build-wheel');
+  npm(['run', 'build', '--', '-w'], frontend, 'build-wheel');
   report.checks.wheelBuild = 'passed';
   flush();
 }
@@ -141,7 +145,7 @@ function buildWheel() {
 function buildExe() {
   assert.equal(process.platform, 'win32', 'Default EXE validation requires Windows');
   assert.equal(report.checks.firstInit?.status, 'passed');
-  npm(['run', 'build'], project, 'build-default-exe');
+  npm(['run', 'build'], frontend, 'build-default-exe');
   report.checks.defaultExeBuild = 'passed';
   flush();
 }

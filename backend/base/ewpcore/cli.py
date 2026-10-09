@@ -33,23 +33,16 @@ BUNDLE_SOURCES = (
     "backend",
     "frontend",
     "scripts",
-    "packages",
-    "package.json",
-    "package-lock.json",
-    "vite.config.mjs",
-    "tsconfig.json",
     ".gitignore",
     "tests",
     "docs",
-    "build.cmd",
-    "build.ps1",
-    "build-demo.ps1",
-    "index.md",
-    "design.md",
-    "agent.md",
+    "startup.cmd",
     "AGENTS.md",
     "CLAUDE.md",
-    ".agents/skills/easy-dev",
+    ".github/copilot-instructions.md",
+    "docs/.agents/skills/easy-dev",
+    "docs/.claude/skills/easy-dev",
+    "docs/.easy-dev/install-state.json",
     ".gitattributes",
     "README.md",
     "README.en.md",
@@ -58,7 +51,8 @@ BUNDLE_SOURCES = (
     "requirements.txt",
 )
 REQUIRED_BUNDLE_SOURCES = (
-    "backend", "frontend", "scripts", "build.cmd", "README.md", "LICENSE", "pyproject.toml",
+    "backend", "frontend", "scripts", "startup.cmd", "scripts/startup.cmd",
+    "scripts/dev.py", "frontend/package.json", "README.md", "LICENSE", "pyproject.toml",
 )
 
 
@@ -123,7 +117,7 @@ def build_wheel(
     output_dir: Path | None = None,
     python: str = sys.executable,
 ) -> Path:
-    if (project_root / "package.json").is_file():
+    if (project_root / "frontend/package.json").is_file():
         # Share npm resolution, Windows batch quoting and Vite behavior with the menu.
         _run([python, str(project_root / "scripts/dev.py"), "frontend"], cwd=project_root)
     output = output_dir or project_root / "output/wheels"
@@ -164,6 +158,8 @@ def _copy_bundle_source(project_root: Path, staging: Path, relative_name: str) -
             ignore=shutil.ignore_patterns(
                 "__pycache__", "*.py[cod]", "*.egg-info", "node_modules", ".venv",
                 "output", "build", "dist", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+                # AI directories are copied only through the explicit public entries above.
+                ".agents", ".claude", ".easy-dev",
             ),
         )
     elif source.is_file():

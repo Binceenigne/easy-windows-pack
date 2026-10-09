@@ -24,7 +24,7 @@ assert.ok(selected.length && selected.every(value => templates.includes(value)),
 const packs = Object.fromEntries(['create-ewp', 'easywindowspack'].map(name => [name, join(repository, 'output/npm', `${name}-0.1.0.tgz`)]));
 const missing = Object.values(packs).filter(path => !existsSync(path));
 const skipped = missing.length && process.argv.includes('--optional') ? `Missing real tarballs: ${missing.join(', ')}` : false;
-const require = createRequire(import.meta.url);
+const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const children = new Set();
 const servers = new Set();
 let browser;
@@ -170,7 +170,8 @@ console.log('Installed exports and prepared assets resolve');\n`);
 }
 
 async function typecheck(project, template) {
-  const probe = join(project, 'frontend/src/integration-contract.ts');
+  const frontend = join(project, 'frontend');
+  const probe = join(frontend, 'src/integration-contract.ts');
   writeFileSync(probe, `import { mountFrame, call, setWindowStyle, getWindowApi } from 'easywindowspack';
 import type { FrameOptions, MountedFrame } from 'easywindowspack';
 const options: FrameOptions = { windowStyle: 'windows', content: document.createElement('main') };
@@ -184,13 +185,13 @@ setWindowStyle('unsupported');
 // @ts-expect-error Published types must reject unsupported modes.
 mountFrame('#app', { mode: 'unsupported' });\n`);
   try {
-    let output = await npm(['run', 'typecheck', '--', '--traceResolution'], project, `${template}-typecheck`);
+    let output = await npm(['run', 'typecheck', '--', '--traceResolution'], frontend, `${template}-typecheck`);
     if (template.startsWith('vue')) {
       // Volar intercepts module resolution and need not emit the TS trace for
       // resolved application imports. Check the public contract independently.
-      output = await execute(process.execPath, [join(project, 'node_modules/typescript/bin/tsc'),
+      output = await execute(process.execPath, [join(frontend, 'node_modules/typescript/bin/tsc'),
         '--noEmit', '--strict', '--skipLibCheck', '--moduleResolution', 'bundler',
-        '--module', 'esnext', '--target', 'es2022', '--traceResolution', probe], project, `${template}-published-contract`);
+        '--module', 'esnext', '--target', 'es2022', '--traceResolution', probe], frontend, `${template}-published-contract`);
     }
     assert.match(output.replaceAll('\\', '/'), /node_modules\/easywindowspack\/index\.d\.ts/, 'TypeScript did not resolve the published declaration');
   } finally { rmSync(probe, { force: true }); }
@@ -342,11 +343,15 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
     for (const template of selected) {
       await t.test(template, async () => {
         const project = join(root, `App ${template}`);
+        const frontend = join(project, 'frontend');
         const record = { template, path: project, status: 'running' };
         report.projects.push(record);
         try {
           await execute(process.execPath, [creator, `App ${template}`, '--template', template, '--no-install', '--no-start'], root, `${template}-create`);
-          const manifestPath = join(project, 'package.json');
+          const manifestPath = join(frontend, 'package.json');
+          for (const path of ['package.json', 'package-lock.json', 'vite.config.mjs', 'tsconfig.json', 'node_modules']) {
+            assert.equal(existsSync(join(project, path)), false, `Root must not contain ${path}`);
+          }
           const manifest = json(manifestPath);
           assert.equal(manifest.dependencies.easywindowspack, '^0.1.0', 'Generator public dependency contract');
           record.generatedViteRange = manifest.devDependencies.vite;
@@ -360,18 +365,19 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
           manifest.dependencies.easywindowspack = dependencies.easywindowspack;
           manifest.dependencies['create-ewp'] = dependencies['create-ewp'];
           saveJson(manifestPath, manifest);
-          await npm(['install', '--include=dev', '--ignore-scripts', '--prefer-offline', '--no-audit', '--no-fund'], project, `${template}-install`);
-          await installedAudit(project);
+          await npm(['install', '--include=dev', '--ignore-scripts', '--prefer-offline', '--no-audit', '--no-fund'], frontend, `${template}-install`);
+          await installedAudit(frontend);
+          assert.equal(existsSync(join(project, 'node_modules')), false);
           if (template.endsWith('-ts')) { await typecheck(project, template); record.publishedTypes = 'passed'; }
-          await npm(['run', 'frontend:build'], project, `${template}-frontend-build`);
+          await npm(['run', 'frontend:build'], frontend, `${template}-frontend-build`);
           const built = readFileSync(join(project, 'output/frontend/index.html'), 'utf8');
           assert.match(built, /\.\/assets\//, 'Production relative asset URLs');
           assert.doesNotMatch(built, /\/src\/main|\.tsx?\b|\.vue\b/);
           assert.ok(readdirSync(join(project, 'output/frontend/assets')).some(name => name.endsWith('.js')));
           record.build = 'passed';
-          const vite = await import(pathToFileURL(join(project, 'node_modules/vite/dist/node/index.js')).href);
+          const vite = await import(pathToFileURL(join(frontend, 'node_modules/vite/dist/node/index.js')).href);
           process.env.NODE_ENV = 'production';
-          const preview = await vite.preview({ configFile: join(project, 'vite.config.mjs'), logLevel: 'silent', preview: { host: '127.0.0.1', port: 0, open: false } });
+          const preview = await vite.preview({ configFile: join(frontend, 'vite.config.mjs'), logLevel: 'silent', preview: { host: '127.0.0.1', port: 0, open: false } });
           servers.add(preview);
           const production = await newPage();
           try {
@@ -388,7 +394,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
           try {
             // No fs.allow override: installed modules are genuinely in this project.
             process.env.NODE_ENV = 'development';
-            dev = await vite.createServer({ configFile: join(project, 'vite.config.mjs'), logLevel: 'silent', server: { host: '127.0.0.1', port: 0, open: false } });
+            dev = await vite.createServer({ configFile: join(frontend, 'vite.config.mjs'), logLevel: 'silent', server: { host: '127.0.0.1', port: 0, open: false } });
             servers.add(dev); await dev.listen();
             consumer = await newPage();
             await consumer.page.goto(dev.resolvedUrls.local[0]);
@@ -411,7 +417,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
               await closeServer(dev);
               dev = undefined;
               restore();
-              dev = await vite.createServer({ configFile: join(project, 'vite.config.mjs'), logLevel: 'silent', server: { host: '127.0.0.1', port: 0, open: false } });
+              dev = await vite.createServer({ configFile: join(frontend, 'vite.config.mjs'), logLevel: 'silent', server: { host: '127.0.0.1', port: 0, open: false } });
               servers.add(dev); await dev.listen();
               consumer = await newPage();
               await consumer.page.goto(dev.resolvedUrls.local[0]);

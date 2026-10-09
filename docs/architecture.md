@@ -1,6 +1,6 @@
 # 架构与目录迁移 / Architecture and directory migration
 
-[文档导航 / Documentation](README.md) · [npm / Vite](npm-vite.md) · [开发手册 / Development](development.md) · [实现摘要 / Implementation summary](../index.md)
+[文档导航 / Documentation](README.md) · [npm / Vite](npm-vite.md) · [开发手册 / Development](development.md) · [实现摘要 / Implementation summary](index.md)
 
 ## 职责与依赖 / Responsibilities and dependencies
 
@@ -13,12 +13,14 @@
 | `frontend/components/desktop/` | 可复用点阵、启动遮罩、错峰进入组件；不依赖示例页 / Reusable matrix, curtain and entrance components |
 | `frontend/index.html`、`frontend/src/` | Vite 主页面、业务装配与组件示例；旧 src/index.html 弃用 / Vite main page and demo composition; old src/index.html deprecated |
 | `frontend/contracts/` | TypeScript 类型契约及简短接入说明 / Type declarations and local integration notes |
-| `packages/easywindowspack/` | ESM runtime、公共 exports、可选 Vue/React wrappers 与 `ewp` CLI / Public runtime and CLI |
-| `packages/create-ewp/` | `@clack/prompts` 生成器、common 与六套 JS/TS 模板 / Generator, common and six templates |
-| 根 `package.json`、`vite.config.mjs` | private workspace、Vite ^7.3.7、HMR 与相对生产 URL / Private workspace, HMR and relative production URLs |
+| `frontend/packages/easywindowspack/` | ESM runtime、公共 exports、可选 Vue/React wrappers 与 `ewp` CLI / Public runtime and CLI |
+| `frontend/packages/create-ewp/` | `@clack/prompts` 生成器、common 与六套 JS/TS 模板 / Generator, common and six templates |
+| `frontend/package.json`、`frontend/package-lock.json`、`frontend/vite.config.mjs` | private workspace、锁文件、Vite ^7.3.7、HMR 与相对生产 URL；依赖安装于 frontend / Workspace, lockfile, frontend dependencies, HMR and relative production URLs |
 | `scripts/prepare-npm.mjs` | 从权威前端/后端生成 npm assets 和 common runtime/script 副本 / Generate distribution resources from authoritative sources |
 | `scripts/dev.py` | 标准库开发任务编排，不属于运行时公开 API / Standard-library development orchestration |
-| `docs/` | 开发文档唯一维护中心；根 index/design 为摘要 / Detailed developer documentation center |
+| `startup.cmd` → `scripts/startup.cmd` → `scripts/dev.py` | 根唯一启动脚本；其他构建脚本收于 scripts / Only root launcher; other build wrappers live under scripts |
+| `docs/` | 开发文档、agent/index/design 摘要及 .agents/.claude/.easy-dev 资源中心 / Documentation, summaries and AI resources |
+| 根 `AGENTS.md`、`CLAUDE.md` | 标准薄入口，显式引导读取 docs 下非默认自动发现的 Skills / Standard thin entries explicitly loading skills under docs |
 | `tests/` | Python 与浏览器测试夹具 / Python and browser test fixtures |
 | `output/`、`build/` | 产物、日志、配置和缓存，不作为实现来源 / Generated artifacts, logs, specs and caches |
 
@@ -26,9 +28,9 @@
 
 Dependencies flow from desktop demo to public Python package to pywebview / Win32, and from frontend pages to components / bridges to host APIs. The framework does not import demo code or copy host authorization, updater or restart logic. `WindowController` retains serialized JavaScript dispatch, minimize/hide deadlock avoidance and native drag/resize boundaries.
 
-npm 根 workspace 为 private；`easywindowspack@0.1.0` 依赖 `create-ewp@^0.1.0`，通过 `create-ewp/cli` 实现 `ewp create`。生成应用消费 `easywindowspack`，不是依赖原仓库。Vue >=3.3 / React >=18 是 runtime 的可选 peers；仅在实际使用对应入口或模板时加载。模板自有 Frame 包装层通过 Teleport / portal 组合业务 slot/children，不复制窗口状态机。
+frontend 内 npm workspace 为 private；npm 命令在 frontend 内执行，或从项目根使用 `npm --prefix frontend`。`easywindowspack@0.1.0` 依赖 `create-ewp@^0.1.0`，通过 `create-ewp/cli` 实现 `ewp create`。生成应用消费 `easywindowspack`，不是依赖原仓库。Vue >=3.3 / React >=18 是 runtime 的可选 peers；仅在实际使用对应入口或模板时加载。模板自有 Frame 包装层通过 Teleport / portal 组合业务 slot/children，不复制窗口状态机。
 
-The npm root is private. `easywindowspack@0.1.0` depends on `create-ewp@^0.1.0` and delegates `ewp create` to `create-ewp/cli`. Generated apps consume `easywindowspack`, not the original checkout. Vue >=3.3 / React >=18 are optional runtime peers, loaded only for the corresponding entry or template. Template-owned Frame layers compose slots/children through Teleport/portals without duplicating window state logic.
+The npm workspace under frontend is private. Run npm commands there, or use `npm --prefix frontend` from the project root. `easywindowspack@0.1.0` depends on `create-ewp@^0.1.0` and delegates `ewp create` to `create-ewp/cli`. Generated apps consume `easywindowspack`, not the original checkout. Vue >=3.3 / React >=18 are optional runtime peers, loaded only for the corresponding entry or template. Template-owned Frame layers compose slots/children through Teleport/portals without duplicating window state logic.
 
 ## 源码路径与公开包名 / Source path and public package name
 
@@ -65,7 +67,12 @@ The left column is historical migration information, not an active path. Python 
 | `frontend/desktop-components.css` | `frontend/components/desktop/desktop-components.css` |
 | `ui-contracts/` | `frontend/contracts/` |
 | 默认产物 `dist/` / Default artifacts | `output/wheels/`、`output/exe/`、`output/bundles/` |
-| 原独立 demo 打包 / Standalone demo packaging | `build-demo.ps1` → `scripts/dev.py exe` |
+| 原独立 demo 打包 / Standalone demo packaging | `scripts/build-demo.ps1` → `scripts/dev.py exe` |
+| `packages/` | `frontend/packages/` |
+| 根 `package.json`、`package-lock.json`、`vite.config.mjs` | `frontend/` 内对应文件 / Corresponding files under frontend |
+| 根 `build.cmd`、`build.ps1`、`build-demo.ps1` | `scripts/` 内对应文件；根启动使用 `startup.cmd` / Wrappers under scripts; root launcher is startup.cmd |
+| 根 `.agents/`、`.claude/`、`.easy-dev/` | `docs/.agents/`、`docs/.claude/`、`docs/.easy-dev/` |
+| 根 `agent.md`、`index.md`、`design.md` | `docs/agent.md`、`docs/index.md`、`docs/design.md` |
 
 ## 静态资源与打包 / Static resources and packaging
 
@@ -73,11 +80,11 @@ Vite 以 `frontend/index.html` 为主入口，编译到 `output/frontend/`，生
 
 Vite starts from `frontend/index.html` and builds into `output/frontend/` with `base: './'` for offline relative assets; the checkout also builds the component demo. Development uses HMR and sets `EWP_DEV_URL` to the actual dynamic URL. Compatible hosts may still consume static components directly, but uncompiled framework templates are not production pages.
 
-框架 wheel metadata 分发核心与 `share/easy-windows-pack/frontend/` 下的源组件/桥接/契约；生成应用 wheel metadata 分发编译的页面/assets，二者分别验证。EXE 以 `backend/src/demo.py` 为入口，只携带 `output/frontend/` 作为前端，支持 PyInstaller 解包资源位置。source bundle 应保留 `backend/`、`frontend/`、`packages/`、`scripts/`、`docs/`、配置与相关入口。确切资源清单由 metadata、打包配置及 CLI 维护，文档存在不等于资源已进入产物。
+框架 wheel metadata 分发核心与 `share/easy-windows-pack/frontend/` 下的源组件/桥接/契约；生成应用 wheel metadata 分发编译的页面/assets，二者分别验证。EXE 以 `backend/src/demo.py` 为入口，只携带 `output/frontend/` 作为前端，支持 PyInstaller 解包资源位置。source bundle 应保留 `backend/`、`frontend/`（含 packages 与配置）、`scripts/`、`docs/`、配置与相关入口。确切资源清单由 metadata、打包配置及 CLI 维护，文档存在不等于资源已进入产物。
 
-Framework wheel metadata distributes core and source components/bridges/contracts under `share/easy-windows-pack/frontend/`; generated app wheel metadata distributes compiled pages/assets. Validate both independently. EXEs start from `backend/src/demo.py`, include only compiled `output/frontend/` as frontend resources, and resolve PyInstaller-extracted paths. Source bundles retain backend, frontend, packages, scripts, docs and relevant configurations/entries. Inspect actual artifacts against their metadata and packaging lists.
+Framework wheel metadata distributes core and source components/bridges/contracts under `share/easy-windows-pack/frontend/`; generated app wheel metadata distributes compiled pages/assets. Validate both independently. EXEs start from `backend/src/demo.py`, include only compiled `output/frontend/` as frontend resources, and resolve PyInstaller-extracted paths. Source bundles retain backend, frontend (including packages and configuration), scripts, docs and relevant entries. Inspect actual artifacts against their metadata and packaging lists.
 
-`prepare-npm.mjs` 将 titlebar/components/frame 的权威资源生成到 `easywindowspack/assets`，把 backend core、`scripts/dev.py`、`build.cmd`、LICENSE 复制到 `create-ewp/templates/common`。六模板组合这些 prepared 资源与 common README；运行生成器不回读原仓库。复制的 runtime/script/assets 不手工维护；包根和 common 的说明文档按自身职责维护。公开 npm 名称与发布状态未确认；顺序和用户手动发布边界见 [npm 指南](npm-vite.md)。
+`scripts/prepare-npm.mjs` 将 titlebar/components/frame 的权威资源生成到 `frontend/packages/easywindowspack/assets`，把 backend core、`scripts/dev.py`、根 `startup.cmd`、`scripts/startup.cmd`、LICENSE 复制到 `frontend/packages/create-ewp/templates/common`。六模板组合这些 prepared 资源与 common README；运行生成器不回读原仓库。复制的 runtime/script/assets 不手工维护；包根和 common 的说明文档按自身职责维护。公开 npm 名称与发布状态未确认；顺序和用户手动发布边界见 [npm 指南](npm-vite.md)。
 
 Preparation generates runtime assets from authoritative titlebar/components/frame sources and copies backend core, development script, menu and license into generator common resources. All six templates compose these with the common README without reading the original checkout at generation time. Generated runtime/script/assets copies are not hand-maintained; package and common documentation retain their own ownership. Public npm names/publication are unverified; see the [npm guide](npm-vite.md) for ordering and user-operated publishing.
 
@@ -91,6 +98,10 @@ Preparation generates runtime assets from authoritative titlebar/components/fram
 
 Check install mapping, public imports/exports, CLI resources, relative Vite production URLs, frozen resources and test/CI paths. Do not expand Vite serving to the whole checkout to fix paths. Record native behavior, builds and browser assertions separately; historical integration/layout records do not certify npm/Vite. Current evidence belongs in [npm-validation.md](npm-validation.md).
 
-详细开发说明集中在 `docs/`，新增页面补 [docs/README.md](README.md) 导航；根 [index.md](../index.md) 记录复用入口，根 [design.md](../design.md) 记录视觉/交互摘要。接口变动同步 [桌面集成契约](desktop-integrations.md) 与 [类型契约](../frontend/contracts/README.md)；不要预读或复制整套 Skill 文档。
+详细开发说明集中在 `docs/`，新增页面补 [docs/README.md](README.md) 导航；同目录 [index.md](index.md) 记录复用入口，[design.md](design.md) 记录视觉/交互摘要。[agent.md](agent.md) 的项目根为 docs 上一级；Skills 在 docs 下，根标准入口必须显式引导读取。接口变动同步 [桌面集成契约](desktop-integrations.md) 与 [类型契约](../frontend/contracts/README.md)；不要预读或复制整套 Skill 文档。
 
-Maintain detailed development material under `docs/` and update its navigation. Keep reuse entry points in root `index.md` and visual/interaction summaries in root `design.md`. Synchronize interface changes with the integration and type contracts. Load only relevant skill references rather than duplicating or pre-reading the whole skill library.
+Maintain development material under `docs/` and update its navigation. Keep summaries alongside it in `index.md` and `design.md`. The project root declared by `docs/agent.md` is its parent directory; standard entries explicitly load skills under docs because they are outside default discovery locations. Synchronize interface changes with the integration and type contracts. Load only relevant skill references rather than duplicating or pre-reading the whole skill library.
+
+2026-10-09 文档/AI 资源迁移检查：六项根资源迁入 docs 前逐级检查，未发现 junction/symlink，搬迁时 20 个文件 SHA-256 一致；随后同步文档文本。36 份 Markdown 的 297 个本地文件链接、安装状态的 19 个路径及两张 SVG 的 XML 检查通过。安装状态仅调整路径与 memory_dir，保留原安装哈希作为基线，不把本地修订伪装为原安装内容。本次不执行应用构建或运行时测试，脚手架生成与产物仍需各自验收。
+
+2026-10-09 documentation/AI migration checks: no junctions/symlinks were found in the six source entries; all 20 moved files retained their SHA-256 before text updates. Checks passed for 297 local file links across 36 Markdown files, 19 installation-state paths and both SVG XML documents. State paths and memory_dir changed while original installation hashes remain as the baseline. No application build or runtime tests were run for this documentation task; generator and artifact validation remain separate.

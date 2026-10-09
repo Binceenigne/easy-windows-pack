@@ -1,0 +1,29 @@
+{
+  "blocks": {
+    "AGENTS.md": "4a1796397065ac71de4114e89830a3c1440b8be7d2fa648998898100973840f9",
+    "CLAUDE.md": "aacdc64fee83ad41ce82c60edd2eae59de75a2ab9a427301b4bac9be82f1c02c",
+    "docs/agent.md": "7204fee808254c63e9e0e8fedf59b1a5f3079ee1c3eba8a39b075b42454467e2"
+  },
+  "files": {
+    "docs/.agents/skills/easy-dev/LICENSE": "f532dcf985095dd03b66ce5dd8c5576668cc20852d6e5a63d0f9dda2e06cbe26",
+    "docs/.agents/skills/easy-dev/NOTICE.md": "2209eaa4a3b6042370162a0bc2d17d73a84ebb3e617139144a70f10e1c1c7ef0",
+    "docs/.agents/skills/easy-dev/SKILL.md": "2914044ae056d31baaa786fba2c883045c0ffa89b1707eba49d7f9b99689cb6f",
+    "docs/.agents/skills/easy-dev/references/architecture.md": "a3c75e857c655e895271be83c864b9a7142bae848e22ee962cd5054c78b1e795",
+    "docs/.agents/skills/easy-dev/references/backend.md": "c57672a92db53b58f559e12c962104c26e6166e3b32372ba6ad8fa6e07462faf",
+    "docs/.agents/skills/easy-dev/references/components.md": "341c47435071aad59d62321019d303e7333da356c339bdf4182d1030524cd1f7",
+    "docs/.agents/skills/easy-dev/references/design-ux.md": "91a4e06f5f862324c1c811a07414d88e47878a99c3a4092c6b655e7e7430d2cd",
+    "docs/.agents/skills/easy-dev/references/easy-windows-pack.md": "eb9ca515dff50391a4e736e3d3d7eaa0a9bb927160198ff5d01d60336cd39174",
+    "docs/.agents/skills/easy-dev/references/project-docs.md": "09944b6f60980ded92634fb7fddd442de1f4901c567ac570bf47a00af9d6b94b",
+    "docs/.agents/skills/easy-dev/references/react-composition.md": "e9b46c27d46d0c23309f956e693129cc42c4bf97196daeba55c2564d640d2bca",
+    "docs/.agents/skills/easy-dev/references/verification.md": "7eddc2458934a56c7ec140070049c63b7b9c75d92660fb06582650400e671dd7",
+    "docs/.agents/skills/easy-dev/references/vue-advanced.md": "0ba5296ea36f11f88619e6e37c02e1b235550aefca17b2990fd00d0e2c03a571",
+    "docs/.agents/skills/easy-dev/references/vue.md": "7f7c5d5baa6b689604e8f2199d8a4a83d5cd2790dd8d7f328dd4b734da0b1580",
+    "docs/.agents/skills/easy-dev/templates/design.md": "a1461f2e63d56e8f6c048f37c80e7738ac579e36e95fd5d3454d5ff0c7adbedd",
+    "docs/.agents/skills/easy-dev/templates/index.md": "c852662713b4010d5f5e44a1a79e7fb87e9d3f35f852b5bdd3fe56efd0652d3d",
+    "docs/.claude/skills/easy-dev/SKILL.md": "327db34013d7934f24b78c9e95c79f8477835fc8c9c54aa165cfa2c4d57d1cb4"
+  },
+  "format": 1,
+  "memory_dir": "docs",
+  "profile": "easy-windows-pack",
+  "version": "1.0.0"
+}

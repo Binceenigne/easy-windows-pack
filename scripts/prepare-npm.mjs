@@ -1,10 +1,13 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+for (const source of ['startup.cmd', 'scripts/startup.cmd', 'scripts/dev.py']) {
+  if (!existsSync(join(root, source))) throw new Error(`Missing authoritative npm resource: ${source}`);
+}
 mkdirSync(join(root, 'output/npm'), { recursive: true });
-const assets = join(root, 'packages/easywindowspack/assets');
+const assets = join(root, 'frontend/packages/easywindowspack/assets');
 rmSync(assets, { recursive: true, force: true });
 mkdirSync(assets, { recursive: true });
 for (const [source, name] of [
@@ -16,10 +19,12 @@ for (const [source, name] of [
 ]) cpSync(join(root, source), join(assets, name));
 const template = readFileSync(join(root, 'frontend/components/titlebar/window-frame.html'), 'utf8');
 writeFileSync(join(assets, 'frame-template.mjs'), `export const frameTemplate = ${JSON.stringify(template)};\n`);
-const common = join(root, 'packages/create-ewp/templates/common');
+const common = join(root, 'frontend/packages/create-ewp/templates/common');
+// Remove the previously generated launcher when preparing an existing checkout.
+rmSync(join(common, 'build.cmd'), { force: true });
 for (const [source, destination] of [
   ['backend/base/ewpcore', 'backend/base/ewpcore'], ['scripts/dev.py', 'scripts/dev.py'],
-  ['build.cmd', 'build.cmd'], ['LICENSE', 'LICENSE'],
+  ['startup.cmd', 'startup.cmd'], ['scripts/startup.cmd', 'scripts/startup.cmd'], ['LICENSE', 'LICENSE'],
 ]) {
   const target = join(common, destination);
   rmSync(target, { recursive: true, force: true });
@@ -29,5 +34,5 @@ for (const [source, destination] of [
     filter: sourcePath => !sourcePath.includes('__pycache__') && !sourcePath.endsWith('.pyc'),
   });
 }
-for (const name of ['easywindowspack', 'create-ewp']) cpSync(join(root, 'LICENSE'), join(root, 'packages', name, 'LICENSE'));
+for (const name of ['easywindowspack', 'create-ewp']) cpSync(join(root, 'LICENSE'), join(root, 'frontend/packages', name, 'LICENSE'));
 console.log('npm resources prepared from authoritative frontend/backend sources.');

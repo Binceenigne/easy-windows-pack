@@ -5,11 +5,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { createProject, normalizePackageName, projectFiles, templatesDirectory, TEMPLATES, validateTarget } from '../packages/create-ewp/lib/create.mjs';
-import { HELP, main, npmCommand, parseArgs, quoteDirectory } from '../packages/create-ewp/lib/cli.mjs';
+import { AI_TOOLS, createProject, normalizeAi, normalizePackageName, projectFiles, templatesDirectory, TEMPLATES, validateTarget } from '../frontend/packages/create-ewp/lib/create.mjs';
+import { HELP, main, npmCommand, parseArgs, quoteDirectory } from '../frontend/packages/create-ewp/lib/cli.mjs';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
-const packageDirectory = join(repository, 'packages/create-ewp');
+const packageDirectory = join(repository, 'frontend/packages/create-ewp');
 
 function temporary(t) {
   const root = mkdtempSync(join(tmpdir(), 'create-ewp space-'));
@@ -28,6 +28,13 @@ function preparedTemplates(t) {
   });
   mkdirSync(join(templatesDir, 'common/scripts'), { recursive: true });
   cpSync(join(repository, 'scripts/dev.py'), join(templatesDir, 'common/scripts/dev.py'));
+  for (const launcher of ['startup.cmd', 'scripts/startup.cmd']) {
+    const source = join(repository, launcher);
+    // Unit fixtures can run before the parallel launcher migration finishes.
+    if (existsSync(source)) cpSync(source, join(templatesDir, 'common', launcher));
+    else writeFileSync(join(templatesDir, 'common', launcher), '@echo off\r\n');
+  }
+  rmSync(join(templatesDir, 'common/build.cmd'), { force: true });
   return { root, templatesDir };
 }
 
@@ -35,7 +42,7 @@ function promptFixture(values) {
   const cancellation = Symbol('prompt-cancel');
   const seen = [];
   const next = options => { seen.push(options); return values.shift(); };
-  return { seen, cancellation, text: next, select: next, confirm: next,
+  return { seen, cancellation, text: next, select: next, multiselect: next, confirm: next,
     isCancel: value => value === cancellation, intro() {}, outro() {},
     cancel(message) { seen.push(message); } };
 }
@@ -75,6 +82,77 @@ test('package names normalize independently of directories and cannot inject sou
   assert.ok(normalizePackageName('a'.repeat(300)).length <= 180);
 });
 
+test('all AI combinations generate only selected docs resources and valid entry links', t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  const paths = ['AGENTS.md', 'CLAUDE.md', '.github/copilot-instructions.md'];
+  for (let mask = 0; mask < 8; mask++) {
+    const ai = AI_TOOLS.filter((_, index) => mask & (1 << index));
+    const result = createProject({ directory: join(root, `ai-${mask}`), template: 'vue-ts', ai, templatesDir });
+    paths.forEach((path, index) => {
+      assert.equal(existsSync(join(result.directory, path)), ai.includes(AI_TOOLS[index]), path);
+      if (ai.includes(AI_TOOLS[index])) {
+        const content = readFileSync(join(result.directory, path), 'utf8');
+        assert.match(content, /docs\/\.easy-dev\/agent\.md/);
+      }
+    });
+    for (const [path, enabled] of [
+      ['docs/.agents', ai.includes('codex')], ['docs/.claude', ai.includes('claude')],
+      ['docs/.easy-dev', ai.length > 0],
+    ]) assert.equal(existsSync(join(result.directory, path)), enabled, path);
+    for (const path of ['.agents', '.claude', '.easy-dev', 'agent.md']) {
+      assert.equal(existsSync(join(result.directory, path)), false, path);
+    }
+    if (ai.length) {
+      const content = readFileSync(join(result.directory, 'docs/.easy-dev/agent.md'), 'utf8');
+      assert.match(content, /frontend\/src\//);
+      assert.match(content, /backend\/src\/demo.py/);
+      assert.match(content, /npm run typecheck/);
+    }
+    for (const path of result.files.filter(path => path.endsWith('.md') && /AGENTS|CLAUDE|copilot|docs\//.test(path))) {
+      const content = readFileSync(join(result.directory, path), 'utf8');
+      for (const [, target] of content.matchAll(/\]\(([^)]+)\)/g)) {
+        assert.ok(existsSync(resolve(result.directory, path, '..', target)), `${path}: ${target}`);
+      }
+    }
+  }
+  assert.deepEqual(normalizeAi('none'), []);
+  assert.deepEqual(normalizeAi('claude,codex,codex'), ['codex', 'claude']);
+  assert.deepEqual(parseArgs(['--ai=codex,claude,copilot']).ai, AI_TOOLS);
+  assert.deepEqual(parseArgs(['--ai', 'none']).ai, []);
+});
+
+test('invalid AI selections fail before any project writes or installation', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const value of ['unknown', 'none,codex', 'codex,', '']) {
+    const directory = join(root, 'invalid-ai');
+    assert.throws(() => createProject({ directory, ai: value, templatesDir }), /AI selection/);
+    await assert.rejects(main([directory, '--ai', value], {
+      templatesDir, interactive: false, run() { assert.fail('must not install'); }, log() {}
+    }), /AI selection|Missing value/);
+    assert.equal(existsSync(directory), false);
+  }
+  assert.throws(() => parseArgs(['--ai']), /Missing value/);
+  assert.throws(() => parseArgs(['--ai=none', '--ai=codex']), /Conflicting/);
+  const prompts = promptFixture([['unknown']]);
+  await assert.rejects(main(['invalid-prompt', '--template=vanilla', '--no-install', '--no-start'], {
+    cwd: root, templatesDir, interactive: true, prompts, log() {}
+  }), /AI selection/);
+  assert.equal(existsSync(join(root, 'invalid-prompt')), false);
+});
+
+test('interactive AI empty selection and explicit none both omit guidance', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const explicit of [false, true]) {
+    const directory = `empty-ai-${explicit}`;
+    const prompts = promptFixture(explicit ? [] : [[]]);
+    assert.equal(await main([directory, '--template=vanilla', '--no-install', '--no-start', ...(explicit ? ['--ai=none'] : [])], {
+      cwd: root, templatesDir, interactive: true, prompts, log() {}
+    }), 0);
+    assert.equal(prompts.seen.length, explicit ? 0 : 1);
+    for (const path of ['AGENTS.md', 'CLAUDE.md', '.github']) assert.equal(existsSync(join(root, directory, path)), false);
+  }
+});
+
 test('nonempty targets, dot with .git, files and Windows-invalid paths are rejected without writes', t => {
   const { root, templatesDir } = preparedTemplates(t);
   const existing = join(root, 'existing');
@@ -99,7 +177,7 @@ test('empty dot target and nested paths with spaces remain supported', t => {
   mkdirSync(empty);
   const result = createProject({ directory: '.', cwd: empty, name: 'My App', templatesDir });
   assert.equal(result.directory, resolve(empty));
-  assert.equal(JSON.parse(readFileSync(join(empty, 'package.json'), 'utf8')).name, 'my-app');
+  assert.equal(JSON.parse(readFileSync(join(empty, 'frontend/package.json'), 'utf8')).name, 'my-app');
   const nested = createProject({ directory: 'Parent folder/My App', cwd: root, templatesDir });
   assert.equal(nested.name, 'my-app');
   assert.ok(existsSync(join(nested.directory, '.gitignore')));
@@ -142,7 +220,7 @@ test('all six templates compose shared runtime, framework source and compatible 
   for (const template of TEMPLATES) {
     const result = createProject({ directory: join(root, template), name: 'My App', template, templatesDir });
     const read = path => readFileSync(join(result.directory, path), 'utf8');
-    const pkg = JSON.parse(read('package.json'));
+    const pkg = JSON.parse(read('frontend/package.json'));
     assert.equal(pkg.name, 'my-app');
     assert.equal(pkg.dependencies.easywindowspack, '^0.1.0');
     assert.equal(pkg.scripts.init, 'ewp init');
@@ -154,15 +232,22 @@ test('all six templates compose shared runtime, framework source and compatible 
     assert.match(read('pyproject.toml'), /\[project.optional-dependencies\][\s\S]*tray =[\s\S]*dev =/);
     assert.equal(read('backend/base/ewpcore/__init__.py'), readFileSync(join(repository, 'backend/base/ewpcore/__init__.py'), 'utf8'));
     assert.equal(read('scripts/dev.py'), readFileSync(join(repository, 'scripts/dev.py'), 'utf8'));
+    assert.match(read('backend/src/demo.py'), /root \/ "frontend\/package.json"/);
     assert.ok(existsSync(join(result.directory, 'tests/test_smoke.py')));
-    const config = read('vite.config.mjs');
+    const config = read('frontend/vite.config.mjs');
     assert.match(config, /base: '\.\/'/);
     assert.match(config, /outDir: '\.\.\/output\/frontend'/);
     assert.match(config, /fs: \{ strict: true, allow: \[root\] \}/);
     const extension = template.startsWith('react') ? (template.endsWith('-ts') ? 'tsx' : 'jsx') : template.endsWith('-ts') ? 'ts' : 'js';
     assert.match(read('frontend/index.html'), new RegExp(`/src/main\\.${extension}`));
     assert.ok(existsSync(join(result.directory, `frontend/src/main.${extension}`)));
-    assert.equal(existsSync(join(result.directory, 'tsconfig.json')), template.endsWith('-ts'));
+    assert.equal(existsSync(join(result.directory, 'frontend/tsconfig.json')), template.endsWith('-ts'));
+    for (const old of ['package.json', 'package-lock.json', 'vite.config.mjs', 'tsconfig.json', 'build.cmd', 'node_modules']) {
+      assert.equal(existsSync(join(result.directory, old)), false, old);
+    }
+    for (const launcher of ['startup.cmd', 'scripts/startup.cmd']) assert.ok(existsSync(join(result.directory, launcher)));
+    assert.match(config, /new URL\('\.\/', import.meta.url\)/);
+    if (template.endsWith('-ts')) assert.deepEqual(JSON.parse(read('frontend/tsconfig.json')).include, ['src/**/*']);
     if (template.startsWith('vue')) {
       assert.match(config, /plugin-vue/);
       assert.match(read('frontend/src/Frame.vue'), /<Teleport v-if="content" :to="content"><slot/);
@@ -192,25 +277,33 @@ test('noninteractive and --yes do not prompt or launch network processes by defa
       prompts: { intro() { assert.fail('must not prompt'); } }
     });
     assert.equal(result, 0);
-    assert.ok(existsSync(join(root, directory, 'package.json')));
+    assert.ok(existsSync(join(root, directory, 'frontend/package.json')));
+    for (const path of ['AGENTS.md', 'CLAUDE.md', '.github/copilot-instructions.md', 'agent.md']) {
+      assert.equal(existsSync(join(root, directory, path)), false, path);
+    }
   }
 });
 
 test('interactive arrows choose framework/language and install without Python initialization', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  const prompts = promptFixture(['My App', 'vue', 'ts', true, false]);
+  const prompts = promptFixture(['My App', 'vue', 'ts', ['codex', 'claude'], true, false]);
   const runs = [];
   assert.equal(await main([], { cwd: root, templatesDir, interactive: true, prompts, log() {}, run: async (...args) => runs.push(args) }), 0);
-  assert.deepEqual(runs, [[['install'], join(root, 'My App')]]);
+  assert.deepEqual(runs, [[['install'], join(root, 'My App/frontend')]]);
   assert.deepEqual(prompts.seen[1].options.map(option => option.value), ['vanilla', 'vue', 'react']);
   assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['js', 'ts']);
+  assert.deepEqual(prompts.seen[3].initialValues, []);
+  assert.equal(prompts.seen[3].required, false);
+  assert.deepEqual(prompts.seen[3].options.map(option => option.value), AI_TOOLS);
+  assert.ok(existsSync(join(root, 'My App/AGENTS.md')));
+  assert.ok(existsSync(join(root, 'My App/CLAUDE.md')));
   assert.ok(existsSync(join(root, 'My App/frontend/src/main.ts')));
 });
 
 test('cancellation at every prompt leaves the project directory untouched', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  for (let index = 0; index < 5; index++) {
-    const values = [`Cancelled ${index}`, 'react', 'ts', true, false];
+  for (let index = 0; index < 6; index++) {
+    const values = [`Cancelled ${index}`, 'react', 'ts', ['codex'], true, false];
     const prompts = promptFixture(values);
     values[index] = prompts.cancellation;
     const result = await main([], { cwd: root, templatesDir, interactive: true, prompts, log() {}, run() { assert.fail('cancelled'); } });
@@ -224,7 +317,7 @@ test('startup runs npm install then Python init then dev; failures preserve file
   const { root, templatesDir } = preparedTemplates(t);
   const runs = [];
   assert.equal(await main(['Started App', '--template', 'react-ts', '--start'], {
-    cwd: root, templatesDir, interactive: false, log() {}, run: async (args, cwd) => { runs.push(args); assert.equal(cwd, join(root, 'Started App')); }
+    cwd: root, templatesDir, interactive: false, log() {}, run: async (args, cwd) => { runs.push(args); assert.equal(cwd, join(root, 'Started App/frontend')); }
   }), 0);
   assert.deepEqual(runs, [['install'], ['run', 'init'], ['run', 'dev']]);
   const stopped = [];
@@ -232,7 +325,7 @@ test('startup runs npm install then Python init then dev; failures preserve file
     cwd: root, templatesDir, interactive: false, log() {}, run: async args => { stopped.push(args); throw new Error('installation failed'); }
   }), /installation failed/);
   assert.deepEqual(stopped, [['install']]);
-  assert.ok(existsSync(join(root, 'Failed App/package.json')));
+  assert.ok(existsSync(join(root, 'Failed App/frontend/package.json')));
 });
 
 test('help works outside projects without loading prompts or requiring prepared resources', async t => {
@@ -283,7 +376,7 @@ test('integration: all templates build, typecheck and keep reactive content insi
   const deps = join(process.env.CREATE_EWP_VALIDATION_DIR, 'node_modules');
   const { root, templatesDir } = preparedTemplates(t);
   const runtime = join(root, 'runtime');
-  cpSync(join(repository, 'packages/easywindowspack'), runtime, {
+  cpSync(join(repository, 'frontend/packages/easywindowspack'), runtime, {
     recursive: true, filter: source => !/[\\/]node_modules(?:[\\/]|$)/.test(source)
   });
   mkdirSync(join(runtime, 'assets'), { recursive: true });
@@ -299,23 +392,23 @@ test('integration: all templates build, typecheck and keep reactive content insi
   try {
     for (const template of TEMPLATES) {
       const project = createProject({ directory: join(root, `App ${template}`), template, templatesDir });
-      const modules = join(project.directory, 'node_modules');
+      const modules = join(project.directory, 'frontend/node_modules');
       mkdirSync(modules);
       for (const entry of readdirSync(deps)) {
         if (entry === '.bin' || entry.startsWith('.') || entry === 'easywindowspack') continue;
         symlinkSync(join(deps, entry), join(modules, entry), process.platform === 'win32' ? 'junction' : 'dir');
       }
       symlinkSync(runtime, join(modules, 'easywindowspack'), process.platform === 'win32' ? 'junction' : 'dir');
-      await build({ configFile: join(project.directory, 'vite.config.mjs'), logLevel: 'silent' });
+      await build({ configFile: join(project.directory, 'frontend/vite.config.mjs'), logLevel: 'silent' });
       assert.ok(existsSync(join(project.directory, 'output/frontend/index.html')), template);
       if (template.endsWith('-ts')) {
         const checker = template.startsWith('vue') ? 'vue-tsc/bin/vue-tsc.js' : 'typescript/bin/tsc';
-        const checked = spawnSync(process.execPath, [join(deps, checker), '--noEmit', '--project', join(project.directory, 'tsconfig.json')], {
+        const checked = spawnSync(process.execPath, [join(deps, checker), '--noEmit', '--project', join(project.directory, 'frontend/tsconfig.json')], {
           cwd: project.directory, encoding: 'utf8', timeout: 30000
         });
         assert.equal(checked.status, 0, `${template}: ${checked.stdout}\n${checked.stderr}`);
       }
-      const server = await preview({ configFile: join(project.directory, 'vite.config.mjs'), preview: { port: 0, open: false }, logLevel: 'silent' });
+      const server = await preview({ configFile: join(project.directory, 'frontend/vite.config.mjs'), preview: { port: 0, open: false }, logLevel: 'silent' });
       const page = await browser.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));

@@ -25,7 +25,7 @@ The browser frame sends commands through the pywebview API. `WindowController` o
 Root [docs/](docs/README.md) is the development documentation center. Read the
 [development guide](docs/development.md) for setup, preview and builds, and the
 [architecture and migration guide](docs/architecture.md) for directory boundaries.
-Root [index.md](index.md) and [design.md](design.md) remain concise implementation and design summaries.
+[Implementation](docs/index.md), [design](docs/design.md) and [AI routing](docs/agent.md) also live under docs. Root AGENTS.md / CLAUDE.md are standard thin entries that explicitly load skills under docs; these skills are outside default tool discovery locations.
 
 ## Repository layout
 
@@ -41,25 +41,29 @@ easy-windows-pack/
 │   │   └── desktop/      # desktop-components.js / .css
 │   ├── index.html       # Vite primary page
 │   ├── src/             # main.js, component demo; deprecated old index.html
-│   └── contracts/       # TypeScript contracts and integration notes
-├── packages/
-│   ├── easywindowspack/  # ESM runtime, CSS, wrappers and ewp CLI
-│   └── create-ewp/       # Interactive generator, common and six templates
-├── docs/                # Development docs, navigation and diagrams
-├── scripts/dev.py       # Standard-library development menu
-├── scripts/prepare-npm.mjs # Single-source npm resource generation
+│   ├── contracts/       # TypeScript contracts and integration notes
+│   ├── packages/
+│   │   ├── easywindowspack/ # ESM runtime, CSS, wrappers and ewp CLI
+│   │   └── create-ewp/  # Interactive generator, common and six templates
+│   ├── package.json     # Private npm workspace
+│   ├── package-lock.json # Lockfile; dependencies installed here
+│   └── vite.config.mjs  # Vite ^7.3.7; relative production URLs
+├── docs/                # Documentation and AI resources
+│   ├── agent.md         # AI routing; project root is the parent of docs
+│   ├── index.md         # Implementation summary
+│   ├── design.md        # Design summary
+│   ├── .agents/skills/easy-dev/ # Single skill source
+│   ├── .claude/skills/easy-dev/ # Thin Claude router
+│   └── .easy-dev/       # Install state; generated AI guidance is opt-in
+├── scripts/             # startup.cmd, dev.py, build.cmd, build.ps1, build-demo.ps1
+│   └── prepare-npm.mjs  # Single-source npm resource generation
 ├── tests/               # Python and browser tests
 ├── .github/workflows/   # CI
 ├── output/              # frontend/, wheels/, exe/, bundles/, npm/, logs/
 ├── build/               # spec/, pyinstaller/ and other build caches
-├── build.cmd            # Windows development entry point
-├── build.ps1            # Compatible low-level CLI wrapper
-├── build-demo.ps1       # Delegates to the development exe task
-├── agent.md             # Development rules entry point
-├── index.md             # Implementation summary
-├── design.md            # Design summary
-├── package.json         # Private workspace; root package is not published
-├── vite.config.mjs      # Vite ^7.3.7; relative production URLs
+├── startup.cmd          # Only root launcher → scripts/startup.cmd → scripts/dev.py
+├── AGENTS.md            # Standard thin entry → docs/agent.md
+├── CLAUDE.md            # Standard thin entry → docs/agent.md and Claude router
 └── pyproject.toml
 ```
 
@@ -85,7 +89,7 @@ migration; do not switch public imports to `ewpcore`.
 
 ## npm quick start
 
-Require Node.js **>=22.12.0**, **Python >=3.10** for desktop initialization and packaging, and **WebView2** for Windows desktop. The root npm workspace is private. Both npm packages are version `0.1.0`, independently of Python `easy-windows-pack@0.2.1`.
+Require Node.js **>=22.12.0**, **Python >=3.10** for desktop initialization and packaging, and **WebView2** for Windows desktop. The npm workspace under frontend is private. Both npm packages are version `0.1.0`, independently of Python `easy-windows-pack@0.2.1`.
 
 **Publication is not verified.** The publisher must confirm availability and ownership of the public names `create-ewp` / `easywindowspack`. These registry commands are for use after both packages are published; global installation is optional:
 
@@ -94,9 +98,9 @@ npm create ewp@latest
 npm create ewp@latest "My App" -- --template react-ts --no-install --no-start
 ```
 
-Prompts select project name, Vanilla / Vue / React, JavaScript / TypeScript, installation and startup. Alternatively, after publication run `npm install -g easywindowspack`, then `ewp create`, which delegates to dependency `create-ewp/cli`. See the [bilingual guide](docs/npm-vite.md) for local generation before publication, tarball validation and manual publication order.
+Prompts select project name, Vanilla / Vue / React, JavaScript / TypeScript, AI tools, installation and startup. AI selection defaults to none; codex / claude / copilot can be selected together. Selected resources live under docs with only the selected tools' standard thin entries; see [AI resource layout](docs/npm-vite.md#ai-资源布局--ai-resource-layout). Alternatively, after publication run `npm install -g easywindowspack`, then `ewp create`, which delegates to dependency `create-ewp/cli`. See the [bilingual guide](docs/npm-vite.md) for local generation before publication, tarball validation and manual publication order.
 
-In the checkout or a generated project whose dependencies are available:
+Run all npm development/build commands below inside frontend in the checkout or generated project (first run `cd frontend` from the project root). From the project root, use `npm --prefix frontend`, for example `npm --prefix frontend run dev`:
 
 ```powershell
 npm install
@@ -138,14 +142,14 @@ pip install -e .
 For repository development, initialize the project environment and launch the demo:
 
 ```powershell
-.\build.cmd init
-.\build.cmd demo --debug
+.\startup.cmd init
+.\startup.cmd demo --debug
 ```
 
-Initialization creates or reuses `.venv`, runs `pip install -e ".[dev,tray]"`,
-and installs npm dependencies when a package manifest is present. Directly running
+Run Python and launcher commands from the project root. Initialization creates or reuses `.venv`, runs `pip install -e ".[dev,tray]"`,
+and installs npm dependencies inside frontend. Directly running
 `backend/src/demo.py` requires compiled frontend assets or a development URL.
-`build.cmd browser` now delegates browser development to Vite.
+`startup.cmd browser` delegates browser development to Vite.
 
 ## Python window integration
 
@@ -183,7 +187,7 @@ frontend. Put the application content inside `[data-ewp-content]`.
 
 ## Build tool
 
-Root `build.cmd` invokes the standard-library `scripts/dev.py` entry point.
+The only root launcher, `startup.cmd`, delegates to `scripts/startup.cmd`, which invokes the standard-library `scripts/dev.py` entry point. Other build wrappers live under scripts.
 Without arguments it opens a bilingual menu; task names also work directly.
 The menu keeps its legacy build semantics; current frontend development and
 compilation require Node.js/Vite. `init` installs Python build dependencies into
@@ -191,13 +195,13 @@ project `.venv` and npm dependencies. See [development](docs/development.md) and
 the [npm / Vite guide](docs/npm-vite.md).
 
 ```powershell
-.\build.cmd
-.\build.cmd init
-.\build.cmd browser
-.\build.cmd frontend
-.\build.cmd demo --debug
+.\startup.cmd
+.\startup.cmd init
+.\startup.cmd browser
+.\startup.cmd frontend
+.\startup.cmd demo --debug
 # Tests + wheel + single-file EXE + source bundle
-.\build.cmd build
+.\startup.cmd build
 ```
 
 ![easy-windows-pack build flow](docs/images/build-flow.svg)
@@ -231,20 +235,20 @@ build/
 | `test` | Run Python unittest; browser and native interaction checks are separate |
 | `info` | Show interpreter, project environment and output locations |
 
-Use `build.cmd browser --port 8080 --no-open` to choose a port without opening a
+Use `startup.cmd browser --port 8080 --no-open` to choose a port without opening a
 browser automatically. Ctrl+C stops the server. Browser preview has no real native
 bridge; use a desktop host to verify window dragging, tray and native updates.
 Progress reports completed stages, not an estimated time percentage. Failed or
 interrupted stages do not mark subsequent work complete. Initialization and build
 logs are retained under `output/logs/`.
 
-`build.cmd build` keeps test → wheel → exe → bundle; `npm run build` selects EXE
-by default. The historical SVG shows the legacy build flow; the npm guide defines
+`startup.cmd build` keeps test → wheel → exe → bundle; `npm run build` selects EXE
+by default. The SVG shows the menu build flow; the npm guide defines
 the current npm path.
 
 ### Compatible entry points
 
-The original CLI and `build.ps1` remain available. Their `build` command still runs
+The original CLI and `scripts/build.ps1` remain available; `scripts/build.cmd` is the compatible menu entry. The low-level `build` command still runs
 tests + wheel + source bundle, without EXE packaging, and defaults to categorized
 `output/` directories. `clean` belongs to the low-level CLI, not the development
 menu. An explicit `--output-dir` overrides the default artifact location.
@@ -256,11 +260,11 @@ python -m easy_windows_pack.cli build --output-dir .\artifacts
 python -m easy_windows_pack.cli build --skip-tests
 python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 python -m easy_windows_pack.cli bundle --output-dir .\artifacts
-.\build.ps1 -Python .\.venv\Scripts\python.exe
-.\build-demo.ps1 -Python .\.venv\Scripts\python.exe
+.\scripts\build.ps1 -Python .\.venv\Scripts\python.exe
+.\scripts\build-demo.ps1 -Python .\.venv\Scripts\python.exe
 ```
 
-`build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH. `build-demo.ps1` delegates to `scripts/dev.py exe`, sharing the same environment, logs and output directories.
+`scripts/build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH. `scripts/build-demo.ps1` delegates to `scripts/dev.py exe`, sharing the same environment, logs and output directories.
 
 ### WebView2 synchronization
 
@@ -543,9 +547,9 @@ setup and troubleshooting live in [docs/development.md](docs/development.md);
 directory ownership and old-to-new paths live in [docs/architecture.md](docs/architecture.md).
 
 ```powershell
-.\build.cmd test
-.\build.cmd info
-.\build.cmd build
+.\startup.cmd test
+.\startup.cmd info
+.\startup.cmd build
 ```
 
 CI configuration is maintained in `.github/workflows/`. Historical local checks in

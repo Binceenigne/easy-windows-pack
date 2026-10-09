@@ -1,6 +1,6 @@
 # 窗口外观
 
-[文档导航](README.md) · [设计摘要](../design.md) · [开发手册](development.md)
+[文档导航](README.md) · [设计摘要](design.md) · [开发手册](development.md)
 
 自定义标题栏支持 Windows 和 macOS 两套外观，使用相同的窗口控制 API。
 
@@ -37,4 +37,4 @@ CSS 是数值定义来源；不要复制一份完整调色板到页面，也不�
 
 外观切换是前端状态；`native` 与自绘模式切换仍须重建 pywebview 窗口。标题栏按钮、输入等交互区域不能触发拖拽；最大化状态与 resize handle 由窗口桥接同步，原生移动、Snap 与缩放交给 Windows。
 
-`npm run frontend:dev`、`npm run dev -- --web` 或兼容 `build.cmd browser` 使用 Vite 预览外观、焦点和布局，没有真实 native bridge；`npm run dev` 用于 HMR + debug 桌面调试，`build.cmd demo --debug` 使用编译页面。Vite 页面根为 frontend，fs allow 仅按资源需要配置，不扩大为整仓库。验收应区分浏览器视觉、键盘/减弱动画与 Windows 原生行为，当前证据单独写入 [npm 验收记录](npm-validation.md)。
+在 frontend 内运行 `npm run frontend:dev`、`npm run dev -- --web`，或在项目根运行 `startup.cmd browser`，使用 Vite 预览外观、焦点和布局，没有真实 native bridge；frontend 内 `npm run dev` 用于 HMR + debug 桌面调试，根 `startup.cmd demo --debug` 使用编译页面。从根运行 npm 时加 `--prefix frontend`。Vite 配置为 frontend/vite.config.mjs，页面根为 frontend，fs allow 仅按资源需要配置，不扩大为整仓库。验收应区分浏览器视觉、键盘/减弱动画与 Windows 原生行为，当前证据单独写入 [npm 验收记录](npm-validation.md)。

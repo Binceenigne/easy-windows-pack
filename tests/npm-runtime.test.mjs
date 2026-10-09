@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { runInNewContext } from 'node:vm';
-import { parseArgs, findProjectRoot, selectPython, pythonEnvironment, spawnSpec, chooseLocalPort, runDev, main } from '../packages/easywindowspack/bin/ewp.mjs';
+import { createRequire } from 'node:module';
+import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, spawnSpec, chooseLocalPort, runDev, main } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const packageRoot = join(root, 'packages/easywindowspack');
+const packageRoot = join(root, 'frontend/packages/easywindowspack');
+const frontendRequire = createRequire(new URL('../frontend/package.json', import.meta.url));
 
 const test = (name, options, body) => typeof options === 'function'
   ? nodeTest(name, { timeout: 15000 }, options)
@@ -106,7 +108,11 @@ test('project discovery ascends from nested directories and never depends on CLI
     mkdirSync(join(directory, 'scripts'));
     writeFileSync(join(directory, 'scripts/dev.py'), '');
     mkdirSync(join(directory, 'frontend/src'), { recursive: true });
+    writeFileSync(join(directory, 'frontend/vite.config.mjs'), 'export default {};');
+    assert.equal(findProjectRoot(directory), resolve(directory));
+    assert.equal(findProjectRoot(join(directory, 'frontend')), resolve(directory));
     assert.equal(findProjectRoot(join(directory, 'frontend/src')), resolve(directory));
+    assert.equal(configPath(findProjectRoot(join(directory, 'frontend/src'))), join(directory, 'frontend/vite.config.mjs'));
     assert.throws(() => findProjectRoot(tmpdir()), /scripts\/dev.py/);
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
@@ -192,7 +198,10 @@ test('published entry points and optional framework peers match the runtime cont
 });
 
 test('workspace scripts delegate to the Node CLI and preserve npm build argument forwarding', () => {
-  const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+  const pkg = JSON.parse(readFileSync(join(root, 'frontend/package.json'), 'utf8'));
+  for (const path of ['package.json', 'package-lock.json', 'vite.config.mjs', 'node_modules', 'packages']) {
+    assert.equal(existsSync(join(root, path)), false, `Root must not contain ${path}`);
+  }
   assert.equal(pkg.private, true);
   assert.deepEqual(pkg.workspaces, ['packages/*']);
   assert.match(pkg.devDependencies.vite, /^\^7\./);
@@ -200,6 +209,9 @@ test('workspace scripts delegate to the Node CLI and preserve npm build argument
     assert.match(pkg.scripts[name], /node packages\/easywindowspack\/bin\/ewp\.mjs /, name);
   }
   assert.equal(pkg.scripts.build, 'node packages/easywindowspack/bin/ewp.mjs build');
+  assert.equal(pkg.scripts['prepare:npm'], 'node ../scripts/prepare-npm.mjs');
+  assert.match(pkg.scripts['pack:npm'], /--pack-destination \.\.\/output\/npm/);
+  assert.match(pkg.scripts['test:npm'], /\.\.\/tests\/npm-runtime.test.mjs/);
 });
 
 test('generated npm assets resolve every export and share the original frame template', { skip: !existsSync(join(packageRoot, 'assets/frame-template.mjs')) && 'Run npm run prepare:npm first.' }, async t => {
@@ -207,19 +219,19 @@ test('generated npm assets resolve every export and share the original frame tem
   for (const entry of Object.values(pkg.exports)) {
     for (const file of typeof entry === 'string' ? [entry] : Object.values(entry)) assert.ok(existsSync(join(packageRoot, file)), `Missing export: ${file}`);
   }
-  const { frameTemplate } = await deadline(import('../packages/easywindowspack/assets/frame-template.mjs'), 'Template import', t.signal);
+  const { frameTemplate } = await deadline(import('../frontend/packages/easywindowspack/assets/frame-template.mjs'), 'Template import', t.signal);
   assert.equal(frameTemplate.trim(), readFileSync(join(root, 'frontend/components/titlebar/window-frame.html'), 'utf8').trim());
 });
 
 test('Vite picks a dynamic local port and denies project/backend files', async t => {
-  const { createServer } = await deadline(import('vite'), 'Vite import', t.signal);
+  const { createServer } = await deadline(import(pathToFileURL(frontendRequire.resolve('vite')).href), 'Vite import', t.signal);
   const port = await deadline(chooseLocalPort(0), 'Local port allocation', t.signal);
   assert.ok(port > 0 && port <= 65535);
   assert.equal(await deadline(chooseLocalPort(8080), 'Fixed port selection', t.signal), 8080);
   let server;
   let closing = false;
   const creation = createServer({
-    configFile: join(root, 'vite.config.mjs'),
+    configFile: join(root, 'frontend/vite.config.mjs'),
     // This test checks serving/security, not speculative dependency warmup.
     // Vite can otherwise add dependency watchers after server.close() returns.
     server: { open: false, port, strictPort: true, preTransformRequests: false },
@@ -274,7 +286,7 @@ test('Vite picks a dynamic local port and denies project/backend files', async t
   const directory = mkdtempSync(join(tmpdir(), 'ewp-dev-failure-'));
   try {
     mkdirSync(join(directory, 'frontend'));
-    writeFileSync(join(directory, 'vite.config.mjs'), `
+    writeFileSync(join(directory, 'frontend/vite.config.mjs'), `
       import { writeFileSync } from 'node:fs';
       export default {
         root: ${JSON.stringify(join(directory, 'frontend'))},
@@ -291,7 +303,7 @@ test('Vite picks a dynamic local port and denies project/backend files', async t
     assert.deepEqual(['SIGINT', 'SIGTERM'].map(name => process.listenerCount(name)), signals);
 
     rmSync(join(directory, 'closed'));
-    writeFileSync(join(directory, 'vite.config.mjs'), readFileSync(join(directory, 'vite.config.mjs'), 'utf8')
+    writeFileSync(join(directory, 'frontend/vite.config.mjs'), readFileSync(join(directory, 'frontend/vite.config.mjs'), 'utf8')
       .replace('buildStart() { throw', 'configureServer() { throw')
       .replace('forced ready failure', 'forced creation failure'));
     await expectDevFailure(directory, { command: 'dev', web: true, open: false, port: 0 }, /forced creation failure/, t.signal);

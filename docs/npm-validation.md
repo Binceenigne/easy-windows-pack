@@ -2,7 +2,23 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-09 目录精简复验 / Layout migration checks
+
+- Python unittest：92 passed；包含启动脚本跨工作目录调用、退出码传递和源码包路径。
+- npm runtime / creator：34 passed，1 个可选旧集成入口跳过；AI 八种组合的目录存在性和 Markdown 相对链接全部通过。
+- frontend 内 `npm ci`、Vite 生产构建、两个 npm 包打包通过，根目录不再需要 npm 配置或依赖。
+- 真实 tarball 六模板集成：8/8 passed；三套 TypeScript 类型检查、Chrome 交互、Vue HMR 通过。报告保存在忽略的 `build/npm-pack-validation/pack validation BtIUfU/report.json`。
+- 全新带空格目录：安装 → 首次初始化 → wheel → 默认 EXE → 归档检查通过。wheel / EXE 编译前端资源与 Vite 输出逐字节一致。报告保存在忽略的 `build/npm-first-run/first run GNj7St/report.json`。
+- 文档迁移：36 份 Markdown 的 297 个本地链接、19 个安装状态路径及两张 SVG XML 已检查。
+- 本轮未执行 npm 发布，也未重新验收原生窗口交互；浏览器验收不代替原生行为。
+
+## 2026-10-08 历史记录 / Previous validation
+
 2026-10-08，Windows 11、Node 22.22.2、npm 10.9.7、Python 3.12.10、Vite 7.3.7。本记录属于 npm/Vite 迁入，旧目录迁移记录不作为本次运行证据。
+
+以下结果属于上述日期，早于 frontend 配置/依赖与 docs/AI 资源迁移，不证明迁移后的脚手架 AI 多选或构建已通过。复验命令已按新目录调整，结果须重新记录。
+
+Results below predate the frontend configuration/dependency and docs/AI resource migration. They do not certify migrated AI selection or builds. Reproduction commands reflect the new layout; reruns need new evidence.
 
 ## 实际结果 / Executed checks
 
@@ -24,14 +40,14 @@
 ## 可重复命令 / Reproduction
 
 ```powershell
-npm ci
-npm run test:npm
-npm run test
-npm run pack:npm
-npm run test:pack
+npm --prefix frontend ci
+npm --prefix frontend run test:npm
+npm --prefix frontend run test
+npm --prefix frontend run pack:npm
+npm --prefix frontend run test:pack
 node tests/npm-first-run.integration.mjs
-npm run build -- -w
-npm run build
+npm --prefix frontend run build -- -w
+npm --prefix frontend run build
 ```
 
 pack 验收脚本从 `output/npm` 的 tarball 安装，不借用仓库源码。报告与日志写入忽略目录 `build/npm-pack-validation` 和 `build/npm-first-run`；前者覆盖六模板，后者覆盖无预编译资源的首次 init、wheel、EXE、归档比对和原生启动。运行验收需要本机 Chrome 与 Playwright；脚本支持环境变量选择工具路径，具体见脚本头部。

@@ -26,20 +26,20 @@ only. They do not certify the current directory migration, build menu or remote 
 
 ## Current reproduction entry points / 当前复验入口
 
-After `build.cmd init`, use `build.cmd test` for Python tests. Open
+From the project root, after `startup.cmd init`, use `startup.cmd test` for Python tests. Open
 [tests/frontend.html](../tests/frontend.html) separately in a browser and inspect
 `window.testResults`; record the current `passed` count and any `error` rather
 than assuming the historical count of 27. The frontend-only preview server does
 not expose `tests/`. The offline demo is now
 [frontend/src/components.html](../frontend/src/components.html).
 
-Use `build.cmd wheel` / `bundle` for separate package checks, or `build.cmd build`
+Use `startup.cmd wheel` / `bundle` for separate package checks, or `startup.cmd build`
 on Windows for test + wheel + EXE + bundle. The compatible low-level command
 `python -m easy_windows_pack.cli build` still covers tests + wheel + bundle only.
 Inspect current artifacts under `output/` and verify the nested frontend paths,
 public Python package name and source bundle manifest. These are reproduction
 instructions, not a report that they have been executed for this migration.
 
-当前复验应重新记录实际结果：Python 使用 `build.cmd test`，浏览器单独打开测试页面，
+当前复验应重新记录实际结果：在项目根使用 `startup.cmd test`，浏览器单独打开测试页面，
 原生行为在 Windows 桌面验证。构建产物按 `output/` 分类，检查新目录、公开包名与 manifest。
 此处只更新复验入口，没有把历史结果改写成本次成功。

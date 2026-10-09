@@ -35,12 +35,16 @@ class CliTests(unittest.TestCase):
                 self.assertIn(root + "backend/base/ewpcore/adapters.py", names)
                 self.assertIn(root + "tests/frontend.html", names)
                 self.assertIn(root + "backend/src/demo.py", names)
-                self.assertIn(root + "build.cmd", names)
+                self.assertIn(root + "startup.cmd", names)
+                self.assertIn(root + "scripts/startup.cmd", names)
+                self.assertIn(root + "scripts/build.cmd", names)
+                self.assertIn(root + "scripts/build.ps1", names)
+                self.assertIn(root + "scripts/build-demo.ps1", names)
                 self.assertIn(root + "scripts/dev.py", names)
-                self.assertIn(root + "package.json", names)
-                self.assertIn(root + "vite.config.mjs", names)
-                self.assertIn(root + "packages/easywindowspack/bin/ewp.mjs", names)
-                self.assertIn(root + "packages/create-ewp/lib/create.mjs", names)
+                self.assertIn(root + "frontend/package.json", names)
+                self.assertIn(root + "frontend/vite.config.mjs", names)
+                self.assertIn(root + "frontend/packages/easywindowspack/bin/ewp.mjs", names)
+                self.assertIn(root + "frontend/packages/create-ewp/lib/create.mjs", names)
                 self.assertIn(root + "LICENSE", names)
                 self.assertFalse(any("__pycache__" in name for name in names))
                 self.assertFalse(any(name.endswith(".pyc") for name in names))
@@ -59,14 +63,15 @@ class CliTests(unittest.TestCase):
             "frontend/index.html": "<html></html>",
             "frontend/src/main.js": "// app",
             "scripts/dev.py": "# dev",
-            "build.cmd": "@echo off\n",
+            "startup.cmd": "@echo off\n",
+            "scripts/startup.cmd": "@echo off\n",
             "README.md": "# Generated app",
             "LICENSE": "MIT",
             "pyproject.toml": '[project]\nname = "sample-desktop"\nversion = "0.1.0"\n',
-            "package.json": '{"name":"sample"}',
-            "package-lock.json": '{"name":"sample"}',
-            "vite.config.mjs": "export default {};",
-            "tsconfig.json": "{}",
+            "frontend/package.json": '{"name":"sample"}',
+            "frontend/package-lock.json": '{"name":"sample"}',
+            "frontend/vite.config.mjs": "export default {};",
+            "frontend/tsconfig.json": "{}",
             ".gitignore": "node_modules/\noutput/\n",
         }
         for filename, content in files.items():
@@ -83,7 +88,8 @@ class CliTests(unittest.TestCase):
             with zipfile.ZipFile(archive) as bundle:
                 prefix = "sample-desktop-0.1.0-bundle/"
                 names = set(bundle.namelist())
-                for filename in ("package.json", "package-lock.json", "vite.config.mjs", "tsconfig.json",
+                for filename in ("frontend/package.json", "frontend/package-lock.json",
+                                 "frontend/vite.config.mjs", "frontend/tsconfig.json", "startup.cmd", "scripts/startup.cmd",
                                  ".gitignore", "scripts/dev.py", "frontend/index.html", "backend/src/demo.py"):
                     self.assertIn(prefix + filename, names)
                 self.assertFalse(any(name.startswith(prefix + "docs/") for name in names))
@@ -96,7 +102,7 @@ class CliTests(unittest.TestCase):
                 })
                 self.assertIn(prefix + manifest["entrypoints"]["frontend"], names)
                 self.assertIn(manifest["entrypoints"]["frontend"], manifest["files"])
-                self.assertIn("package.json", manifest["files"])
+                self.assertIn("frontend/package.json", manifest["files"])
 
     def test_project_name_reads_only_project_metadata_with_python310_fallback(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -151,11 +157,11 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             project_root = Path(temporary) / "source"
             self.make_app(project_root)
-            included = project_root / "packages/nested/templates/scripts/tool.py"
+            included = project_root / "frontend/packages/nested/templates/scripts/tool.py"
             included.parent.mkdir(parents=True)
             included.write_text("# source", encoding="utf-8")
             for parent in (project_root, project_root / "frontend", project_root / "scripts",
-                           project_root / "packages/nested/templates"):
+                           project_root / "frontend/packages/nested/templates"):
                 for name in ("node_modules", ".venv", "output", "build", "dist", ".git", "__pycache__",
                              ".pytest_cache", ".mypy_cache", ".ruff_cache", "app.egg-info"):
                     target = parent / name / "must-not-be-bundled.txt"
@@ -171,6 +177,42 @@ class CliTests(unittest.TestCase):
                 manifest_name = next(name for name in names if name.endswith("manifest.json"))
                 manifest = json.loads(bundle.read(manifest_name))
                 self.assertFalse(any("must-not-be-bundled" in name for name in manifest["files"]))
+
+    def test_bundle_includes_migrated_guidance_without_private_ai_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            project_root = Path(temporary) / "source"
+            self.make_app(project_root)
+            public = (
+                "docs/agent.md", "docs/index.md", "docs/design.md",
+                "AGENTS.md", "CLAUDE.md", ".github/copilot-instructions.md",
+                "docs/.agents/skills/easy-dev/SKILL.md",
+                "docs/.agents/skills/easy-dev/references/architecture.md",
+                "docs/.claude/skills/easy-dev/SKILL.md",
+                "docs/.easy-dev/install-state.json",
+            )
+            excluded = (
+                "docs/.claude/settings.local.json", "docs/.claude/history.jsonl",
+                "docs/.agents/private.json", "docs/.easy-dev/local.json",
+                "docs/.agents/skills/easy-dev/__pycache__/cached.pyc",
+                "docs/.claude/skills/other/private.txt",
+                ".agents/skills/easy-dev/SKILL.md", ".claude/settings.local.json",
+                "agent.md", "index.md", "design.md", "build.cmd", "build.ps1", "build-demo.ps1",
+                "package.json", "vite.config.mjs", "packages/stale/package.json",
+            )
+            for filename in (*public, *excluded):
+                target = project_root / filename
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("fixture", encoding="utf-8")
+            with zipfile.ZipFile(build_bundle(project_root)) as bundle:
+                prefix = "sample-desktop-0.1.0-bundle/"
+                names = set(bundle.namelist())
+                manifest = json.loads(bundle.read(prefix + "easy-windows-pack.manifest.json"))
+                for filename in public:
+                    self.assertIn(prefix + filename, names)
+                    self.assertIn(filename, manifest["files"])
+                for filename in excluded:
+                    self.assertNotIn(prefix + filename, names)
+                    self.assertNotIn(filename, manifest["files"])
 
     def test_wheel_builds_vite_before_packaging_generated_app(self):
         with tempfile.TemporaryDirectory() as temporary:

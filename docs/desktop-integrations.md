@@ -66,7 +66,7 @@ The source bundle includes all frontend resources; wheels install them under
 `components/`, `frame/`, `src/` and `contracts/` hierarchy.
 
 组件示例位于 [frontend/src/components.html](../frontend/src/components.html)。
-运行 `build.cmd browser` 后可在相同地址打开 `/src/components.html`；Ctrl+C 停止。
+在项目根运行 `startup.cmd browser` 或 `npm --prefix frontend run frontend:dev` 后可在相同地址打开 `/src/components.html`；Ctrl+C 停止。
 该服务只暴露 `frontend/`，宿主接口由真实桌面应用提供。
 
 ```javascript

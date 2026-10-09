@@ -167,15 +167,16 @@ def process_command(command: Sequence[str]) -> list[str] | str:
 
 
 def run_npm(root: Path, arguments: Sequence[str], log: TextIO | None = None) -> None:
-    if not (root / "package.json").is_file():
-        raise DevError("缺少 package.json / Missing package.json")
+    frontend = root / "frontend"
+    if not (frontend / "package.json").is_file():
+        raise DevError("缺少 frontend/package.json / Missing frontend/package.json")
     # Keep cwd separate from the batch command: paths with spaces and & stay literal.
-    if sys.platform == "win32" and any(char in str(root) for char in '\"%\r\n\0'):
+    if sys.platform == "win32" and any(char in str(frontend) for char in '\"%\r\n\0'):
         raise DevError("项目路径无法安全引用 / Cannot safely quote project path")
     npm = shutil.which("npm.cmd" if sys.platform == "win32" else "npm")
     if npm is None:
         raise DevError("缺少 npm，请安装 Node.js 并重新打开终端 / Missing npm; install Node.js and reopen the terminal")
-    run_command([npm, *arguments], root=root, log=log)
+    run_command([npm, *arguments], root=frontend, log=log)
 
 
 def build_frontend(root: Path, log: TextIO | None = None) -> None:
@@ -193,7 +194,7 @@ def in_project_venv(root: Path) -> bool:
 def require_venv(root: Path) -> Path:
     python = venv_python(root)
     if not python.is_file() or not (root / ".venv/pyvenv.cfg").is_file():
-        raise DevError("缺少有效虚拟环境，请运行 build.cmd init / Missing valid .venv; run build.cmd init")
+        raise DevError("缺少有效虚拟环境，请运行 startup.cmd init / Missing valid .venv; run startup.cmd init")
     return python
 
 
@@ -264,7 +265,7 @@ def initialize(root: Path) -> None:
         ("检查解释器 / Check interpreter", lambda log: run_command(
             [str(python), "-c", verify, str(root / ".venv")], root=root, log=log)),
     ]
-    if (root / "package.json").is_file():
+    if (root / "frontend/package.json").is_file():
         # Generated app editable metadata requires output/frontend/index.html.
         stages.extend([
             ("安装前端依赖 / Install frontend dependencies", lambda log: run_npm(root, ["install"], log)),
@@ -315,9 +316,9 @@ def check_packager() -> None:
                 raise OSError("Invalid Windows bootloader")
     except (ImportError, OSError) as error:
         raise DevError(
-            "打包器缺失或启动器不可读；关闭占用程序并检查系统拦截记录，然后运行 build.cmd init。"
+            "打包器缺失或启动器不可读；关闭占用程序并检查系统拦截记录，然后运行 startup.cmd init。"
             " / Missing or unreadable PyInstaller bootloader; check file locks and protection logs, "
-            "then run build.cmd init. " + str(error)
+            "then run startup.cmd init. " + str(error)
         ) from error
 
 
@@ -325,7 +326,7 @@ def run_task(task: str, root: Path, log: TextIO | None) -> None:
     if task == "frontend":
         build_frontend(root, log)
         return
-    if task == "exe" or (task == "wheel" and (root / "package.json").is_file()):
+    if task == "exe" or (task == "wheel" and (root / "frontend/package.json").is_file()):
         build_frontend(root, log)
     if task == "exe":
         check_packager()
@@ -410,7 +411,7 @@ def info(root: Path) -> None:
     emit(f"虚拟环境 / Virtual environment: {venv_python(root)}")
     emit(f"当前使用项目环境 / Using project environment: {in_project_venv(root)}")
     emit(f"环境解释器存在 / Environment interpreter exists: {venv_python(root).is_file()}")
-    emit("初始化命令 / Initialize: build.cmd init")
+    emit("初始化命令 / Initialize: startup.cmd init")
     for directory, label in (
         ("output/frontend", "Vite 前端产物 / Vite frontend assets"),
         ("output/wheels", "Wheel 包 / Wheels"), ("output/exe", "桌面程序 / Executables"),

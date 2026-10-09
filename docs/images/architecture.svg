@@ -30,7 +30,8 @@
   <text x="215" y="170" text-anchor="middle" class="label">WebView 前端 / Frontend</text>
   <text x="215" y="205" text-anchor="middle" class="small">frontend/components/titlebar/</text>
   <text x="215" y="232" text-anchor="middle" class="small">frontend/frame/ewpframe/</text>
-  <text x="215" y="259" text-anchor="middle" class="small">frontend/src/index.html</text>
+  <text x="215" y="259" text-anchor="middle" class="small">frontend/index.html</text>
+  <text x="215" y="282" text-anchor="middle" class="small">frontend/packages/ · vite.config.mjs</text>
   <text x="215" y="310" text-anchor="middle" class="small">三按钮 · 标题栏模式</text>
   <text x="215" y="334" text-anchor="middle" class="small">拖拽句柄 · 状态同步</text>
 
@@ -57,4 +58,5 @@
 
   <rect x="250" y="425" width="700" height="48" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
   <text x="600" y="455" text-anchor="middle" class="text">同一套窗口行为，可复用于不同 WebView 桌面应用 / Reuse the same window behavior across apps</text>
+  <text x="600" y="501" text-anchor="middle" class="small">docs/ · agent.md / index.md / design.md · .agents / .claude / .easy-dev · Skills: explicit entry routing</text>
 </svg>

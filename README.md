@@ -43,7 +43,7 @@
 
 前端组件通过 pywebview API 发送窗口命令，`WindowController` 管理生命周期与状态，`win32.py` 将非客户区拖拽、缩放、吸附和置顶交给 Windows。
 
-开发文档统一在根 [docs/](docs/README.md) 维护：[开发手册](docs/development.md)介绍环境、预览与构建，[架构与迁移指南](docs/architecture.md)说明目录边界；根 [index.md](index.md) 和 [design.md](design.md) 保留实现与设计摘要。
+开发文档统一在根 [docs/](docs/README.md) 维护：[开发手册](docs/development.md)介绍环境、预览与构建，[架构与迁移指南](docs/architecture.md)说明目录边界；[实现摘要](docs/index.md)、[设计摘要](docs/design.md)与 [AI 路由](docs/agent.md)也位于 docs。根 AGENTS.md / CLAUDE.md 仅作标准自动发现入口，显式引导读取 docs 下的 Skills；后者不在工具默认自动发现目录中。
 
 ## 目录结构
 
@@ -59,26 +59,30 @@ easy-windows-pack/
 │   │   └── desktop/      # desktop-components.js / .css
 │   ├── index.html       # Vite 主页面入口
 │   ├── src/             # main.js、组件示例；旧 index.html 为弃用兼容入口
-│   └── contracts/       # TypeScript 类型契约与接入说明
-├── packages/
-│   ├── easywindowspack/  # ESM runtime、CSS、框架包装与 ewp CLI
-│   └── create-ewp/       # 交互生成器、common 与六套模板
-├── docs/                # 开发文档维护中心，含导航、架构、手册与图片
-├── scripts/dev.py       # 标准库开发菜单与任务编排
-├── scripts/prepare-npm.mjs # 单源 npm 资源生成
+│   ├── contracts/       # TypeScript 类型契约与接入说明
+│   ├── packages/
+│   │   ├── easywindowspack/ # ESM runtime、CSS、框架包装与 ewp CLI
+│   │   └── create-ewp/  # 交互生成器、common 与六套模板
+│   ├── package.json     # private npm workspace
+│   ├── package-lock.json # npm 锁文件；依赖在此目录安装
+│   └── vite.config.mjs  # Vite ^7.3.7；生产相对 URL
+├── docs/                # 文档与 AI 资源维护中心
+│   ├── agent.md         # AI 路由；项目根为 docs 的上一级
+│   ├── index.md         # 实现索引摘要
+│   ├── design.md        # 设计摘要
+│   ├── .agents/skills/easy-dev/ # 唯一 Skill 正文
+│   ├── .claude/skills/easy-dev/ # Claude 薄路由
+│   └── .easy-dev/       # 安装状态；生成项目的共用 AI 指引按选择生成
+├── scripts/             # startup.cmd、dev.py、build.cmd、build.ps1、build-demo.ps1
+│   └── prepare-npm.mjs  # 单源 npm 资源生成
 ├── tests/               # Python 与浏览器测试
 ├── .github/workflows/    # 跨平台测试和 Windows 构建
 ├── output/              # frontend/、wheels/、exe/、bundles/、npm/、logs/
 ├── build/               # spec/、pyinstaller/ 等构建缓存
-├── build.cmd            # Windows 开发菜单入口
-├── build.ps1            # 底层 CLI 兼容入口
-├── build-demo.ps1       # 委托开发入口的 exe 任务
-├── agent.md             # 开发规则入口
-├── index.md             # 实现索引摘要
-├── design.md            # 设计摘要
+├── startup.cmd          # 根唯一启动脚本 → scripts/startup.cmd → scripts/dev.py
+├── AGENTS.md            # 标准薄入口 → docs/agent.md
+├── CLAUDE.md            # 标准薄入口 → docs/agent.md 与 Claude 路由
 ├── LICENSE
-├── package.json         # private npm workspace，不发布根包
-├── vite.config.mjs      # Vite ^7.3.7；生产相对 URL
 ├── pyproject.toml
 └── requirements.txt
 ```
@@ -87,7 +91,7 @@ easy-windows-pack/
 
 ## npm 快速开始
 
-环境：Node.js **>=22.12.0**，桌面初始化与打包需要 Python **>=3.10**，Windows 桌面需要 WebView2。根 npm 包为 private workspace；两个 npm 包为 `0.1.0`，与 Python `easy-windows-pack@0.2.1` 独立版本。
+环境：Node.js **>=22.12.0**，桌面初始化与打包需要 Python **>=3.10**，Windows 桌面需要 WebView2。frontend 内 npm workspace 为 private；两个 npm 包为 `0.1.0`，与 Python `easy-windows-pack@0.2.1` 独立版本。
 
 **发布状态未确认。** `create-ewp` / `easywindowspack` 公共名称的可用性和所有权需发布者核实。以下 registry 命令仅在两包发布后使用；无需全局安装即可创建项目：
 
@@ -96,9 +100,9 @@ npm create ewp@latest
 npm create ewp@latest "My App" -- --template react-ts --no-install --no-start
 ```
 
-交互选择项目名、Vanilla / Vue / React、JavaScript / TypeScript、是否安装、是否启动，共六模板。也可在发布后运行 `npm install -g easywindowspack`，再用 `ewp create`；后者转调用依赖 `create-ewp/cli`。未发布时的本地生成、tarball 验收与手动发布顺序见[双语指南](docs/npm-vite.md)。
+交互选择项目名、Vanilla / Vue / React、JavaScript / TypeScript、AI 工具、是否安装、是否启动，共六模板。AI 默认全不选，可多选 codex / claude / copilot；所选 AI 资源放 docs 下，仅生成所选工具的标准薄入口，详见[AI 资源约定](docs/npm-vite.md#ai-资源布局--ai-resource-layout)。也可在发布后运行 `npm install -g easywindowspack`，再用 `ewp create`；后者转调用依赖 `create-ewp/cli`。未发布时的本地生成、tarball 验收与手动发布顺序见[双语指南](docs/npm-vite.md)。
 
-在源码仓库或已可安装依赖的生成项目中：
+以下 npm 开发/构建命令均在源码仓库或生成项目的 frontend 目录执行（先从项目根运行 `cd frontend`）。保留在根目录时使用 `npm --prefix frontend`，例如 `npm --prefix frontend run dev`：
 
 ```powershell
 npm install
@@ -146,11 +150,11 @@ pip install -r .\requirements.txt
 仓库开发建议先初始化项目环境，再运行桌面示例：
 
 ```powershell
-.\build.cmd init
-.\build.cmd demo --debug
+.\startup.cmd init
+.\startup.cmd demo --debug
 ```
 
-初始化创建或复用 `.venv`，在其中执行 `pip install -e ".[dev,tray]"`，有 npm 项目时同时安装 npm 依赖。安装后可用该环境的 Python 运行 `backend/src/demo.py`；直接运行前需编译前端，或由开发命令提供 `EWP_DEV_URL`。`build.cmd browser` 现转 Vite，不提供真实原生桥接。
+上述 Python 与启动脚本命令从项目根执行。初始化创建或复用 `.venv`，在其中执行 `pip install -e ".[dev,tray]"`，同时安装 frontend 内 npm 依赖。安装后可用该环境的 Python 运行 `backend/src/demo.py`；直接运行前需编译前端，或由开发命令提供 `EWP_DEV_URL`。`startup.cmd browser` 转 Vite，不提供真实原生桥接。
 
 运行包测试：
 
@@ -160,16 +164,16 @@ python -m unittest discover -s .\tests -p "test_*.py" -v
 
 ## 构建工具
 
-根 `build.cmd` 调用标准库入口 `scripts/dev.py`；无参数时显示双语菜单，也可直接指定任务。菜单保留 legacy 兼容语义；当前前端开发和编译需要 Node.js/Vite，Python 构建依赖由 `init` 安装到项目 `.venv`。完整用法见[开发手册](docs/development.md)与[npm / Vite 指南](docs/npm-vite.md)。
+根唯一启动脚本 `startup.cmd` 委托 `scripts/startup.cmd`，再调用标准库入口 `scripts/dev.py`；无参数时显示双语菜单，也可直接指定任务。其他构建脚本均位于 scripts。菜单保留 legacy 兼容语义；当前前端开发和编译需要 Node.js/Vite，Python 构建依赖由 `init` 安装到项目 `.venv`。完整用法见[开发手册](docs/development.md)与[npm / Vite 指南](docs/npm-vite.md)。
 
 ```powershell
-.\build.cmd
-.\build.cmd init
-.\build.cmd browser
-.\build.cmd frontend
-.\build.cmd demo --debug
+.\startup.cmd
+.\startup.cmd init
+.\startup.cmd browser
+.\startup.cmd frontend
+.\startup.cmd demo --debug
 # 完整构建：测试 + wheel + 单文件 EXE + source bundle
-.\build.cmd build
+.\startup.cmd build
 ```
 
 ![easy-windows-pack 构建流程](docs/images/build-flow.svg)
@@ -202,11 +206,11 @@ build/
 | `test` | 运行 Python `unittest`；浏览器与原生交互另行验收 |
 | `info` | 显示解释器、项目环境与各输出目录 |
 
-预览可用 `build.cmd browser --port 8080 --no-open` 指定端口且不自动打开浏览器，按 Ctrl+C 停止服务。浏览器可检查外观和纯前端交互，但没有真实 native bridge；窗口拖拽、托盘与原生更新须在桌面宿主中验证。`build.cmd build` 的 test → wheel → exe → bundle 与 `npm run build` 默认 EXE 是不同入口语义。历史 SVG 展示 legacy 构建流程，当前 npm 路径以双语指南为准。进度显示已完成阶段数，不按时间伪造完成百分比；失败或中断不会标记后续阶段成功。
+预览可用 `startup.cmd browser --port 8080 --no-open` 指定端口且不自动打开浏览器，按 Ctrl+C 停止服务。浏览器可检查外观和纯前端交互，但没有真实 native bridge；窗口拖拽、托盘与原生更新须在桌面宿主中验证。`startup.cmd build` 的 test → wheel → exe → bundle 与 `npm run build` 默认 EXE 是不同入口语义。SVG 展示菜单构建流程，npm 路径以双语指南为准。进度显示已完成阶段数，不按时间伪造完成百分比；失败或中断不会标记后续阶段成功。
 
 ### 兼容入口
 
-原有 CLI 与 `build.ps1` 保留。底层 `build` 仍为测试 + wheel + source bundle，不包含 EXE；默认输出也使用 `output/` 分类目录。`clean` 属于底层 CLI，不是开发菜单任务。显式 `--output-dir` 仍可覆盖默认产物位置。
+原有 CLI 与 `scripts/build.ps1` 保留，`scripts/build.cmd` 是菜单兼容入口。底层 `build` 仍为测试 + wheel + source bundle，不包含 EXE；默认输出也使用 `output/` 分类目录。`clean` 属于底层 CLI，不是开发菜单任务。显式 `--output-dir` 仍可覆盖默认产物位置。
 
 ```powershell
 python -m easy_windows_pack.cli build
@@ -215,11 +219,11 @@ python -m easy_windows_pack.cli build --output-dir .\artifacts
 python -m easy_windows_pack.cli build --skip-tests
 python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 python -m easy_windows_pack.cli bundle --output-dir .\artifacts
-.\build.ps1 -Python .\.venv\Scripts\python.exe
-.\build-demo.ps1 -Python .\.venv\Scripts\python.exe
+.\scripts\build.ps1 -Python .\.venv\Scripts\python.exe
+.\scripts\build-demo.ps1 -Python .\.venv\Scripts\python.exe
 ```
 
-`build.ps1` 依次查找 `-Python` 参数、项目内 `.venv`、PATH 中的 `python.exe` 和 `py.exe`。`build-demo.ps1` 委托 `scripts/dev.py exe`，复用相同环境、日志与产物目录。
+`scripts/build.ps1` 依次查找 `-Python` 参数、项目内 `.venv`、PATH 中的 `python.exe` 和 `py.exe`。`scripts/build-demo.ps1` 委托 `scripts/dev.py exe`，复用相同环境、日志与产物目录。
 
 ### WebView2 并发安全
 
