@@ -2,6 +2,33 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-09 welcome 改版本地验收 / Local welcome validation
+
+本轮为参考 Vite / Tauri 的简洁双语根 README 与 Vite 风格 demo 收尾：根 demo 包含主题/语言切换、计数、窗口外观与标题栏控制、资源入口及响应式布局；六模板包含新 welcome、三份品牌图标与系统浅深色适配，使用创建时选定的文案语言。根 demo 的全部控制项不作为模板统一能力。实现定位与资产维护见 [窗口外观](window-styles.md#welcome-页面与品牌资产)。
+
+This revision finishes concise bilingual root READMEs inspired by Vite / Tauri and a Vite-style demo. The root demo includes theme/language toggles, a counter, window appearance/title-bar controls, resource links and responsive layouts. All six templates include the new welcome, three brand SVGs and system light/dark adaptation, with copy in the creation language. The root demo's full control set is not a template-wide contract; see the [design and asset rules](window-styles.md#welcome-页面与品牌资产).
+
+**这是发布后的本地源码验收，不是此前 CLI / 0.1.1 发布验收。线上两包仍为原 0.1.1，未包含本轮 welcome；本轮不发布新版。** 验收临时使用仍标记 0.1.1 的本地 tarball，仅作测试输入；报告确认原 `output/npm` 归档已恢复，测试包另存 `output/design-validation/npm/`。
+
+**These are local source checks after publication, separate from the earlier CLI / 0.1.1 release checks. Both registry packages remain at the original 0.1.1 and do not include this welcome revision; no new release is published.** Temporary local test tarballs still carry 0.1.1. The report confirms that the original `output/npm` archives were restored; test packs remain under `output/design-validation/npm/`.
+
+| 范围 / Scope | 实际结果 / Executed result |
+| --- | --- |
+| npm 单测 / Unit tests | `npm --prefix frontend run test:npm`：**141 passed，0 failed，0 skipped**；依据本轮日志，不复用发布前计数 / From this revision's log, not earlier release counts |
+| 本地 pack / Local packs | pack 命令成功；creator 包中的三份 SVG 与权威源码比对通过；原归档恢复且无恢复错误 / Pack succeeded, creator SVGs match authoritative sources, original archives restored without errors |
+| 最终六模板 / Final six-template integration | `node tests/npm-pack.integration.mjs`：**8/8 passed**；真实 tarball 独立安装、公共 exports、六模板 Vite 构建、三套 TS 类型检查及项目外 `ewp create` / Real tarball installs, exports, builds, types and creation outside a project |
+| Chrome / HMR | 六模板 welcome 文案、浅深色 SVG 加载、生产交互及各 3 次卸载/重挂载通过；Vue JS/TS 文案更新与恢复零整页刷新 / Welcome copy, light/dark SVG loading, production interaction, three lifecycle cycles per template, Vue JS/TS HMR without full reloads |
+| 原始图标 / Original icons | 文档收尾实际读取 `C:\Users\Binceengine\Downloads\ewp-svg-icons.zip`，三份 SVG 与 `frontend/src/assets/` 对应源文件逐字节一致，SHA-256 同时匹配 / All three ZIP entries match source bytes and SHA-256 |
+| 根 demo / Root demo | 集成浏览器实测计数、切换英文后保留计数、主题切换、Windows + minimal 外观应用、SVG 加载通过；390px 窄屏无横向溢出；根 Vite 生产构建通过 / Counter survives language changes, theme and frame controls work, SVGs load, no horizontal overflow at 390px, production build succeeds |
+
+主报告：`output/design-validation/report.json`；单测与集成日志为同目录的 `test-npm-initial.log` 和 `npm-pack-integration.log`。最终六模板报告：`build/npm-pack-validation/pack validation R6s4Md/report.json`。这些为忽略目录中的本地证据，不随 Git 分发。
+
+The report and logs above are local evidence under ignored directories and are not distributed through Git.
+
+根 demo 的收尾浏览器检查另列于表中。本轮未重跑 Python、wheel、EXE 或原生窗口操作；此前 CLI、registry 和原生构建证据保留在下文，不能替代本轮验收。
+
+Root-demo browser checks are listed separately above. Python, wheel, EXE and native window actions were not rerun for this revision. Earlier CLI, registry and native-build evidence below does not certify this revision.
+
 ## 2026-10-09 0.1.1 发布与 registry 验收 / Publication and registry validation
 
 用户实际执行 `create-ewp@0.1.1` 与 `easywindowspack@0.1.1` 的 `npm publish`，两份均返回 `+` 成功。随后实际 registry 验证确认 **0.1.1 已发布且可用**：两包版本与哈希查询成功，哈希与归档匹配；`npm create ewp@latest` 创建及 Vue TS 项目安装、检查与前端构建冒烟全部通过。以下记录依据用户提供的实际执行结果。

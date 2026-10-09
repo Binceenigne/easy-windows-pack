@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-labelledby="ewp-dark-title">
+  <title id="ewp-dark-title">EWP 构筑核 · 深色版</title>
+  <desc>由三块圆角立方面拼合而成的图标，中心六边形及分隔间隙为透明镂空。</desc>
+  <defs>
+    <linearGradient id="ewp-dark-top" x1="98" y1="70" x2="411" y2="223" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#414A61"/>
+      <stop offset="1" stop-color="#333C52"/>
+    </linearGradient>
+    <linearGradient id="ewp-dark-left" x1="63" y1="178" x2="249" y2="479" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B465F"/>
+      <stop offset="1" stop-color="#30394F"/>
+    </linearGradient>
+    <linearGradient id="ewp-dark-right" x1="322" y1="180" x2="461" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3A455D"/>
+      <stop offset="1" stop-color="#30394F"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#ewp-dark-top)" d="M 241 31
+    C 250 26 262 26 271 31
+    L 423 120
+    C 439 129 439 148 423 158
+    L 324 216
+    Q 318 220 312 216
+    L 261 187
+    Q 256 184 251 187
+    L 200 216
+    Q 194 220 188 216
+    L 89 158
+    C 73 148 73 129 89 120 Z"/>
+  <path fill="url(#ewp-dark-left)" d="M 71 177
+    C 57 168 44 177 44 191
+    L 44 362
+    C 44 376 51 387 63 394
+    L 211 481
+    C 227 490 243 482 243 464
+    L 243 341
+    C 243 336 241 333 237 331
+    L 193 306
+    C 189 304 187 301 187 296
+    L 187 251
+    C 187 246 185 243 181 240 Z"/>
+  <path fill="url(#ewp-dark-right)" d="M 441 177
+    C 455 168 468 177 468 191
+    L 468 362
+    C 468 376 461 387 449 394
+    L 301 481
+    C 285 490 269 482 269 464
+    L 269 341
+    C 269 336 271 333 275 331
+    L 319 306
+    C 323 304 325 301 325 296
+    L 325 251
+    C 325 246 327 243 331 240 Z"/>
+</svg>

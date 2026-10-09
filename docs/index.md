@@ -10,7 +10,7 @@ easy-windows-pack 是 Python + pywebview + ESM 前端的可复用 Windows WebVie
 
 | 实现 | 路径 / 复用入口 | 职责与边界 |
 | --- | --- | --- |
-| 窗口示例页面 | [frontend/index.html](../frontend/index.html)、[main.js](../frontend/src/main.js)、[backend/src/demo.py](../backend/src/demo.py) | Vite 装配与宿主入口；旧 [src/index.html](../frontend/src/index.html) 为弃用兼容入口，不另计页面 |
+| 窗口示例页面 | [frontend/index.html](../frontend/index.html)、[main.js](../frontend/src/main.js)、[demo.css](../frontend/src/demo.css)、[backend/src/demo.py](../backend/src/demo.py) | Vite 风格 welcome；浅深色、中文/英文切换、计数、窗口外观/标题栏控制与资源入口，适配窄窗和低高度；旧 [src/index.html](../frontend/src/index.html) 为弃用兼容入口，不另计页面 |
 | 组件示例页面 | [frontend/src/components.html](../frontend/src/components.html)、[演示脚本](../frontend/src/components-demo.js) | 点阵、遮罩和进入动效的离线演示 |
 | window-frame | [标记](../frontend/components/titlebar/window-frame.html)、[样式](../frontend/components/titlebar/window-frame.css) | 标题栏、控制按钮、缩放句柄；`data-window-style` / `data-titlebar-mode` |
 | 点阵进度 | [desktop-components.js](../frontend/components/desktop/desktop-components.js) 的 `createMatrixProgress` | `value` / `remaining` 语义分离；更新与释放 |
@@ -40,7 +40,9 @@ easy-windows-pack 是 Python + pywebview + ESM 前端的可复用 Windows WebVie
 | Vue JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/vue/frontend/src/Frame.vue)、[TS Frame](../frontend/packages/create-ewp/templates/vue-ts/frontend/src/Frame.vue) | 模板自有组合层以 Teleport 保留 slot 与 props 响应式 |
 | React JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/react/frontend/src/Frame.jsx)、[TS Frame](../frontend/packages/create-ewp/templates/react-ts/frontend/src/Frame.tsx) | 模板自有组合层以 portal 保留 children、props 和事件 |
 
-共同资源来自 [common README](../frontend/packages/create-ewp/templates/common/README.md) 及 prepare 复制的 backend runtime / scripts；不单独维护复制实现。包的 [Vue 入口](../frontend/packages/easywindowspack/vue.mjs) / [React 入口](../frontend/packages/easywindowspack/react.mjs) 是可选公开适配，不作为额外 UI 实体计数，也不是所有宿主的规范。
+共同资源来自 [common README](../frontend/packages/create-ewp/templates/common/README.md) 及 prepare 复制的 backend runtime / scripts；不单独维护复制实现。六模板 welcome 均提供品牌图标、计数、窗口外观选择、源码编辑提示与资源链接，文案使用创建时所选语言，浅深色随系统偏好；根 demo 的语言/主题切换和标题栏模式控制不属于六模板的统一承诺。
+
+品牌 SVG 权威来源为 [ewp-color.svg](../frontend/src/assets/ewp-color.svg)、[ewp-dark.svg](../frontend/src/assets/ewp-dark.svg)、[ewp-mono.svg](../frontend/src/assets/ewp-mono.svg)。[prepare-npm.mjs](../scripts/prepare-npm.mjs) 将三者复制到 `frontend/packages/create-ewp/templates/common/frontend/src/assets/`；该生成目录由 [.gitignore](../.gitignore) 排除，不手工维护。新 welcome 属于本地源码改动，线上 **0.1.1 未包含本轮更新**，本轮不发布新版；本地证据见 [验收记录](npm-validation.md#2026-10-09-welcome-改版本地验收--local-welcome-validation)。包的 [Vue 入口](../frontend/packages/easywindowspack/vue.mjs) / [React 入口](../frontend/packages/easywindowspack/react.mjs) 是可选公开适配，不作为额外 UI 实体计数，也不是所有宿主的规范。
 
 ## 开发与分发
 

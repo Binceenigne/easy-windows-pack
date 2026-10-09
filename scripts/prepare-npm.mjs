@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-for (const source of ['startup.cmd', 'scripts/startup.cmd', 'scripts/dev.py']) {
+const brandIcons = ['ewp-color.svg', 'ewp-dark.svg', 'ewp-mono.svg'];
+for (const source of ['startup.cmd', 'scripts/startup.cmd', 'scripts/dev.py', ...brandIcons.map(name => `frontend/src/assets/${name}`)]) {
   if (!existsSync(join(root, source))) throw new Error(`Missing authoritative npm resource: ${source}`);
 }
 mkdirSync(join(root, 'output/npm'), { recursive: true });
@@ -20,6 +21,10 @@ for (const [source, name] of [
 const template = readFileSync(join(root, 'frontend/components/titlebar/window-frame.html'), 'utf8');
 writeFileSync(join(assets, 'frame-template.mjs'), `export const frameTemplate = ${JSON.stringify(template)};\n`);
 const common = join(root, 'frontend/packages/create-ewp/templates/common');
+const brandAssets = join(common, 'frontend/src/assets');
+rmSync(brandAssets, { recursive: true, force: true });
+mkdirSync(brandAssets, { recursive: true });
+for (const name of brandIcons) cpSync(join(root, 'frontend/src/assets', name), join(brandAssets, name));
 // Remove the previously generated launcher when preparing an existing checkout.
 rmSync(join(common, 'build.cmd'), { force: true });
 for (const [source, destination] of [

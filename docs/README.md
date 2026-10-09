@@ -2,6 +2,8 @@
 
 当前 npm/Vite 工作流见 [npm 验收记录 / npm validation](npm-validation.md)，只记录实际执行的证据；尚未实测的条目标为待验收。[目录迁移与构建验证 / Layout migration](build-validation.md) 为历史 migration checks，其通过数与旧 EXE 不证明新的 npm/Vite 工作流通过。
 
+最新 [welcome 本地验收 / Local welcome checks](npm-validation.md#2026-10-09-welcome-改版本地验收--local-welcome-validation) 为 npm 单测 **141 passed**、最终六模板 pack **8/8 passed**。本轮根 README / demo 与模板更新属于本地源码，线上原 0.1.1 尚未包含这些改动，本轮不发布新版；与此前 CLI / registry 发布记录分开阅读。Latest local checks cover the new source welcome; the original registry 0.1.1 remains unchanged, and no new release is published.
+
 # 开发文档 / Developer documentation
 
 根 `docs/` 是本项目开发文档与 AI 资源的维护中心。环境、命令、架构、迁移、设计细则与验收记录在这里维护；[index.md](index.md) 和 [design.md](design.md) 保留摘要与链接，[agent.md](agent.md) 声明项目根目录和按需读取路由。
@@ -15,7 +17,7 @@ Root `docs/` is the development documentation and AI resource center. Keep detai
 | [历史目录迁移 / Historical layout validation](build-validation.md) | legacy 目录迁移、开发菜单与旧产物证据 / Legacy migration, menu and artifact evidence |
 | [开发手册 / Development](development.md) | 初始化、双语菜单、浏览器预览、桌面调试、构建、日志和故障定位 / Setup, menu, preview, debugging, builds and troubleshooting |
 | [架构与迁移 / Architecture and migration](architecture.md) | 目录职责、依赖边界、公开包映射和旧路径迁移 / Ownership, dependencies, public package mapping and path migration |
-| [窗口外观 / Window styles](window-styles.md) | Windows/macOS 外观、token 来源及公共交互 / Appearance, token sources and shared interaction |
+| [窗口外观 / Window styles](window-styles.md) | Windows/macOS 外观、token、welcome 范围与品牌资产单源生成 / Appearance, tokens, welcome scope and authoritative brand assets |
 | [桌面集成 / Desktop integrations](desktop-integrations.md) | 可选宿主适配器、组件与更新接口契约 / Host adapters, components and update contracts |
 | [历史集成验收 / Historical integration validation](integration-validation.md) | 2026-09-18 的检查记录与当前复验入口 / Dated evidence and current reproduction entry points |
 | [历史集成清单 / Historical integration checklist](integration-todo.md) | 原集成任务范围和当时的未完成项 / Original task scope and historical outstanding work |

@@ -10,9 +10,14 @@
 | 语义 token | `--ewp-surface`、`--ewp-surface-strong`、`--ewp-border`、`--ewp-text`、`--ewp-muted`、`--ewp-accent`、`--ewp-close`；浅深色随 `prefers-color-scheme` | 同上；完整值以 CSS 为准 |
 | 图标与控件 | Windows 16×16 SVG、1.25px 描边；macOS 12px 彩色圆点、22px 点击区域，隐藏 SVG | [window-frame.html](../frontend/components/titlebar/window-frame.html) 与标题栏 CSS |
 | 组件样式 | 点阵、遮罩与进入动效使用带作用域的规则，支持减弱动画 | [desktop-components.css](../frontend/components/desktop/desktop-components.css) |
-| 示例 | 窗口页展示外观切换，组件页展示进度、遮罩和进入动画 | [Vite 窗口示例](../frontend/index.html)、[组件示例](../frontend/src/components.html) |
+| 根 welcome | Vite 风格居中品牌、计数与资源链接；浅深色/中英文切换、窗口控制，窄窗与低高度响应式布局 | [main.js](../frontend/src/main.js)、[demo.css](../frontend/src/demo.css) |
+| 六模板 welcome | 品牌、计数、外观选择、编辑提示与资源链接；创建时选定文案语言，浅深色随系统偏好 | [模板入口](index.md#npm-包与模板)、[共用 style.css](../frontend/packages/create-ewp/templates/common/frontend/src/style.css) |
+| 品牌图标 | 彩色 hero；浅色背景用 dark 标记、深色背景用 mono 标记，与标题栏操作 SVG 分别维护 | [color](../frontend/src/assets/ewp-color.svg)、[dark](../frontend/src/assets/ewp-dark.svg)、[mono](../frontend/src/assets/ewp-mono.svg) |
+| 组件示例 | 进度、遮罩和进入动画 | [组件示例](../frontend/src/components.html) |
 
 框架分发普通 CSS；业务样式推荐模块化 CSS/SCSS，SCSS 需自行编译。已有 Tailwind 项目检查 reset 影响。示例页面的品牌、背景和布局不是宿主应用的强制设计规范；优先组件公开变量与作用域覆盖。
+
+根 demo 以 `data-demo-theme` 与局部 `--demo-*` 变量实现主题，初始读取系统偏好后可手动切换，并映射已有 `--ewp-*` 表面/文字变量；模板使用 `--welcome-*` 与 `prefers-color-scheme`。两者均保留可见焦点和减弱动画支持。三份品牌 SVG 仅在 `frontend/src/assets/` 维护，prepare 复制到忽略的 common 生成目录，详见 [welcome 与资产规则](window-styles.md#welcome-页面与品牌资产)。本轮源码新设计尚未进入线上 0.1.1，验收范围见 [本地记录](npm-validation.md#2026-10-09-welcome-改版本地验收--local-welcome-validation)。
 
 ## npm 外壳与框架组合
 

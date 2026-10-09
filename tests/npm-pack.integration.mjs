@@ -231,10 +231,36 @@ async function newPage() {
   return { page, errors };
 }
 
-async function interact(page, expect, title) {
+async function interact(page, expect, title, template) {
   const frame = page.locator('[data-ewp-window-frame]');
   await expect(frame).toHaveCount(1);
   await expect(frame.locator('[data-ewp-title]')).toHaveText(title);
+  await expect(frame.locator('h1')).toHaveText('Your next desktop app.');
+  const editFile = template.startsWith('vue') ? 'App.vue' : template.startsWith('react')
+    ? `App.${template.endsWith('-ts') ? 'tsx' : 'jsx'}` : `main.${template.endsWith('-ts') ? 'ts' : 'js'}`;
+  const hint = `Edit frontend/src/${editFile} and save to try HMR.`;
+  await expect(frame.locator('.hint')).toHaveText(hint);
+  const images = frame.locator('[data-ewp-content] img');
+  await expect(images).toHaveCount(2);
+  const loadedImages = async colorScheme => {
+    await page.emulateMedia({ colorScheme });
+    const expectedBrand = colorScheme === 'dark'
+      ? new URL(await frame.locator('picture source').getAttribute('srcset'), page.url()).href
+      : await images.first().evaluate(image => image.src);
+    await expect.poll(() => images.first().evaluate(image => image.currentSrc)).toBe(expectedBrand);
+    await expect.poll(() => images.evaluateAll(elements => elements.every(image =>
+      image.complete && image.naturalWidth > 0 && image.naturalHeight > 0)),
+    { message: `${template}: rendered SVG images must load in ${colorScheme} mode` }).toBe(true);
+    return images.evaluateAll(elements => elements.map(image => ({
+      src: image.currentSrc, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight
+    })));
+  };
+  const lightImages = await loadedImages('light');
+  const darkImages = await loadedImages('dark');
+  assert.notEqual(lightImages[0].src, darkImages[0].src, 'Dark mode must select the monochrome brand asset');
+  assert.equal(lightImages[1].src, darkImages[1].src, 'The color hero asset must remain the same');
+  assert.equal(new Set([...lightImages, ...darkImages].map(image => image.src)).size, 3, 'All three SVG assets must render');
+  await loadedImages('light');
   const counter = frame.locator('[data-ewp-content] .counter');
   await expect(counter).toHaveText('Count: 0');
   await counter.click(); await counter.click();
@@ -256,6 +282,7 @@ async function interact(page, expect, title) {
     }
   }
   assert.deepEqual(await page.evaluate(start => window.__packActions.slice(start), start), ['minimize', 'maximize', 'maximize', 'close'], 'Exactly one stub API call per click');
+  return { heading: 'Your next desktop app.', hint, lightImages, darkImages };
 }
 
 // Consumer-only probes exercise the generated composition layers, not replacement
@@ -353,6 +380,13 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
         report.projects.push(record);
         try {
           await execute(process.execPath, [creator, `App ${template}`, '--lang', 'en', '--template', template, '--no-install', '--no-start'], root, `${template}-create`);
+          record.brandAssets = ['ewp-color.svg', 'ewp-dark.svg', 'ewp-mono.svg'].map(name => {
+            const path = join(frontend, 'src/assets', name);
+            const packedSource = join(harness, 'node_modules/create-ewp/templates/common/frontend/src/assets', name);
+            assert.ok(existsSync(path), `${template}: missing ${name}`);
+            assert.equal(hash(path), hash(packedSource), `${template}: ${name} differs from the packed template asset`);
+            return { name, sha256: hash(path), size: readFileSync(path).length };
+          });
           const manifestPath = join(frontend, 'package.json');
           for (const path of ['package.json', 'package-lock.json', 'vite.config.mjs', 'tsconfig.json', 'node_modules']) {
             assert.equal(existsSync(join(project, path)), false, `Root must not contain ${path}`);
@@ -389,7 +423,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
           const production = await newPage();
           try {
             await production.page.goto(preview.resolvedUrls.local[0]);
-            await interact(production.page, expect, manifest.name);
+            record.welcome = await interact(production.page, expect, manifest.name, template);
             assert.deepEqual(production.errors, [], `${template} production errors`);
             record.productionInteraction = 'passed';
           } finally { await production.page.close(); await closeServer(preview); }
@@ -406,7 +440,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
             consumer = await newPage();
             await consumer.page.goto(dev.resolvedUrls.local[0]);
             for (let cycle = 0; cycle < 3; cycle++) {
-              await interact(consumer.page, expect, manifest.name);
+              await interact(consumer.page, expect, manifest.name, template);
               await consumer.page.evaluate(() => { window.__packDetached = [...document.querySelectorAll('[data-ewp-action]')]; });
               await consumer.page.locator('#pack-unmount').click();
               await expect(consumer.page.locator('[data-ewp-window-frame]')).toHaveCount(0);
@@ -442,7 +476,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
               assert.equal(await consumer.page.evaluate(() => window.__packDocument), token, 'HMR reloaded the document');
               assert.equal(navigations, 0, 'HMR caused full-page navigation');
               record.hmrCountAfterEdit = await consumer.page.locator('.counter').textContent();
-              if (record.hmrCountAfterEdit !== 'Count: 1') report.findings.push(`${template}: HMR updates text without a full-page reload but resets the counter (${record.hmrCountAfterEdit}). Review Vue component HMR boundaries if state preservation is required.`);
+              await expect(consumer.page.locator('.counter')).toHaveText('Count: 1');
               // Separate editor writes beyond Chokidar's atomic-event coalescing
               // window. This is not a retry or a synthetic HMR watcher emit.
               await new Promise(resolveWrite => setTimeout(resolveWrite, 200));
@@ -450,6 +484,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
               await expect(consumer.page.locator('h1')).toHaveText('Your next desktop app.');
               assert.equal(await consumer.page.evaluate(() => window.__packDocument), token, 'HMR restore reloaded the document');
               assert.equal(navigations, 0, 'HMR restore caused full-page navigation');
+              await expect(consumer.page.locator('.counter')).toHaveText('Count: 1');
               consumer.page.off('framenavigated', navigation);
               record.hmr = 'text update and restore; zero full reloads';
             }
