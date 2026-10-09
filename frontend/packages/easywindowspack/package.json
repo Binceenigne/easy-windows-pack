@@ -1,6 +1,6 @@
 {
   "name": "easywindowspack",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shared WebView window frame and development CLI for easy-windows-pack",
   "type": "module",
   "license": "MIT",
@@ -17,7 +17,7 @@
   },
   "files": ["assets", "bin", "*.mjs", "*.d.ts", "LICENSE", "README.md"],
   "sideEffects": ["./assets/*.js", "./assets/*.css", "./desktop-components.mjs", "./desktop-updates.mjs"],
-  "dependencies": { "vite": "^7.3.7", "create-ewp": "^0.1.0" },
+  "dependencies": { "vite": "^7.3.7", "create-ewp": "^0.1.1" },
   "scripts": { "prepack": "node ../../../scripts/prepare-npm.mjs" },
   "repository": { "type": "git", "url": "git+https://github.com/Binceenigne/easy-windows-pack.git", "directory": "frontend/packages/easywindowspack" },
   "peerDependencies": { "react": ">=18", "react-dom": ">=18", "vue": ">=3.3" },

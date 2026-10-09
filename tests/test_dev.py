@@ -1,10 +1,11 @@
 """Focused CLI tests: no installs, package builds, or persistent servers."""
 from __future__ import annotations
 
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import http.client
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -24,6 +25,9 @@ SPEC.loader.exec_module(dev)
 
 class DevTests(unittest.TestCase):
     def setUp(self):
+        environment = patch.dict(os.environ, {"EWP_LANG": "", "EWP_DEV_URL": "", dev.REENTRY: ""})
+        environment.start()
+        self.addCleanup(environment.stop)
         self.temporary = tempfile.TemporaryDirectory(prefix="ewp dev tests ")
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
@@ -36,9 +40,10 @@ class DevTests(unittest.TestCase):
         npm_path.start()
         self.addCleanup(npm_path.stop)
 
-    def fake_package(self):
+    def fake_package(self, language="zh-CN"):
         (self.root / "frontend").mkdir(exist_ok=True)
-        (self.root / "frontend/package.json").write_text('{"scripts":{}}', encoding="utf-8")
+        (self.root / "frontend/package.json").write_text(
+            json.dumps({"scripts": {}, "ewp": {"language": language}}), encoding="utf-8")
 
     def fake_venv(self):
         python = dev.venv_python(self.root)
@@ -46,6 +51,233 @@ class DevTests(unittest.TestCase):
         python.touch()
         (self.root / ".venv/pyvenv.cfg").write_text("home = placeholder\n", encoding="utf-8")
         return python
+
+    def test_language_precedence_and_malformed_project_config(self):
+        self.fake_package("en")
+        self.assertEqual(dev.project_language(self.root), "en")
+        with patch.dict(os.environ, {"EWP_LANG": "zh-CN"}):
+            self.assertEqual(dev.project_language(self.root), "zh-CN")
+            self.assertEqual(dev.project_language(self.root, "en"), "en")
+        with patch.dict(os.environ, {"EWP_LANG": "invalid"}):
+            self.assertEqual(dev.project_language(self.root, "invalid"), "en")
+        manifest = self.root / "frontend/package.json"
+        for content in ('{', '[]', '{"ewp":null}', '{"ewp":{"language":"invalid"}}'):
+            manifest.write_text(content, encoding="utf-8")
+            self.assertEqual(dev.project_language(self.root), "zh-CN")
+        manifest.write_text('{"ewp":{"language":"en"}}', encoding="utf-8-sig")
+        self.assertEqual(dev.project_language(self.root), "en")
+        manifest.unlink()
+        self.assertEqual(dev.project_language(self.root), "zh-CN")
+
+    def test_help_and_parser_errors_use_only_selected_language(self):
+        for language, usage, help_label, error_label, opposite in (
+            ("zh-CN", "用法：", "显示帮助并退出", "错误", "show this help message"),
+            ("en", "usage:", "show this help message", "error", "显示帮助并退出"),
+        ):
+            self.fake_package(language)
+            for arguments in (["--help"], ["demo", "--help"], ["help", "demo"],
+                              ["--lang", language, "demo", "--help"],
+                              ["demo", "--help", f"--lang={language}"]):
+                with self.subTest(language=language, arguments=arguments):
+                    output = io.StringIO()
+                    with redirect_stdout(output), self.assertRaises(SystemExit) as error:
+                        dev.main(arguments, root=self.root)
+                    self.assertEqual(error.exception.code, 0)
+                    self.assertIn(usage, output.getvalue())
+                    self.assertIn(help_label, output.getvalue())
+                    self.assertNotIn(opposite, output.getvalue())
+            for arguments, zh, en in (
+                (["unknown"], "无效选项", "invalid choice"),
+                (["demo", "--unknown"], "无法识别的参数", "unrecognized arguments"),
+                (["browser", "--port", "abc"], "无效的整数值", "invalid int value"),
+                (["browser", "--port"], "需要一个参数值", "expected one argument"),
+                (["demo", "--lang", "invalid"], "无效选项", "invalid choice"),
+                (["demo", "--lang"], "需要一个参数值", "expected one argument"),
+            ):
+                with self.subTest(language=language, arguments=arguments):
+                    output = io.StringIO()
+                    with redirect_stderr(output), self.assertRaises(SystemExit) as error:
+                        dev.main(arguments, root=self.root)
+                    self.assertEqual(error.exception.code, 2)
+                    self.assertIn(usage, output.getvalue())
+                    self.assertIn(error_label, output.getvalue())
+                    self.assertIn(en if language == "en" else zh, output.getvalue())
+                    self.assertNotIn(zh if language == "en" else en, output.getvalue())
+
+    def test_last_language_override_and_context_are_not_leaked(self):
+        self.fake_package("en")
+        with patch.dict(os.environ, {"EWP_LANG": "en"}):
+            self.assertEqual(dev.main(["--lang=en", "info", "--lang", "zh-CN"], root=self.root), 0)
+            self.assertIn("项目目录", self.output.getvalue())
+            self.assertNotIn("Project root:", self.output.getvalue())
+            self.assertIsNone(dev.LANGUAGE.get())
+            self.assertEqual(os.environ["EWP_LANG"], "en")
+            self.output.seek(0)
+            self.output.truncate(0)
+            self.assertEqual(dev.main(["info"], root=self.root), 0)
+            self.assertIn("Project root:", self.output.getvalue())
+            self.assertNotIn("项目目录", self.output.getvalue())
+        self.assertEqual(dev.language_override(["--lang=en", "--", "--lang=zh-CN"]), "en")
+
+    def test_child_environment_preserves_dev_url_and_isolates_python(self):
+        self.fake_package("en")
+        with patch.dict(os.environ, {"PYTHONHOME": "foreign", "PYTHONPATH": "foreign",
+                                     "EWP_DEV_URL": "http://127.0.0.1:3210/", "CUSTOM_SETTING": "keep"}):
+            env = dev.child_environment(self.root)
+            self.assertNotIn("PYTHONHOME", env)
+            self.assertNotIn("PYTHONPATH", env)
+            self.assertEqual(env["EWP_LANG"], "en")
+            self.assertEqual(env["EWP_DEV_URL"], "http://127.0.0.1:3210/")
+            self.assertEqual(env["CUSTOM_SETTING"], "keep")
+            self.assertEqual(env["PYTHONUTF8"], "1")
+            with dev.language_context(self.root, "zh-CN"):
+                self.assertEqual(dev.child_environment(self.root)["EWP_LANG"], "zh-CN")
+            self.assertEqual(os.environ["PYTHONPATH"], "foreign")
+
+    def test_reentry_passes_selected_language_and_existing_dev_url(self):
+        self.fake_package("en")
+        self.fake_venv()
+        with patch.dict(os.environ, {"EWP_DEV_URL": "http://127.0.0.1:3210/"}), \
+                patch.object(dev, "in_project_venv", return_value=False), patch.object(dev, "run_command") as run:
+            self.assertEqual(dev.main(["demo", "--debug", "--lang=zh-CN"], root=self.root), 0)
+        self.assertEqual(run.call_args.args[0][-3:], ["demo", "--debug", "--lang=zh-CN"])
+        self.assertEqual(run.call_args.kwargs["env"]["EWP_LANG"], "zh-CN")
+        self.assertEqual(run.call_args.kwargs["env"]["EWP_DEV_URL"], "http://127.0.0.1:3210/")
+
+    def test_npm_tasks_and_aliases_delegate_once_without_python_reentry(self):
+        self.fake_package("en")
+        for task, arguments, expected in (
+            ("dev", ["--web", "--no-open", "--port", "3210"],
+             ["run", "dev", "--", "--port", "3210", "--web", "--no-open"]),
+            ("preview", [], ["run", "frontend:preview", "--", "--port", "0"]),
+            ("frontend:preview", ["--no-open"], ["run", "frontend:preview", "--", "--port", "0", "--no-open"]),
+            ("frontend:dev", [], ["run", "frontend:dev", "--", "--port", "0"]),
+            ("frontend:build", [], ["run", "frontend:build"]),
+            ("frontend", [], ["run", "frontend:build"]),
+        ):
+            with self.subTest(task=task), patch.object(dev, "reenter") as enter, \
+                    patch.object(dev, "run_command") as run:
+                self.assertEqual(dev.main([task, *arguments, "--lang=zh-CN"], root=self.root), 0)
+            enter.assert_not_called()
+            run.assert_called_once()
+            self.assertEqual(run.call_args.args[0], [self.npm, *expected])
+            self.assertEqual(run.call_args.kwargs["root"], self.root / "frontend")
+            self.assertEqual(run.call_args.kwargs["env"]["EWP_LANG"], "zh-CN")
+        for task in ("dev", "preview"):
+            with patch.object(dev, "run_npm") as run:
+                self.assertEqual(dev.main([task, "--port", "65536"], root=self.root), 1)
+            run.assert_not_called()
+
+    def test_full_build_alias_uses_the_same_python_stages(self):
+        with patch.object(dev.sys, "platform", "win32"), patch.object(dev, "reenter", return_value=False), \
+                patch.object(dev, "run_task") as run:
+            self.assertEqual(dev.main(["full-build", "--lang=en"], root=self.root), 0)
+        self.assertEqual([call.args[0] for call in run.call_args_list], ["test", "wheel", "exe", "bundle"])
+        self.assertIn("Full build", dev.parser(self.root, "en").format_help())
+
+    def test_build_defaults_to_exe_and_explicit_targets_dispatch_once(self):
+        for arguments, expected in (
+            (["build"], ["exe"]), (["build", "--exe"], ["exe"]),
+            (["build", "-e"], ["exe"]), (["build", "--wheel"], ["wheel"]),
+            (["build", "-w"], ["wheel"]),
+            (["build", "--all"], ["test", "wheel", "exe", "bundle"]),
+            (["build:all"], ["test", "wheel", "exe", "bundle"]),
+        ):
+            with self.subTest(arguments=arguments), patch.object(dev.sys, "platform", "win32"), \
+                    patch.object(dev, "reenter", return_value=False), patch.object(dev, "run_task") as run:
+                self.assertEqual(dev.main(arguments, root=self.root), 0)
+            self.assertEqual([call.args[0] for call in run.call_args_list], expected)
+        with patch.object(dev.sys, "platform", "linux"), patch.object(dev, "reenter", return_value=False), \
+                patch.object(dev, "run_task") as run:
+            self.assertEqual(dev.main(["build", "--wheel"], root=self.root), 0)
+        run.assert_called_once()
+        for language, expected in (("zh-CN", "不能与参数"), ("en", "not allowed with argument")):
+            output = io.StringIO()
+            with redirect_stderr(output), self.assertRaises(SystemExit) as error:
+                dev.main(["build", "--wheel", "--all", "--lang", language], root=self.root)
+            self.assertEqual(error.exception.code, 2)
+            self.assertIn(expected, output.getvalue())
+
+    def test_check_delegates_to_runtime_without_python_reentry(self):
+        self.fake_package("en")
+        with patch.object(dev, "reenter") as enter, patch.object(dev, "run_command") as run:
+            self.assertEqual(dev.main(["check"], root=self.root), 0)
+        enter.assert_not_called()
+        self.assertEqual(run.call_args.args[0], [self.npm, "run", "ewp", "--", "check"])
+        self.assertEqual(run.call_args.kwargs["env"]["EWP_LANG"], "en")
+
+    def test_explicit_menu_retains_language_for_selected_tasks(self):
+        self.fake_package("zh-CN")
+        with patch("builtins.input", side_effect=["bad", "10", "0"]) as prompt:
+            self.assertEqual(dev.main(["menu", "--lang=en"], root=self.root), 0)
+        output = self.output.getvalue()
+        self.assertIn("Development menu", output)
+        self.assertIn("Invalid choice", output)
+        self.assertIn("Project root:", output)
+        self.assertNotIn("开发菜单", output)
+        self.assertTrue(all(call.args[0] == "Select: " for call in prompt.call_args_list))
+
+    def test_metadata_cleanup_requires_verified_replacement_and_preserves_source(self):
+        legacy = self.root / "easy_windows_pack.egg-info"
+        current = self.root / "backend/base/easy_windows_pack.egg-info"
+        legacy.mkdir()
+        (legacy / "PKG-INFO").write_text("Name: easy-windows-pack\n", encoding="utf-8")
+        dev.cleanup_legacy_metadata(self.root)
+        self.assertTrue(legacy.is_dir())
+        current.mkdir(parents=True)
+        (current / "PKG-INFO").write_text("Name: easy-windows-pack\n", encoding="utf-8")
+        source = legacy / "keep.py"
+        source.write_text("# source", encoding="utf-8")
+        dev.cleanup_legacy_metadata(self.root)
+        self.assertTrue(source.is_file())
+        source.unlink()
+        (legacy / "PKG-INFO").write_text("Name: other-package\n", encoding="utf-8")
+        dev.cleanup_legacy_metadata(self.root)
+        self.assertTrue(legacy.is_dir())
+        (legacy / "PKG-INFO").write_text("Name: easy-windows-pack\n", encoding="utf-8")
+        dev.cleanup_legacy_metadata(self.root)
+        self.assertFalse(legacy.exists())
+        self.assertTrue((current / "PKG-INFO").is_file())
+
+    def test_init_failure_does_not_retire_legacy_metadata(self):
+        self.fake_venv()
+        with patch.object(dev, "run_command", side_effect=dev.DevError("failed", 19)), \
+                patch.object(dev, "cleanup_legacy_metadata") as cleanup:
+            self.assertEqual(dev.main(["init"], root=self.root), 19)
+        cleanup.assert_not_called()
+
+    @unittest.skipUnless(os.name == "nt", "Requires Windows junctions")
+    def test_metadata_cleanup_never_follows_a_root_junction(self):
+        external = self.root / "external"
+        external.mkdir()
+        (external / "PKG-INFO").write_text("Name: easy-windows-pack\n", encoding="utf-8")
+        current = self.root / "backend/base/easy_windows_pack.egg-info"
+        current.mkdir(parents=True)
+        (current / "PKG-INFO").write_text("Name: easy-windows-pack\n", encoding="utf-8")
+        legacy = self.root / "easy_windows_pack.egg-info"
+        subprocess.run(["cmd", "/d", "/c", "mklink", "/J", str(legacy), str(external)],
+                       check=True, capture_output=True)
+        try:
+            dev.cleanup_legacy_metadata(self.root)
+            self.assertTrue((external / "PKG-INFO").is_file())
+            self.assertTrue(legacy.exists())
+        finally:
+            legacy.rmdir()
+
+    def test_real_child_inherits_language_and_dev_url_without_logging(self):
+        self.fake_package("en")
+        marker = self.root / "child-env.json"
+        command = [sys.executable, "-c",
+                   "import json,os,pathlib,sys; pathlib.Path(sys.argv[1]).write_text("
+                   "json.dumps({key:os.environ.get(key) for key in "
+                   "('EWP_LANG','EWP_DEV_URL','PYTHONHOME','PYTHONPATH')}), encoding='utf-8')", str(marker)]
+        with patch.dict(os.environ, {"EWP_DEV_URL": "http://127.0.0.1:3210/", "PYTHONPATH": "foreign"}):
+            dev.run_command(command, root=self.root)
+        self.assertEqual(json.loads(marker.read_text(encoding="utf-8")), {
+            "EWP_LANG": "en", "EWP_DEV_URL": "http://127.0.0.1:3210/", "PYTHONHOME": None, "PYTHONPATH": None,
+        })
+        self.assertIn("Run:", self.output.getvalue())
+        self.assertNotIn("执行：", self.output.getvalue())
 
     def test_missing_environment_is_actionable_and_info_is_read_only(self):
         for command in ("demo", "wheel", "bundle", "test"):
@@ -116,10 +348,10 @@ class DevTests(unittest.TestCase):
             expected = self.root / "frontend" if call.args[0][0] == self.npm else self.root
             self.assertEqual(call.kwargs["root"], expected)
         text = self.output.getvalue()
-        for label in ("创建或复用环境 / Create or reuse environment", "检查解释器 / Check interpreter",
-                      "安装前端依赖 / Install frontend dependencies", "构建前端 / Build frontend",
-                      "安装开发依赖 / Install development dependencies"):
+        for label in ("创建或复用环境", "检查解释器", "安装前端依赖", "构建前端", "安装开发依赖"):
             self.assertIn(label, text)
+        self.assertNotIn("Starting:", text)
+        self.assertNotIn("Create or reuse environment", text)
         self.assertIn("5/5 100%", text)
 
     def test_init_reuses_environment_and_builds_frontend_before_pip(self):
@@ -156,7 +388,7 @@ class DevTests(unittest.TestCase):
                 self.assertEqual(run.call_count, expected_calls)
                 if failed_command != "pip":
                     self.assertFalse(any("pip" in call.args[0] for call in run.call_args_list))
-                self.assertIn(f"Failed or interrupted ({completed}/5)", self.output.getvalue())
+                self.assertIn(f"失败或中断（{completed}/5）", self.output.getvalue())
                 self.assertNotIn("100%", self.output.getvalue())
 
     def test_init_does_not_replace_broken_environment(self):
@@ -185,7 +417,7 @@ class DevTests(unittest.TestCase):
         with patch.object(dev.sys, "platform", "win32"), \
                 patch.object(dev, "reenter", return_value=False), \
                 patch.object(dev, "run_command", side_effect=run) as child:
-            self.assertEqual(dev.main(["build"], root=self.root), 7)
+            self.assertEqual(dev.main(["full-build"], root=self.root), 7)
         self.assertEqual([call.args[0] for call in child.call_args_list], [
             dev.task_command("test", self.root), [self.npm, "run", "frontend:build"],
             dev.task_command("wheel", self.root),
@@ -210,7 +442,7 @@ class DevTests(unittest.TestCase):
             patch.object(dev, "check_packager"), \
                 patch.object(dev, "reenter", return_value=False), \
                 patch.object(dev, "run_command") as run:
-            self.assertEqual(dev.main(["build"], root=self.root), 0)
+            self.assertEqual(dev.main(["full-build"], root=self.root), 0)
         commands = [call.args[0] for call in run.call_args_list]
         self.assertEqual(commands, [
             dev.task_command("test", self.root), [self.npm, "run", "frontend:build"],
@@ -255,13 +487,14 @@ class DevTests(unittest.TestCase):
         with patch.object(dev, "check_packager"), \
                 patch.object(dev, "prepare_exe_sources"), \
                 patch.object(dev, "run_command"):
-            with self.assertRaisesRegex(dev.DevError, "EXE artifact missing"):
+            with self.assertRaisesRegex(dev.DevError, "EXE 产物不存在或不可读"):
                 dev.run_task("exe", self.root, None)
 
     def test_non_windows_full_build_fails_before_starting(self):
         with patch.object(dev.sys, "platform", "linux"), patch.object(dev, "reenter") as enter:
             self.assertEqual(dev.main(["exe"], root=self.root), 1)
             self.assertEqual(dev.main(["build"], root=self.root), 1)
+            self.assertEqual(dev.main(["full-build"], root=self.root), 1)
         enter.assert_not_called()
         self.assertIn("Windows", self.output.getvalue())
 
@@ -286,7 +519,7 @@ class DevTests(unittest.TestCase):
 
     def test_frontend_failure_stops_demo_wheel_exe_and_full_build(self):
         self.fake_package()
-        for task in ("demo", "wheel", "exe", "build"):
+        for task in ("demo", "wheel", "exe", "build", "full-build"):
             with self.subTest(task=task):
                 self.output.truncate(0)
                 self.output.seek(0)
@@ -304,10 +537,10 @@ class DevTests(unittest.TestCase):
                     self.assertEqual(dev.main([task], root=self.root), 23)
                 check.assert_not_called()
                 stage.assert_not_called()
-                self.assertEqual(run.call_count, 2 if task == "build" else 1)
+                self.assertEqual(run.call_count, 2 if task == "full-build" else 1)
                 self.assertNotIn("100%", self.output.getvalue())
-                if task == "build":
-                    self.assertIn("Failed or interrupted (1/4)", self.output.getvalue())
+                if task == "full-build":
+                    self.assertIn("失败或中断（1/4）", self.output.getvalue())
 
     def test_exe_builds_frontend_before_packager_and_core_staging(self):
         events = []
@@ -360,7 +593,8 @@ class DevTests(unittest.TestCase):
                 patch.object(dev, "execute", side_effect=[7, 0]) as execute:
             self.assertEqual(dev.main([], root=self.root), 0)
             self.assertEqual(execute.call_count, 2)
-        self.assertIn("Task failed", self.output.getvalue())
+        self.assertIn("任务失败，可重试（退出码 7）", self.output.getvalue())
+        self.assertNotIn("Task failed", self.output.getvalue())
         with patch("builtins.input", side_effect=EOFError):
             self.assertEqual(dev.main([], root=self.root), 0)
 
@@ -369,9 +603,11 @@ class DevTests(unittest.TestCase):
         with patch.object(dev, "reenter") as enter, patch.object(dev, "make_server") as create, \
                 patch.object(dev, "run_command") as run:
             self.assertEqual(dev.main(["browser", "--no-open", "--port", "12345"], root=self.root), 0)
-            run.assert_called_once_with(
-                [self.npm, "run", "frontend:dev", "--", "--port", "12345", "--no-open"],
-                root=self.root / "frontend", log=None)
+            self.assertEqual(run.call_args.args[0],
+                             [self.npm, "run", "frontend:dev", "--", "--port", "12345", "--no-open"])
+            self.assertEqual(run.call_args.kwargs,
+                             {"root": self.root / "frontend", "log": None, "env": dev.child_environment(self.root)})
+            run.assert_called_once()
             enter.assert_not_called()
             create.assert_not_called()
             run.reset_mock()
@@ -392,7 +628,8 @@ class DevTests(unittest.TestCase):
         enter.assert_not_called()
         self.assertEqual(run.call_args.args[0], [self.npm, "run", "frontend:build"])
         self.assertEqual(run.call_args.kwargs["root"], self.root / "frontend")
-        self.assertIn("构建前端 / Build frontend", dev.LABELS["frontend"])
+        self.assertIn("构建前端", self.output.getvalue())
+        self.assertNotIn("Build frontend", self.output.getvalue())
         with patch("builtins.input", side_effect=[str(list(dev.LABELS).index("frontend") + 1), "0"]), \
                 patch.object(dev, "execute", return_value=0) as execute:
             self.assertEqual(dev.main([], root=self.root), 0)
@@ -406,11 +643,13 @@ class DevTests(unittest.TestCase):
                     patch.object(dev, "run_command") as run:
                 dev.build_frontend(self.root)
                 which.assert_called_once_with(executable)
-                run.assert_called_once_with([executable, "run", "frontend:build"], root=self.root / "frontend", log=None)
+                run.assert_called_once_with([executable, "run", "frontend:build"], root=self.root / "frontend",
+                                            log=None, env=dev.child_environment(self.root))
         with patch.object(dev.shutil, "which", return_value=None), patch.object(dev, "run_command") as run:
             self.assertEqual(dev.main(["frontend"], root=self.root), 1)
         run.assert_not_called()
-        self.assertIn("Missing npm", self.output.getvalue())
+        self.assertIn("缺少 npm，请安装 Node.js 并重新打开终端", self.output.getvalue())
+        self.assertNotIn("Missing npm", self.output.getvalue())
 
     def test_npm_requires_frontend_manifest_before_lookup_or_execution(self):
         # Neither a stale root manifest nor a workspace child is the frontend project.
@@ -419,7 +658,7 @@ class DevTests(unittest.TestCase):
         nested.mkdir(parents=True)
         (nested / "package.json").touch()
         with patch.object(dev.shutil, "which") as which, patch.object(dev, "run_command") as run:
-            with self.assertRaisesRegex(dev.DevError, "Missing frontend/package.json"):
+            with self.assertRaisesRegex(dev.DevError, "缺少 frontend/package.json"):
                 dev.run_npm(self.root, ["install"])
         which.assert_not_called()
         run.assert_not_called()
@@ -539,7 +778,61 @@ class DevTests(unittest.TestCase):
             cwd=self.root, capture_output=True, encoding="utf-8",
         )
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn("Port must be", result.stdout)
+        self.assertIn("端口必须为", result.stdout)
+
+    @unittest.skipUnless(os.name == "nt", "Requires Windows PowerShell")
+    def test_missing_python_startup_fallback_resolves_language_and_returns_failure(self):
+        scripts = self.root / "scripts"
+        scripts.mkdir()
+        source = (PROJECT_ROOT / "scripts/startup.cmd").read_bytes()
+        # Force just the executable probes to fail while exercising actual CMD/PowerShell logic.
+        source = source.replace(b"where py >nul 2>nul", b"cmd /d /c exit 1")
+        source = source.replace(b"where python >nul 2>nul", b"cmd /d /c exit 1")
+        launcher = scripts / "startup.cmd"
+        launcher.write_bytes(source)
+        for configured, inherited, arguments, selected in (
+            ("en", "", ["info"], "en"),
+            ("zh-CN", "", ["info"], "zh-CN"),
+            ("en", "zh-CN", ["info"], "zh-CN"),
+            ("zh-CN", "en", ["info"], "en"),
+            ("en", "en", ["info", "--lang", "zh-CN"], "zh-CN"),
+            ("zh-CN", "zh-CN", ["--lang=en", "info"], "en"),
+            ("en", "", ["info", "--lang=zh-CN", "--lang=en"], "en"),
+            ("en", "", ["info", "--lang=zh-CN", "--lang=invalid"], "en"),
+            ("en", "", ["info", "--", "--lang=zh-CN"], "en"),
+        ):
+            with self.subTest(configured=configured, inherited=inherited, arguments=arguments):
+                self.fake_package(configured)
+                env = os.environ.copy()
+                env["EWP_LANG"] = inherited
+                result = subprocess.run(["cmd.exe", "/d", "/c", str(launcher), *arguments],
+                                        cwd=PROJECT_ROOT, capture_output=True, encoding="utf-8", env=env)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stderr, "")
+                self.assertIn("startup.cmd init", result.stdout)
+                if selected == "en":
+                    self.assertIn("Python 3.10 or newer is required", result.stdout)
+                    self.assertNotIn("需要", result.stdout)
+                else:
+                    self.assertIn("需要 Python 3.10 或以上", result.stdout)
+                    self.assertNotIn("or newer is required", result.stdout)
+
+    @unittest.skipUnless(os.name == "nt", "Requires real Windows cmd.exe")
+    def test_startup_help_errors_and_explicit_menu_follow_language(self):
+        for language, usage, error_text, menu_text, opposite in (
+            ("zh-CN", "用法：", "无效选项", "开发菜单", "Development menu"),
+            ("en", "usage:", "invalid choice", "Development menu", "开发菜单"),
+        ):
+            for arguments, code, text in ((["demo", "--help"], 0, usage),
+                                          (["invalid"], 2, error_text),
+                                          (["menu"], 0, menu_text)):
+                with self.subTest(language=language, arguments=arguments):
+                    result = subprocess.run(
+                        ["cmd.exe", "/d", "/c", str(PROJECT_ROOT / "startup.cmd"), *arguments, "--lang", language],
+                        cwd=self.root, input="0\n", capture_output=True, encoding="utf-8")
+                    self.assertEqual(result.returncode, code, result.stdout + result.stderr)
+                    self.assertIn(text, result.stdout + result.stderr)
+                    self.assertNotIn(opposite, result.stdout + result.stderr)
 
     @unittest.skipUnless(os.name == "nt", "Requires Windows PowerShell")
     def test_powershell_demo_wrapper_propagates_child_failure(self):

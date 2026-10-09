@@ -2,6 +2,6 @@
 import { main } from '../lib/cli.mjs';
 
 main().then(code => { process.exitCode = code; }, error => {
-  console.error(`create-ewp: 错误 / Error: ${error.message}`);
-  process.exitCode = error.exitCode ?? 1;
+  console.error(`create-ewp: ${error.language === 'en' ? 'error' : '错误'}: ${error.message}`);
+  process.exitCode = Number.isInteger(error.exitCode) && error.exitCode > 0 ? error.exitCode : 1;
 });

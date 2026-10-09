@@ -20,7 +20,7 @@ easy-windows-pack = "easy_windows_pack.cli:main"
 
 [tool.setuptools]
 packages = ["easy_windows_pack"]
-package-dir = { easy_windows_pack = "backend/base/ewpcore" }
+package-dir = { "" = "backend/base", easy_windows_pack = "backend/base/ewpcore" }
 
 [tool.setuptools.data-files]
 "share/easy-windows-pack/frontend/frame/ewpframe" = ["frontend/frame/ewpframe/*.js"]

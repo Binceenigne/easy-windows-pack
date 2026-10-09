@@ -7,6 +7,7 @@
 | 路径 / Path | 职责与边界 / Responsibility and boundary |
 | --- | --- |
 | `backend/base/ewpcore/` | Python 框架：窗口配置、API、controller、Win32、可选托盘和宿主适配器；不依赖演示业务 / Python framework; no demo dependency |
+| `backend/base/*.egg-info/` | setuptools 安装/构建 metadata，已忽略，不是文档或源码 / Ignored setuptools installation/build metadata, not documentation or source |
 | `backend/src/` | 桌面入口与宿主装配，消费公开 `easy_windows_pack` API / Desktop entry points and host wiring using public APIs |
 | `frontend/frame/ewpframe/` | 窗口桥接、状态同步与更新客户端；通过公开宿主接口请求能力 / Window bridge, state synchronization and update client |
 | `frontend/components/titlebar/` | 标题栏标记、主题与 resize handle 样式 / Title bar markup, themes and resize styles |
@@ -28,15 +29,27 @@
 
 Dependencies flow from desktop demo to public Python package to pywebview / Win32, and from frontend pages to components / bridges to host APIs. The framework does not import demo code or copy host authorization, updater or restart logic. `WindowController` retains serialized JavaScript dispatch, minimize/hide deadlock avoidance and native drag/resize boundaries.
 
-frontend 内 npm workspace 为 private；npm 命令在 frontend 内执行，或从项目根使用 `npm --prefix frontend`。`easywindowspack@0.1.0` 依赖 `create-ewp@^0.1.0`，通过 `create-ewp/cli` 实现 `ewp create`。生成应用消费 `easywindowspack`，不是依赖原仓库。Vue >=3.3 / React >=18 是 runtime 的可选 peers；仅在实际使用对应入口或模板时加载。模板自有 Frame 包装层通过 Teleport / portal 组合业务 slot/children，不复制窗口状态机。
+frontend 内 npm workspace 为 private；npm 命令在 frontend 内执行，或从项目根使用 `npm --prefix frontend`。两包 **0.1.0 已发布，0.1.1 本地修订待发布**。runtime 通过依赖 `create-ewp/cli` 实现 `ewp create`；新生成项目消费 `easywindowspack@^0.1.1`，发布前需本地 tarball/依赖覆盖，不依赖原仓库。Vue >=3.3 / React >=18 是 runtime 的可选 peers；仅在实际使用对应入口或模板时加载。模板自有 Frame 包装层通过 Teleport / portal 组合业务 slot/children，不复制窗口状态机。
 
-The npm workspace under frontend is private. Run npm commands there, or use `npm --prefix frontend` from the project root. `easywindowspack@0.1.0` depends on `create-ewp@^0.1.0` and delegates `ewp create` to `create-ewp/cli`. Generated apps consume `easywindowspack`, not the original checkout. Vue >=3.3 / React >=18 are optional runtime peers, loaded only for the corresponding entry or template. Template-owned Frame layers compose slots/children through Teleport/portals without duplicating window state logic.
+The npm workspace under frontend is private. Run npm commands there, or use `npm --prefix frontend` from the project root. Both **0.1.0 packages are published; local 0.1.1 awaits release**. Runtime delegates `ewp create` to dependency `create-ewp/cli`. New apps consume `easywindowspack@^0.1.1`, requiring local tarballs/overrides until release rather than the original checkout. Vue >=3.3 / React >=18 are optional runtime peers, loaded only for the corresponding entry or template. Template-owned Frame layers compose slots/children through Teleport/portals without duplicating window state logic.
+
+0.1.1 创建时首先选择人类语言 `zh-CN` / `en`，保存到 frontend manifest 的 `ewp.language`，用于生成 README、AI 指引和 demo。自有 CLI 输出按 `--lang` → `EWP_LANG` → 保存值 → `zh-CN` 解析；临时覆盖不重写项目文件，第三方 npm/pip/Vite 日志原样输出。AI 布局只生成所选工具目录，各工具 Skill 读取 docs 共用内容，Claude 可独立选择；详见 [npm 指南](npm-vite.md)。
+
+In 0.1.1, human language `zh-CN` / `en` is the first creation choice, saved as `ewp.language` in the frontend manifest and used for README, AI guidance, and demo generation. First-party CLI output resolves `--lang` → `EWP_LANG` → saved value → `zh-CN`. Temporary overrides do not rewrite project files; npm/pip/Vite logs pass through unchanged. AI layout includes only selected tool directories; tool skills read shared docs content and Claude can be selected independently. See the [npm guide](npm-vite.md).
 
 ## 源码路径与公开包名 / Source path and public package name
 
-`backend/base/ewpcore/` 是源码存放位置，公开包名始终是 `easy_windows_pack`。`pyproject.toml` 使用 `package-dir` 将 `easy_windows_pack` 映射到 `backend/base/ewpcore`，可编辑安装和 wheel 均须保持该约定。不要把目录名 `ewpcore` 当作新的公开包名，也不要为恢复旧路径复制一份实现。
+`backend/base/ewpcore/` 是源码存放位置，公开包名始终是 `easy_windows_pack`。`pyproject.toml` 使用 `package-dir = { "" = "backend/base", easy_windows_pack = "backend/base/ewpcore" }`：空根映射定位 setuptools 安装 metadata，包名映射定位公开包源码，可编辑安装和 wheel 均须保持该约定。不要把目录名 `ewpcore` 当作新的公开包名，也不要为恢复旧路径复制一份实现。
 
-`backend/base/ewpcore/` is the source location; the public package remains `easy_windows_pack`. The `package-dir` mapping in `pyproject.toml` maps that name to the new source directory. Editable installs and wheels must preserve this contract. Do not publish `ewpcore` as a replacement import or copy implementation files back to the old location.
+`backend/base/ewpcore/` is the source location; the public package remains `easy_windows_pack`. `pyproject.toml` uses `package-dir = { "" = "backend/base", easy_windows_pack = "backend/base/ewpcore" }`: the empty-root mapping locates setuptools installation metadata, while the package-name mapping locates public package source. Editable installs and wheels must preserve this contract. Do not publish `ewpcore` as a replacement import or copy implementation files back to the old location.
+
+旧根 `easy_windows_pack.egg-info/` 迁移到 `backend/base/easy_windows_pack.egg-info/`；生成应用则使用自身分发名。它记录 PKG-INFO、依赖、入口与文件清单，是安装/构建生成物，不属于 docs。仓库 `*.egg-info/` 规则在任意目录忽略它，source bundle 也排除；不要手工编辑或提交。旧根缓存不是新约定的源码位置，metadata 的实际迁移/重建由安装与主维护流程完成。
+
+The old root `easy_windows_pack.egg-info/` moves to `backend/base/easy_windows_pack.egg-info/`; generated apps use their own distribution names. It contains PKG-INFO, dependency, entry-point, and file-list metadata produced by installation/builds, not docs. The repository's `*.egg-info/` rule ignores it at any depth and source bundles exclude it. Do not hand-edit or commit it. Old root cache is not the new source location; installation and the main maintenance workflow handle metadata relocation/regeneration.
+
+`.venv/Lib/site-packages/*.dist-info/` 是 pip 安装 wheel（包括现代 editable 安装）后正常生成的分发元数据，可与源码树中的 egg-info 共存。它不表示旧路径迁移失败，不应搬到 docs 或提交；`.venv/` 整体属于本地环境。
+
+`.venv/Lib/site-packages/*.dist-info/` is normal distribution metadata created by pip wheel installations, including modern editable installs. It can coexist with source-tree egg-info and does not indicate a failed migration. Do not move it into docs or commit it; the entire `.venv/` is a local environment.
 
 ```python
 from easy_windows_pack import WindowConfig, create_window
@@ -73,6 +86,7 @@ The left column is historical migration information, not an active path. Python 
 | 根 `build.cmd`、`build.ps1`、`build-demo.ps1` | `scripts/` 内对应文件；根启动使用 `startup.cmd` / Wrappers under scripts; root launcher is startup.cmd |
 | 根 `.agents/`、`.claude/`、`.easy-dev/` | `docs/.agents/`、`docs/.claude/`、`docs/.easy-dev/` |
 | 根 `agent.md`、`index.md`、`design.md` | `docs/agent.md`、`docs/index.md`、`docs/design.md` |
+| 根 `easy_windows_pack.egg-info/` | `backend/base/easy_windows_pack.egg-info/`，Python 安装 metadata，忽略 / Ignored Python installation metadata |
 
 ## 静态资源与打包 / Static resources and packaging
 
@@ -84,13 +98,13 @@ Vite starts from `frontend/index.html` and builds into `output/frontend/` with `
 
 Framework wheel metadata distributes core and source components/bridges/contracts under `share/easy-windows-pack/frontend/`; generated app wheel metadata distributes compiled pages/assets. Validate both independently. EXEs start from `backend/src/demo.py`, include only compiled `output/frontend/` as frontend resources, and resolve PyInstaller-extracted paths. Source bundles retain backend, frontend (including packages and configuration), scripts, docs and relevant entries. Inspect actual artifacts against their metadata and packaging lists.
 
-`scripts/prepare-npm.mjs` 将 titlebar/components/frame 的权威资源生成到 `frontend/packages/easywindowspack/assets`，把 backend core、`scripts/dev.py`、根 `startup.cmd`、`scripts/startup.cmd`、LICENSE 复制到 `frontend/packages/create-ewp/templates/common`。六模板组合这些 prepared 资源与 common README；运行生成器不回读原仓库。复制的 runtime/script/assets 不手工维护；包根和 common 的说明文档按自身职责维护。公开 npm 名称与发布状态未确认；顺序和用户手动发布边界见 [npm 指南](npm-vite.md)。
+`scripts/prepare-npm.mjs` 将 titlebar/components/frame 的权威资源生成到 `frontend/packages/easywindowspack/assets`，把 backend core、`scripts/dev.py`、根 `startup.cmd`、`scripts/startup.cmd`、LICENSE 复制到 `frontend/packages/create-ewp/templates/common`。六模板组合 prepared 资源，并按语言把 common README.md / README.en.md 输出为项目 README.md；运行生成器不回读原仓库。复制的 runtime/script/assets 不手工维护；包根和 common 的说明文档按自身职责维护。npm 0.1.0 已发布，0.1.1 待发布；版本与 pack 由主维护流程准备，发布由用户手动执行，见 [npm 指南](npm-vite.md)。
 
-Preparation generates runtime assets from authoritative titlebar/components/frame sources and copies backend core, development script, menu and license into generator common resources. All six templates compose these with the common README without reading the original checkout at generation time. Generated runtime/script/assets copies are not hand-maintained; package and common documentation retain their own ownership. Public npm names/publication are unverified; see the [npm guide](npm-vite.md) for ordering and user-operated publishing.
+Preparation generates runtime assets from authoritative titlebar/components/frame sources and copies backend core, development script, menu and license into generator common resources. All six templates compose them with common README.md / README.en.md, emitting the selected language as project README.md without reading the original checkout at generation time. Generated runtime/script/assets copies are not hand-maintained; package and common documentation retain their own ownership. npm 0.1.0 is published; 0.1.1 awaits release. The main maintenance workflow prepares versions and packs; the user publishes manually. See the [npm guide](npm-vite.md).
 
-`npm run build` 默认 EXE，通过 `-- -w` / `-- --wheel` 选择 wheel；裸 `-w` 是 npm workspace 选项。开发菜单 `build` 保留测试 + wheel + EXE + bundle，底层 CLI `build` 保持测试 + wheel + bundle。产物进入 `output/` 分类目录，PyInstaller spec / 工作缓存进入 `build/`。详见[开发手册](development.md)。
+项目 `build` 默认 EXE，通过 `--wheel` / `-w` 选择 wheel；npm 传参需 `--`，裸 `-w` 是 npm workspace 选项。完整链用 `full-build` / `build --all` / `npm run build:all` 执行测试 + wheel + EXE + bundle；底层 Python CLI `build` 保持测试 + wheel + bundle，不含 EXE。全局 `ewp` 无参数显示帮助，`ewp menu` / 根 startup.cmd 无参数打开菜单；未全局安装从根用 `npm --prefix frontend run ewp -- <task>`。产物进入 `output/` 分类目录，PyInstaller spec / 工作缓存进入 `build/`。详见[开发手册](development.md)。
 
-`npm run build` defaults to EXE; `-- -w` / `-- --wheel` selects wheel, while bare `-w` belongs to npm workspace options. Menu `build` retains tests + wheel + EXE + bundle; low-level CLI `build` remains tests + wheel + bundle. Artifacts use categorized `output/` directories; PyInstaller specs/caches use `build/`. See [development](development.md).
+Project `build` defaults to EXE; `--wheel` / `-w` selects wheel. npm arguments follow `--`; bare `-w` belongs to npm workspace selection. `full-build`, `build --all`, and `npm run build:all` run tests + wheel + EXE + bundle. Low-level Python CLI `build` retains tests + wheel + bundle without EXE. Global `ewp` without arguments shows help; `ewp menu` or root startup.cmd without arguments opens the menu. Without global installation, use `npm --prefix frontend run ewp -- <task>` from the root. Artifacts use categorized `output/` directories; PyInstaller specs/caches use `build/`. See [development](development.md).
 
 ## 迁移核对与文档维护 / Migration verification and documentation
 

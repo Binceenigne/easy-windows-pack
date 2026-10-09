@@ -2,569 +2,243 @@
 
 # easy-windows-pack
 
-### Reusable Windows WebView desktop window framework
+Build your UI with web technologies, connect desktop features with Python, and package a Windows app.
 
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![pywebview](https://img.shields.io/badge/pywebview-5.4%2B-0f766e)](https://pywebview.flowrl.com/)
-[![Version](https://img.shields.io/badge/version-0.2.1-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
+[![easywindowspack](https://img.shields.io/npm/v/easywindowspack?label=easywindowspack)](https://www.npmjs.com/package/easywindowspack)
+[![create-ewp](https://img.shields.io/npm/v/create-ewp?label=create-ewp)](https://www.npmjs.com/package/create-ewp)
+[![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Windows](https://img.shields.io/badge/platform-Windows-0078D4)](https://www.microsoft.com/windows)
 
-[中文](README.md) · [English](README.en.md) · [npm / Vite guide](docs/npm-vite.md) · [Developer docs](docs/README.md) · [Build tool](#build-tool) · [Architecture](#architecture)
+[中文](README.md) · **English** · [Documentation](docs/README.md) · [npm / Vite guide](docs/npm-vite.md)
 
 </div>
 
-`easy-windows-pack` is a reusable Windows + pywebview window frame. It extracts title bars, window buttons, native dragging, Aero Snap, Snap Layouts, and eight-way resizing from the business application.
+`easy-windows-pack` is a Windows WebView framework built with Python, pywebview, and an ESM frontend. It supplies a reusable window frame and development/build tools so you can maintain application UI and desktop capabilities separately.
 
-## Architecture
+- **Use a familiar frontend**: Vanilla, Vue, or React, each with JavaScript and TypeScript templates.
+- **Start with desktop controls**: Windows/macOS appearances, native/default/compact title bars, window buttons, dragging, edge resizing, and Windows Snap.
+- **Develop and distribute**: Vite hot updates, a Python application API bridge, Windows single-file EXEs, and wheel builds.
+- **Add features as needed**: System tray, matrix progress, boot curtain, entrance animation, and host update adapters.
 
-![easy-windows-pack architecture](docs/images/architecture.svg)
+Both npm packages are published at **0.1.0**: `create-ewp` provides the `npm create ewp` scaffolder; `easywindowspack` provides the frontend runtime, CSS, and `ewp` CLI. Source npm manifests and the lockfile are aligned at **0.1.1, not yet published**. New language selection, help, menu, and full-build commands below belong to that revision; registry `latest` is currently 0.1.0. The Python distribution is named `easy-windows-pack`, with source version **0.2.1**, installed from local source by the project's `init` command.
 
-The browser frame sends commands through the pywebview API. `WindowController` owns lifecycle and state, while `win32.py` delegates non-client dragging, resizing, Snap behavior, and topmost state to Windows.
+## Requirements
 
-Root [docs/](docs/README.md) is the development documentation center. Read the
-[development guide](docs/development.md) for setup, preview and builds, and the
-[architecture and migration guide](docs/architecture.md) for directory boundaries.
-[Implementation](docs/index.md), [design](docs/design.md) and [AI routing](docs/agent.md) also live under docs. Root AGENTS.md / CLAUDE.md are standard thin entries that explicitly load skills under docs; these skills are outside default tool discovery locations.
+| Task | Requirements |
+| --- | --- |
+| Project creation, browser development, frontend compilation | Node.js **>=22.12.0**, npm |
+| Desktop development, Python tests, native packaging | Python **>=3.10** |
+| Windows desktop execution | Windows + [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) |
 
-## Repository layout
+Enable the Windows `py` launcher when installing Python. The macOS appearance is a window UI theme; EXE packaging targets Windows.
 
-```text
-easy-windows-pack/
-├── backend/
-│   ├── base/ewpcore/     # Framework source; public package: easy_windows_pack
-│   └── src/demo.py       # Desktop demo and host wiring
-├── frontend/
-│   ├── frame/ewpframe/   # window-frame.js and desktop-updates.js bridges
-│   ├── components/
-│   │   ├── titlebar/     # window-frame.html / .css
-│   │   └── desktop/      # desktop-components.js / .css
-│   ├── index.html       # Vite primary page
-│   ├── src/             # main.js, component demo; deprecated old index.html
-│   ├── contracts/       # TypeScript contracts and integration notes
-│   ├── packages/
-│   │   ├── easywindowspack/ # ESM runtime, CSS, wrappers and ewp CLI
-│   │   └── create-ewp/  # Interactive generator, common and six templates
-│   ├── package.json     # Private npm workspace
-│   ├── package-lock.json # Lockfile; dependencies installed here
-│   └── vite.config.mjs  # Vite ^7.3.7; relative production URLs
-├── docs/                # Documentation and AI resources
-│   ├── agent.md         # AI routing; project root is the parent of docs
-│   ├── index.md         # Implementation summary
-│   ├── design.md        # Design summary
-│   ├── .agents/skills/easy-dev/ # Single skill source
-│   ├── .claude/skills/easy-dev/ # Thin Claude router
-│   └── .easy-dev/       # Install state; generated AI guidance is opt-in
-├── scripts/             # startup.cmd, dev.py, build.cmd, build.ps1, build-demo.ps1
-│   └── prepare-npm.mjs  # Single-source npm resource generation
-├── tests/               # Python and browser tests
-├── .github/workflows/   # CI
-├── output/              # frontend/, wheels/, exe/, bundles/, npm/, logs/
-├── build/               # spec/, pyinstaller/ and other build caches
-├── startup.cmd          # Only root launcher → scripts/startup.cmd → scripts/dev.py
-├── AGENTS.md            # Standard thin entry → docs/agent.md
-├── CLAUDE.md            # Standard thin entry → docs/agent.md and Claude router
-└── pyproject.toml
-```
+## Create your first app
 
-The source directory name `ewpcore` does not change public imports. Continue using
-`from easy_windows_pack import ...`; `pyproject.toml` maps that package to
-`backend/base/ewpcore` through `package-dir`. Reinstall the editable checkout after
-migration; do not switch public imports to `ewpcore`.
-
-## Features
-
-- Native, default custom, and minimal custom title bars
-- Minimize, maximize/restore, and close controls
-- Native Windows dragging through `HTCAPTION`
-- Restore-while-dragging behavior for maximized windows
-- Aero Snap and Windows 11 Snap Layouts
-- Eight-way native edge and corner resizing
-- Always-on-top, hide/show, and window-size helpers
-- Optional close-to-hide lifecycle
-- Business API delegation through one pywebview `js_api`
-- Framework-free HTML/CSS/JavaScript frontend assets
-- Private npm workspaces, ESM `easywindowspack@0.1.0` / `ewp` CLI, Vite HMR and six Vanilla / Vue / React templates in JS / TS
-- Bilingual development menu, compatible CLI / PowerShell wrappers, wheel, single-file EXE, source bundle, and GitHub Actions CI
-
-## npm quick start
-
-Require Node.js **>=22.12.0**, **Python >=3.10** for desktop initialization and packaging, and **WebView2** for Windows desktop. The npm workspace under frontend is private. Both npm packages are version `0.1.0`, independently of Python `easy-windows-pack@0.2.1`.
-
-**Publication is not verified.** The publisher must confirm availability and ownership of the public names `create-ewp` / `easywindowspack`. These registry commands are for use after both packages are published; global installation is optional:
+Open a terminal in the directory where you want to create a project. No global installation is required:
 
 ```powershell
 npm create ewp@latest
-npm create ewp@latest "My App" -- --template react-ts --no-install --no-start
 ```
 
-Prompts select project name, Vanilla / Vue / React, JavaScript / TypeScript, AI tools, installation and startup. AI selection defaults to none; codex / claude / copilot can be selected together. Selected resources live under docs with only the selected tools' standard thin entries; see [AI resource layout](docs/npm-vite.md#ai-资源布局--ai-resource-layout). Alternatively, after publication run `npm install -g easywindowspack`, then `ewp create`, which delegates to dependency `create-ewp/cli`. See the [bilingual guide](docs/npm-vite.md) for local generation before publication, tarball validation and manual publication order.
+**Version note: this command currently fetches published 0.1.0.** To use the new flow below today, use the local 0.1.1 generator and runtime tarballs. Upgrade `create-ewp` and `easywindowspack` after release. See the [npm / Vite guide](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation) for local use; current `latest` does not provide the new language options.
 
-Run all npm development/build commands below inside frontend in the checkout or generated project (first run `cd frontend` from the project root). From the project root, use `npm --prefix frontend`, for example `npm --prefix frontend run dev`:
+In 0.1.1, the first prompt selects the **human language**: Simplified Chinese `zh-CN` or English `en`. Then choose a project name, framework, programming language (JavaScript / TypeScript), optional AI tools, and whether to install dependencies, initialize Python, and launch the desktop. AI tools default to none; installation and startup also default to off.
+
+After publication, use these **0.1.1 commands** for a fixed configuration; until then, follow the source workflow linked above. Pass generator options after npm's `--` separator; `--lang` skips the first language prompt:
 
 ```powershell
+npm create ewp@0.1.1 my-app -- --lang zh-CN --template react-ts --ai codex,claude --no-install --no-start --yes
+npm create ewp@0.1.1 my-vue-app -- --lang en --template vue-ts --ai claude --no-install --no-start --yes
+```
+
+Then enter the generated project's **frontend** directory. The example uses `my-app`; for the Vue example, use `my-vue-app/frontend`:
+
+```powershell
+cd my-app/frontend
 npm install
 npm run init
 npm run dev
-# Browser only, without desktop startup
-npm run dev -- --web
-npm run frontend:dev
 ```
 
-`init` creates/reuses Python `.venv` and installs Python development and npm dependencies. `dev` starts Vite/HMR on a dynamic loopback port and passes the actual URL via `EWP_DEV_URL` to pywebview with debug enabled. Browser mode needs no Python and has no real native window bridge. The primary entry is [frontend/index.html](frontend/index.html); [frontend/src/index.html](frontend/src/index.html) is a deprecated compatibility entry.
+`init` creates or reuses the root `.venv`, installs npm/Python development dependencies, and builds the frontend. Manual environment activation is unnecessary. Skip installation or initialization steps already completed by the generator; if it already launched the desktop, there is no need to run `dev` again.
+
+`dev` starts Vite and the desktop window with frontend hot updates. Use the local URL printed in the terminal; the port is assigned dynamically. Ctrl+C stops the service and desktop process.
+
+For browser UI work, install npm dependencies and run `npm run frontend:dev`; **Python is unnecessary**. Browser previews cover appearance and frontend interaction. Verify native dragging, resizing, Snap, tray, and the Python bridge in the desktop app.
+
+The destination must be empty, including no `.git`. `--yes` skips generator prompts and defaults to project name `ewp-app`, template `vanilla`, no AI tools, no installation, and no startup. Language follows the priority below, falling back to `zh-CN`. `--install` installs npm dependencies only; `--start` also initializes Python and launches the desktop, and cannot be combined with `--no-install`.
+
+You can also install the CLI globally. The current registry installation is 0.1.0; new usage requires a local 0.1.1 tarball or an upgrade after release:
 
 ```powershell
-npm run frontend:build
+npm install -g easywindowspack
+ewp create
+```
+
+After 0.1.1 is published, upgrade the global CLI with `npm install -g easywindowspack@0.1.1` and existing projects with `npm install easywindowspack@^0.1.1` inside frontend. Updating dependencies does not add missing scripts or rewrite old READMEs or AI guidance. See the [development guide](docs/development.md#菜单与命令--menu-and-commands) for the complete task mapping.
+
+## Project language
+
+Creation saves the selected language as `ewp.language` in `frontend/package.json`. Commands resolve language in this order: **explicit `--lang` → `EWP_LANG` environment variable → saved project value → `zh-CN`**. In an existing project, `--lang` overrides only that invocation and leaves the saved value intact:
+
+```powershell
+npm run help -- --lang en
+npm run ewp -- info --lang zh-CN
+ewp menu --lang en
+```
+
+Generated READMEs, AI guidance, and demo text use the creation language. After language selection, first-party CLI help, menus, prompts, and task messages use one selected language. **npm's `Ok to proceed?` prompt and third-party npm, pip, and Vite logs retain their original output.** The generator's `--yes` does not control npm's own confirmation. A temporary CLI override does not rewrite existing READMEs, AI files, demos, or application text. Edit `ewp.language` to change the default for future commands.
+
+## Templates and AI guidance
+
+| Framework | JavaScript | TypeScript |
+| --- | --- | --- |
+| Vanilla | `vanilla` | `vanilla-ts` |
+| Vue | `vue` | `vue-ts` |
+| React | `react` | `react-ts` |
+
+AI guidance is opt-in; select multiple tools with `--ai codex,claude,copilot`:
+
+| Selection | Standard entry | Skill / shared guidance |
+| --- | --- | --- |
+| Codex | Root `AGENTS.md` | `docs/.agents/skills/easy-dev/SKILL.md` |
+| Claude | Root `CLAUDE.md` | `docs/.claude/skills/easy-dev/SKILL.md` |
+| Copilot | `.github/copilot-instructions.md` | Reads shared guidance and skill directly |
+| Any tool | Entries for selected tools only | `docs/.easy-dev/agent.md` and `docs/.easy-dev/skills/easy-dev/SKILL.md` |
+
+Both Codex and Claude skills route to the shared skill, which reads `docs/.easy-dev/agent.md`. Selecting only Claude creates neither `AGENTS.md` nor `docs/.agents/`. No AI entries or resources are created when none are selected. Standard entries explicitly direct tools to read skills under docs.
+
+## Project layout and application code
+
+These are the main directories of a **generated app**. Dependencies, environments, and outputs appear after installation or building:
+
+```text
+my-app/
+├─ frontend/
+│  ├─ src/                  # Application UI and styles
+│  ├─ index.html            # Vite page entry
+│  ├─ package.json
+│  ├─ vite.config.mjs
+│  └─ node_modules/         # Created by npm installation
+├─ backend/
+│  ├─ src/demo.py           # Desktop entry and application API
+│  └─ base/                # Shared Python runtime and installation metadata
+│     ├─ ewpcore/
+│     └─ *.egg-info/       # Generated by Python installation/build; ignored
+├─ scripts/                # Development and packaging tools
+├─ startup.cmd             # Windows project menu
+├─ pyproject.toml
+├─ docs/                   # Guidance created when AI is selected
+├─ .venv/                  # Python environment created by init
+└─ output/                 # Compiled assets, packages, and logs
+```
+
+The frontend package, Vite/TypeScript configuration, lockfile, and npm dependencies belong in `frontend/`. Run npm commands there. From the project root, use `--prefix frontend`, for example `npm --prefix frontend run dev`.
+
+Start your UI in Vanilla's `src/main.js` / `main.ts`, Vue's `src/App.vue`, or React's `src/App.jsx` / `App.tsx`, all relative to frontend. Add Python application methods in `backend/src/demo.py`; the public import name remains `easy_windows_pack`. Keep window internals in `backend/base/ewpcore/` and tools in `scripts/`.
+
+`backend/base/*.egg-info/` is setuptools installation/build metadata, outside docs; do not maintain or commit it. `.venv/Lib/site-packages/*.dist-info/` is normal installed-package metadata and should not be committed either. See [Architecture](docs/architecture.md#源码路径与公开包名--source-path-and-public-package-name) for package mapping, ignore rules, and old caches.
+
+## Everyday development commands
+
+Run these commands inside `frontend/`:
+
+| Command | Purpose |
+| --- | --- |
+| `npm run help` | Show first-party CLI help |
+| `npm run info` | Show Node, project paths, frontend configuration, and the `.venv` path |
+| `npm run menu` | Open the project task menu |
+| `npm run ewp -- <task> [options]` | Invoke any CLI task directly |
+| `npm run init` | Initialize/reuse the Python environment and install dependencies |
+| `npm run dev` | Vite + Python desktop development |
+| `npm run dev -- --web` | Browser development only |
+| `npm run browser` / `npm run frontend:dev` | Browser development without Python |
+| `npm run frontend` / `npm run frontend:build` | Compile into `output/frontend/` without Python |
+| `npm run frontend:preview` | Preview compiled assets; run frontend:build first |
+| `npm run demo -- --debug` | Build and launch desktop with developer tools, without HMR |
+| `npm run wheel` / `npm run build:wheel` | Build a Python wheel |
+| `npm run exe` / `npm run build:exe` / `npm run build` | Build a Windows EXE |
+| `npm run bundle` | Build a source bundle |
+| `npm run build:all` / `npm run full-build` | test → wheel → exe → bundle |
+| `npm run typecheck` | Type checking in TypeScript templates |
+| `npm test` | Run project Python tests after init |
+| `npm run check` | Node runtime exports/config checks |
+
+The checkout and newly generated apps expose all general tasks above; `typecheck` is specific to TypeScript templates. Generated templates include `tests/npm-runtime.test.mjs`. Run `npm run check` inside frontend, or `ewp check` / `startup.cmd check` at the project root, for three Node runtime exports/config checks: public API/CSS, Vite configuration, and application manifest/HTML entry points.
+
+With the CLI installed globally, `ewp` with no arguments and `ewp -h` / `ewp --help` show help; `ewp create -h` shows creation help without an existing project. Run `ewp menu` or `ewp <task>` from the project root. Without a global installation, use `npm --prefix frontend run menu` or `npm --prefix frontend run ewp -- <task>` from the root, or the commands above inside frontend.
+
+Double-click the root `startup.cmd` or run `.\startup.cmd` for the menu. It delegates to `scripts/startup.cmd` and `scripts/dev.py` and needs Python. Menu tasks also run directly, for example `.\startup.cmd demo --debug`. Use `.\startup.cmd help` for help and `.\startup.cmd info` for the actual Python interpreter and output directories. Opening `ewp menu` itself requires no prior Python initialization. See [Development](docs/development.md) for the full mapping and troubleshooting.
+
+## Builds and outputs
+
+```powershell
 npm run build
 npm run build -- -w
 npm run build -- --wheel
 npm run build -- -e
+npm run build:all
 ```
 
-Frontend compilation targets `output/frontend/` with relative production asset URLs. `build` defaults to Windows EXE; `-w` / `--wheel` selects wheel and `-e` explicitly selects EXE. **Put npm script arguments after `--`; bare `-w` is npm workspace selection.** Python/PyInstaller packages the EXE with compiled frontend assets only. Framework wheels retain core and source component/bridge assets; generated application wheels include compiled assets. See [build boundaries](docs/npm-vite.md#前端与-python-构建--frontend-and-python-builds).
+`npm run build` creates a Windows **EXE** by default. `-- -e` / `-- --exe` explicitly selects EXE; `-- -w` / `-- --wheel` selects a Python wheel. You can also use `npm run build:exe` / `npm run build:wheel`. Both packaging targets compile the frontend first and require completed initialization.
 
-Use `mountFrame` / `update` / `dispose` from `easywindowspack` and explicitly import `easywindowspack/frame.css`. Desktop components, updates and optional `./vue` / `./react` exports are described in the [public API guide](docs/npm-vite.md#前端公共-api-与模板组合--frontend-public-api-and-template-composition). Vue >=3.3 and React >=18 are optional peers; Vanilla requires neither. Six templates share the runtime; Vue Teleport / React portals preserve reactive application content and events.
+The full pipeline is **test → wheel → exe → bundle**. Use `npm run build:all` / `npm run full-build`, `npm run build -- --all`, or `ewp build:all` / `ewp full-build` / `ewp build --all`. The root launcher supports `.\startup.cmd full-build` / `.\startup.cmd build:all`. All project entries default `build` to EXE; EXE and full builds require Windows.
 
-## Python installation and compatible integration
+**Do not use `npm run build -w`**: bare `-w` is npm's workspace option. Direct CLI invocation supports `ewp build -w`.
 
-From PyPI:
+The EXE starts at `backend/src/demo.py` and includes/loads compiled pages and assets from `output/frontend/`. Generated app wheels contain compiled frontend assets; the repository's framework wheel distributes the window core and source components. See the [npm / Vite guide](docs/npm-vite.md) for resource contracts.
 
-```powershell
-pip install easy-windows-pack
-```
-
-From a local checkout:
-
-```powershell
-pip install -e .
-```
-
-For repository development, initialize the project environment and launch the demo:
-
-```powershell
-.\startup.cmd init
-.\startup.cmd demo --debug
-```
-
-Run Python and launcher commands from the project root. Initialization creates or reuses `.venv`, runs `pip install -e ".[dev,tray]"`,
-and installs npm dependencies inside frontend. Directly running
-`backend/src/demo.py` requires compiled frontend assets or a development URL.
-`startup.cmd browser` delegates browser development to Vite.
-
-## Python window integration
-
-Compile the Vite frontend with `npm run frontend:build` before this example.
-`ewp dev` supplies `EWP_DEV_URL` during development. A host using copied static
-components can instead supply its own HTML path.
-
-```python
-from pathlib import Path
-
-import webview
-
-from easy_windows_pack import WindowConfig, create_window
-
-instance = create_window(
-    WindowConfig(
-        title="My WebView App",
-        titlebar_mode="default",
-        width=1200,
-        height=800,
-        min_width=720,
-        min_height=480,
-        close_action="exit",
-    ),
-    url=(Path("output") / "frontend" / "index.html").resolve().as_uri(),
-)
-
-webview.start(gui="edgechromium")
-```
-
-Copy [the frame markup](frontend/components/titlebar/window-frame.html),
-[frame CSS](frontend/components/titlebar/window-frame.css), and
-[frame JavaScript](frontend/frame/ewpframe/window-frame.js) into the application
-frontend. Put the application content inside `[data-ewp-content]`.
-
-## Build tool
-
-The only root launcher, `startup.cmd`, delegates to `scripts/startup.cmd`, which invokes the standard-library `scripts/dev.py` entry point. Other build wrappers live under scripts.
-Without arguments it opens a bilingual menu; task names also work directly.
-The menu keeps its legacy build semantics; current frontend development and
-compilation require Node.js/Vite. `init` installs Python build dependencies into
-project `.venv` and npm dependencies. See [development](docs/development.md) and
-the [npm / Vite guide](docs/npm-vite.md).
-
-```powershell
-.\startup.cmd
-.\startup.cmd init
-.\startup.cmd browser
-.\startup.cmd frontend
-.\startup.cmd demo --debug
-# Tests + wheel + single-file EXE + source bundle
-.\startup.cmd build
-```
-
-![easy-windows-pack build flow](docs/images/build-flow.svg)
-
-Artifacts use category directories under `output/`; PyInstaller configuration and
-caches stay under `build/`:
-
-```text
-output/
-├── frontend/            # Compiled Vite pages and assets
-├── wheels/              # *.whl
-├── exe/                 # easy-windows-pack-demo.exe (single file)
-├── bundles/             # *-bundle.zip, staging directory and manifest
-├── npm/                 # npm pack tarballs
-└── logs/                # Initialization and build logs
-build/
-├── spec/                # PyInstaller specs
-└── pyinstaller/         # PyInstaller work cache
-```
-
-| Command | Purpose |
+| Directory | Contents |
 | --- | --- |
-| `init` | Create/reuse `.venv` and install `.[dev,tray]` plus npm dependencies |
-| `browser` | Vite browser development on a dynamic `127.0.0.1` port |
-| `frontend` | Compile into `output/frontend/` |
-| `demo --debug` | Build frontend and run desktop with developer tools; use `npm run dev` for HMR |
-| `wheel` | Build into `output/wheels/` |
-| `exe` | Build a PyInstaller single-file demo into `output/exe/`; Windows only |
-| `bundle` | Build the source bundle into `output/bundles/` |
-| `build` | Run test → wheel → exe → bundle; Windows only |
-| `test` | Run Python unittest; browser and native interaction checks are separate |
-| `info` | Show interpreter, project environment and output locations |
+| `output/frontend/` | Vite pages and assets |
+| `output/exe/` | Windows EXEs |
+| `output/wheels/` | Python wheels |
+| `output/bundles/` | Source bundles |
+| `output/npm/` | Repository npm package archives |
+| `output/logs/` | Initialization and build logs |
 
-Use `startup.cmd browser --port 8080 --no-open` to choose a port without opening a
-browser automatically. Ctrl+C stops the server. Browser preview has no real native
-bridge; use a desktop host to verify window dragging, tray and native updates.
-Progress reports completed stages, not an estimated time percentage. Failed or
-interrupted stages do not mark subsequent work complete. Initialization and build
-logs are retained under `output/logs/`.
+`build/` holds configuration, staging, and caches. The compatible low-level `python -m easy_windows_pack.cli build` / `easy-windows-pack build` retains **test → wheel → bundle**, without EXE. It is separate from the project tools' `full-build`; see [Compatible commands](docs/development.md#兼容命令--compatible-commands).
 
-`startup.cmd build` keeps test → wheel → exe → bundle; `npm run build` selects EXE
-by default. The SVG shows the menu build flow; the npm guide defines
-the current npm path.
+## Integrate with an existing app
 
-### Compatible entry points
-
-The original CLI and `scripts/build.ps1` remain available; `scripts/build.cmd` is the compatible menu entry. The low-level `build` command still runs
-tests + wheel + source bundle, without EXE packaging, and defaults to categorized
-`output/` directories. `clean` belongs to the low-level CLI, not the development
-menu. An explicit `--output-dir` overrides the default artifact location.
-
-```powershell
-python -m easy_windows_pack.cli build
-easy-windows-pack build
-python -m easy_windows_pack.cli build --output-dir .\artifacts
-python -m easy_windows_pack.cli build --skip-tests
-python -m easy_windows_pack.cli build --skip-tests --skip-bundle
-python -m easy_windows_pack.cli bundle --output-dir .\artifacts
-.\scripts\build.ps1 -Python .\.venv\Scripts\python.exe
-.\scripts\build-demo.ps1 -Python .\.venv\Scripts\python.exe
-```
-
-`scripts/build.ps1` resolves Python in this order: the `-Python` argument, project-local `.venv`, `python.exe` on PATH, then `py.exe` on PATH. `scripts/build-demo.ps1` delegates to `scripts/dev.py exe`, sharing the same environment, logs and output directories.
-
-### WebView2 synchronization
-
-`WindowController` sends JavaScript through one background dispatcher. State updates are coalesced, so repeated native window events do not start concurrent `evaluate_js` calls. During a minimize or hide transition, queued JavaScript is discarded and the native message is sent immediately. This avoids blocking the WinForms/WebView2 dispatch thread while the window is changing state.
-
-## Title bar modes
-
-### `native`
-
-```python
-WindowConfig(titlebar_mode="native")
-```
-
-Windows and pywebview own the system title bar, controls, resizing, and Snap Layouts.
-
-### `default`
-
-```python
-WindowConfig(titlebar_mode="default")
-```
-
-Uses the standard custom HTML title bar. Buttons call `window_action`; dragging uses Win32 `HTCAPTION`.
-
-### `minimal`
-
-```python
-WindowConfig(titlebar_mode="minimal")
-```
-
-Uses the same behavior as `default` with a compact 24px title bar.
-
-`original` and `system` are compatibility aliases for `native`. Custom modes can switch at runtime. Switching between `native` and a custom mode requires recreating the pywebview window because `frameless` and `easy_drag` are creation-time settings.
-
-## Configuration
-
-| Parameter | Default | Description |
-| --- | --- | --- |
-| `title` | `WebView Application` | Windows window title |
-| `titlebar_mode` | `default` | `native`, `default`, or `minimal` |
-| `width` / `height` | `920` / `680` | Initial client size |
-| `min_width` / `min_height` | Mode-specific | Minimum dimensions |
-| `max_width` / `max_height` | `8192` / `8192` | Maximum dimensions |
-| `resizable` | `True` | Enable resizing |
-| `shadow` | `True` | Enable the pywebview shadow |
-| `always_on_top` | `False` | Create a topmost window |
-| `background_color` | `#ffffff` | WebView/native form background |
-| `close_action` | `exit` | `exit` or `hide` |
-| `maximize_on_start` | `False` | Maximize after creation |
-
-## API delegation
-
-### Optional desktop integrations
-
-`ApiToolsAdapter` exposes API_TOOLS management/settings/update methods through an
-explicit allowlist. `TurtleClawAdapter` preserves the desktop updater's install
-token and frontend-ready acknowledgement, with an optional host-owned restart
-callback. Neither imports or requires either application.
-
-The frontend library now includes responsive dot-matrix progress, a boot curtain,
-staggered entrance animations and an optional update polling client. Existing
-window frame assets and the single JavaScript dispatcher remain unchanged.
-
-See [integration contracts and examples](docs/desktop-integrations.md) and open
-[the offline component demo](frontend/src/components.html). The source bundle includes
-the demo; the wheel also ships frontend assets under `share/easy-windows-pack/frontend`.
-
-```python
-class AppApi:
-    def get_profile(self):
-        return {"name": "demo"}
-
-create_window(
-    WindowConfig(title="My App"),
-    url=page_url,
-    app_api=AppApi(),
-)
-```
-
-Both `window_action` and `get_profile` are available through `window.pywebview.api`.
-
-## New Desktop Components
-
-The components use plain JavaScript and require no Vue, React or CSS framework.
-Load [component CSS](frontend/components/desktop/desktop-components.css) and
-[component JavaScript](frontend/components/desktop/desktop-components.js), then initialize after the DOM exists.
-Load [the update client](frontend/frame/ewpframe/desktop-updates.js) only when needed.
-
-### Dot-Matrix Progress
-
-```html
-<link rel="stylesheet" href="desktop-components.css">
-<div id="quotaProgress"></div>
-<script src="desktop-components.js"></script>
-<script>
-const progress = EasyWindowsPackComponents.createMatrixProgress(
-    document.getElementById('quotaProgress'),
-    { value: 70, remaining: 30, size: 4, label: 'Used quota' }
-);
-progress.update({ value: 75, remaining: 25 });
-// On unmount: progress.dispose();
-</script>
-```
-
-`value` controls the filled percentage; `remaining` independently controls warning
-colors. To display remaining quota, pass the same percentage to both and adjust
-`label`. `size` is the number of rows and columns per block: `2`, `3`, or `4`
-(default). `unlimited: true` displays full unlimited quota; use `unlimitedLabel`
-for its accessible text. Give the container a measurable width. A ResizeObserver
-handles resizing, with automatic linear fallback when space is insufficient.
-`dispose()` releases the observer and generated DOM.
-
-### Boot Curtain and Staggered Entrance
-
-Initialize the entrance controller before showing the page and mark the items
-with `data-ewp-enter`. Reveal them after the curtain finishes:
-
-```html
-<div id="boot" hidden>Starting</div>
-<main id="workspace">
-    <header data-ewp-enter>Workspace</header>
-    <section data-ewp-enter>Application content</section>
-</main>
-<script>
-const components = EasyWindowsPackComponents;
-const entrance = components.createEntrance(document.getElementById('workspace'));
-const curtain = components.createBootCurtain(document.getElementById('boot'), {
-    timeout: 12000,
-    onComplete: ({ reason }) => {
-        entrance.reveal();
-        if (reason === 'timeout') console.warn('Boot curtain timed out; check initialization');
-    }
-});
-// After the bridge, initial data and essential rendering are ready:
-// curtain.setReady();
-// On unmount: curtain.dispose(); entrance.dispose();
-</script>
-```
-
-`createEntrance()` immediately hides the content and temporarily disables its
-interaction. Call `reveal()` to enter, or `prepare()` before playing again.
-The curtain has a default 12-second watchdog. A timeout removes the curtain but
-does not mean initialization succeeded; present a separate error or retry state.
-Components respect `prefers-reduced-motion`. Set
-`document.documentElement.dataset.motion = 'off'` to disable motion explicitly.
-
-### Update Client
-
-First expose the matching host APIs through `ApiToolsAdapter` or `TurtleClawAdapter`:
+For an existing Vite frontend, install `easywindowspack` in its npm project and import the public API and CSS. This example assumes an existing `#app` container:
 
 ```javascript
-const updates = createDesktopUpdateClient({
-    host: 'turtleclaw', // Use 'api-tools' for API_TOOLS.
-    onState: state => console.log('Update state:', state),
-    onError: error => console.error(error)
+import { mountFrame } from 'easywindowspack';
+import 'easywindowspack/frame.css';
+
+const frame = mountFrame('#app', {
+  title: 'My App', windowStyle: 'windows',
+  content: document.createElement('main'),
 });
-// Acknowledge only when the frontend is usable. Checking does not download/install.
-await updates.markFrontendReady({ checkOnStartup: true });
-// On explicit user action: await updates.check(); await updates.download();
-// TurtleClaw requires a valid host-issued token: await updates.install(token);
-// API_TOOLS uses await updates.install() to request restart and apply the update.
-// On unmount: updates.dispose();
+frame.content.textContent = 'Hello desktop';
+frame.update({ title: 'Ready' });
+// Call frame.dispose() when the application unmounts.
 ```
 
-`cancel()` requires host support for `cancel_update_download`; do not assume both
-hosts support it. `restart()` requires `restart_app`; ordinary TurtleClaw restart
-needs an explicitly injected callback. See [integration contracts](docs/desktop-integrations.md)
-for Python wiring, allowlists and response contracts, and the
-[component demo](frontend/src/components.html) for a runnable visual example.
+This mounts the frontend frame; desktop capabilities also need a Python host. Define application APIs in the [desktop entry](backend/src/demo.py) and expose them through `create_window(..., app_api=...)`. Keep `EWP_DEV_URL` for development and compiled pages for production. See the [npm / Vite guide](docs/npm-vite.md) for the complete frontend API, [Desktop integrations](docs/desktop-integrations.md) and [Type contracts](frontend/contracts/README.md) for components and updates, [Window styles](docs/window-styles.md) for themes, and the [WindowConfig](backend/base/ewpcore/config.py) and [Tray source](backend/base/ewpcore/tray.py) for Python APIs.
 
-### Usage Recommendations
-
-- **Use SCSS; Tailwind CSS is not recommended** as the primary styling approach for projects built on this framework. Window chrome, matrix progress, curtains and entrance animations have related state and animation rules. SCSS modules keep these relationships easier to follow and reduce utility-class and dynamic-class maintenance in HTML. This is a maintainability recommendation, not a compatibility restriction.
-- Compile SCSS to CSS during development or builds; WebView loads the generated CSS only. The framework currently ships plain CSS, not SCSS sources or a Sass build pipeline. Using the shipped components does not require Sass.
-- Keep application styles in separate SCSS modules and load their compiled CSS after component CSS. Prefer existing component custom properties and scoped selectors; avoid editing vendor components or globally overriding tags such as `span` and `i`.
-- Existing Tailwind CSS projects can still integrate these components. Check Preflight effects on defaults such as buttons and borders, and avoid using utility classes to compete with internal animation, sizing or visibility rules.
-- Create one instance per container, use `update()` for data changes and `dispose()` on unmount. Reserve the curtain for essential initial loading, not optional network requests; do not replay page-wide entrance animations on frequent refreshes.
-- Validate narrow windows, DPI scaling, keyboard access and reduced-motion mode. The host remains responsible for download, installation and restart authorization and confirmation; animation completion is not proof of update success.
-
-## Tray Menu and Always-on-Top
-
-Install the optional Windows tray dependencies (`pystray` and Pillow):
+## Develop the framework source
 
 ```powershell
-pip install "easy-windows-pack[tray]"
-# From this checkout:
-pip install -e ".[tray]"
+git clone https://github.com/Binceenigne/easy-windows-pack.git
+cd easy-windows-pack
+.\startup.cmd init
+.\startup.cmd
 ```
 
-This example uses the shipped window page. Replace the generated icon with a PNG/ICO
-path or a Pillow image in your application:
-
-```python
-from pathlib import Path
-from threading import Event
-
-import webview
-from PIL import Image
-from easy_windows_pack import (
-    TRAY_SEPARATOR, TrayController, TrayMenuItem, WindowConfig, create_window,
-)
-
-exiting = Event()
-instance = create_window(
-    WindowConfig(title="Tray example"),
-    url=Path("frontend/src/index.html").resolve().as_uri(),
-    on_close=lambda controller: "hide" if tray.running and not exiting.is_set() else "exit",
-)
-
-def exit_app():
-    exiting.set()
-    instance.controller.window_action("close")
-
-image = Image.new("RGBA", (64, 64), "#0f766e")
-tray = TrayController(instance.controller, icon=image, title="Tray example", on_exit=exit_app)
-tray.set_menu([
-    *tray.window_menu(),
-    TRAY_SEPARATOR,
-    TrayMenuItem("Print state", lambda: print(instance.controller.get_state()),
-                 enabled=lambda: instance.controller.visible),
-])
-
-def start_tray():
-    try:
-        tray.start()
-    except Exception as error:
-        print(f"Tray unavailable: {error}")
-
-try:
-    webview.start(start_tray, gui="edgechromium")
-finally:
-    tray.stop()
-    image.close()
-```
-
-The default menu provides Show (also the left-click action), Hide, Always on top,
-and Exit when `on_exit` is supplied. `menu=[]` creates an empty menu;
-`set_menu(items)` replaces it while running. `TrayMenuItem(text, callback,
-enabled=True, checked=None, default=False)` accepts a zero-argument Python
-callback. `enabled` and `checked` can be booleans or zero-argument functions;
-`checked=None` omits the checkmark. Use `TRAY_SEPARATOR` between groups and at
-most one default item. Call `refresh_menu()` after changing custom state outside
-a menu callback. Window visibility and topmost changes refresh it automatically.
-
-`start(timeout=5.0)` starts a background tray loop and waits for readiness; it is
-idempotent while running and raises on missing dependencies, failure, or timeout.
-`stop()` requests removal and detaches state listeners without closing the window
-or joining the tray loop; the native loop releases its image on exit. A stopped
-tray can restart unless the window is closed. Closing the window stops the tray;
-hiding it keeps the tray alive. `request_exit()` stops the tray and invokes the
-host's required `on_exit` callback once per start. Callback/state-refresh errors
-are logged and available as `last_error`. Keep callbacks and state getters short;
-they run on background/native threads and must marshal other GUI work as needed.
-
-The existing `set_always_on_top(enabled)` and the new `toggle_always_on_top()` /
-`get_always_on_top()` are available on both `WindowController` and `WindowApi`:
-
-```javascript
-// After pywebviewready:
-const state = await window.pywebview.api.toggle_always_on_top();
-if (state.ok) console.log(state.alwaysOnTop);
-await window.pywebview.api.set_always_on_top(false);
-const current = await window.pywebview.api.get_always_on_top();
-```
-
-They return `{ok, alwaysOnTop}`. A failed native update preserves the previous
-state. Updates reuse the Win32 implementation and the serialized JS dispatcher;
-hidden/minimized windows do not evaluate JS. State listeners receive `closed`
-and `alwaysOnTop` through `get_state()` / notifications. Additional listeners can
-be registered/removed with `add_state_listener()` / `remove_state_listener()`;
-observer exceptions are logged without interrupting window operations.
-
-Tray configuration is Python-only: do not pass `TrayController` as `app_api`.
-No tray command strings, shell execution, or arbitrary Python/JS evaluation API
-is exposed to the browser. The host owns shutdown policy and business callbacks.
-
-## Development
-
-Use [docs/README.md](docs/README.md) as the documentation entry point. Detailed
-setup and troubleshooting live in [docs/development.md](docs/development.md);
-directory ownership and old-to-new paths live in [docs/architecture.md](docs/architecture.md).
+Alternatively, use npm after checking out the repository:
 
 ```powershell
-.\startup.cmd test
-.\startup.cmd info
-.\startup.cmd build
+cd frontend
+npm ci
+npm run init
+npm run dev
 ```
 
-CI configuration is maintained in `.github/workflows/`. Historical local checks in
-the integration documentation do not certify the current migration or remote CI;
-record each current validation separately.
+The repository's `frontend/` is a **private npm workspace**, with both published package sources under `frontend/packages/`; the workspace root is not published to npm. Generated apps consume the runtime and do not include these package development directories. See [Architecture](docs/architecture.md) for ownership boundaries and [Documentation](docs/README.md) for further development workflows.
 
-## Limitations
+## License
 
-- Native dragging, resizing, Snap, and topmost behavior target Windows. Imports and unit tests can still run on other platforms.
-- The recommended pywebview GUI is `edgechromium`.
-- Switching between native and custom title bars requires recreating the pywebview window.
-- Tray support is optional and targets Windows; the host supplies the icon, menu callbacks, and shutdown policy. Single-instance enforcement, window-position persistence, and application updates remain host responsibilities.
-
-<div align="center">
-
-[中文](README.md) · [English](README.en.md) · [Build tool](#build-tool) · [Architecture](#architecture)
-
-</div>
+[MIT](LICENSE) · Copyright (c) 2026 Binceenigne

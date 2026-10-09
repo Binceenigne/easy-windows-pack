@@ -1,15 +1,26 @@
 {
   "name": "easy-windows-pack-workspace",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "license": "MIT",
   "engines": { "node": ">=22.12.0" },
   "workspaces": ["packages/*"],
   "scripts": {
+    "ewp": "node packages/easywindowspack/bin/ewp.mjs",
+    "help": "node packages/easywindowspack/bin/ewp.mjs help",
+    "menu": "node packages/easywindowspack/bin/ewp.mjs menu",
+    "info": "node packages/easywindowspack/bin/ewp.mjs info",
     "init": "node packages/easywindowspack/bin/ewp.mjs init",
     "dev": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs dev",
+    "browser": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs browser",
+    "frontend": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs frontend",
+    "demo": "node packages/easywindowspack/bin/ewp.mjs demo",
+    "wheel": "node packages/easywindowspack/bin/ewp.mjs wheel",
+    "exe": "node packages/easywindowspack/bin/ewp.mjs exe",
     "build": "node packages/easywindowspack/bin/ewp.mjs build",
+    "build:all": "node packages/easywindowspack/bin/ewp.mjs build:all",
+    "full-build": "node packages/easywindowspack/bin/ewp.mjs full-build",
     "build:wheel": "node packages/easywindowspack/bin/ewp.mjs wheel",
     "build:exe": "node packages/easywindowspack/bin/ewp.mjs exe",
     "bundle": "node packages/easywindowspack/bin/ewp.mjs bundle",
@@ -24,6 +35,6 @@
     "check": "node packages/easywindowspack/bin/ewp.mjs check",
     "prepack": "npm run prepare:npm"
   },
-  "dependencies": { "easywindowspack": "0.1.0" },
+  "dependencies": { "easywindowspack": "0.1.1" },
   "devDependencies": { "vite": "^7.3.7" }
 }

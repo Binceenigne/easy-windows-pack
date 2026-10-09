@@ -1,6 +1,6 @@
 import nodeTest from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -8,7 +8,8 @@ import { spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { runInNewContext } from 'node:vm';
 import { createRequire } from 'node:module';
-import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, spawnSpec, chooseLocalPort, runDev, main } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
+import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, pythonTaskSpec, spawnSpec, chooseLocalPort, runDev, main, MENU_TASKS, runMenu, isDirectExecution } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
+import { VERSION, languageArgs, helpText, text, withLanguage } from '../frontend/packages/easywindowspack/language.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const packageRoot = join(root, 'frontend/packages/easywindowspack');
@@ -86,9 +87,9 @@ test('build defaults to EXE and explicitly accepts wheel and EXE aliases', () =>
   for (const flag of ['-w', '--wheel']) assert.equal(parseArgs(['build', flag]).task, 'wheel');
   assert.equal(parseArgs(['build', '--', '-w']).task, 'wheel');
   for (const flag of ['-e', '--exe']) assert.equal(parseArgs(['build', flag]).task, 'exe');
-  assert.throws(() => parseArgs(['build', '--wheel', '--exe']), /either/);
-  assert.throws(() => parseArgs(['build', '--unknown']), /Unknown option/);
-  assert.throws(() => parseArgs(['publish']), /Unknown command/);
+  assert.throws(() => parseArgs(['build', '--wheel', '--exe']), /either|只选择/);
+  assert.throws(() => parseArgs(['build', '--unknown']), /Unknown option|未知参数/);
+  assert.throws(() => parseArgs(['publish']), /Unknown command|未知命令/);
 });
 
 test('dev opens a browser only for --web and validates the port', () => {
@@ -97,9 +98,9 @@ test('dev opens a browser only for --web and validates the port', () => {
   assert.equal(parseArgs(['frontend:dev']).web, true);
   assert.equal(parseArgs(['dev', '--port', '0']).port, 0);
   assert.equal(parseArgs(['dev', '--port=65535']).port, 65535);
-  for (const value of ['-1', '65536', 'abc', '2.1', '']) assert.throws(() => parseArgs(['dev', '--port', value]), /integer/);
-  assert.throws(() => parseArgs(['dev', '--port']), /integer/);
-  assert.throws(() => parseArgs(['test', '--web']), /Unknown option/);
+  for (const value of ['-1', '65536', 'abc', '2.1', '']) assert.throws(() => parseArgs(['dev', '--port', value]), /integer|整数/);
+  assert.throws(() => parseArgs(['dev', '--port']), /integer|整数/);
+  assert.throws(() => parseArgs(['test', '--web']), /Unknown option|未知参数/);
 });
 
 test('project discovery ascends from nested directories and never depends on CLI installation location', () => {
@@ -137,7 +138,7 @@ test('Python tasks require project .venv and only initialization can fall back t
     platform: 'win32', allowSystem: true,
     exists: path => path === join(root, '.venv') || path.endsWith('python.exe'),
     probe: () => { throw new Error('Invalid venv must not fall back to global Python'); }
-  }), /invalid project .venv/);
+  }), /invalid project .venv|\.venv 缺失或无效/);
   assert.match(selectPython(root, { platform: 'linux', exists: () => true }).command, /bin[\\/]python$/);
 });
 
@@ -158,7 +159,7 @@ test('Windows batch commands use ComSpec with every token quoted and unsafe expa
   assert.deepEqual(spec.args.slice(0, 4), ['/d', '/s', '/v:off', '/c']);
   assert.equal(spec.options.windowsVerbatimArguments, true);
   assert.match(spec.args[4], /^""C:\\Program Files\\nodejs\\npm.cmd" "run" "frontend:build""$/);
-  for (const arg of ['%PATH%', '" & echo injected', 'a\nb']) assert.throws(() => spawnSpec('npm.cmd', [arg], { platform: 'win32' }), /Unsupported/);
+  for (const arg of ['%PATH%', '" & echo injected', 'a\nb']) assert.throws(() => spawnSpec('npm.cmd', [arg], { platform: 'win32' }), /Unsupported|不支持/);
   assert.deepEqual(spawnSpec('python.exe', ['scripts/dev.py', 'wheel'], { platform: 'win32' }).args, ['scripts/dev.py', 'wheel']);
 });
 
@@ -177,15 +178,142 @@ test('help runs outside a project without probing Python', async t => {
   try {
     process.chdir(tmpdir());
     console.log = value => { output += value; };
-    assert.equal(await deadline(main(['--help']), 'CLI help', t.signal), 0);
+    assert.equal(await deadline(main(['--help', '--lang', 'en']), 'CLI help', t.signal), 0);
     assert.match(output, /Build EXE by default/);
   } finally { process.chdir(original); console.log = log; }
+});
+
+test('language priority is explicit flag, environment, nearest project, then Chinese', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ewp-language-'));
+  const cwd = join(directory, 'frontend/src');
+  const context = { cwd, env: {} };
+  try {
+    mkdirSync(cwd, { recursive: true });
+    assert.equal(languageArgs([], context).language, 'zh-CN');
+    const manifest = join(directory, 'frontend/package.json');
+    writeFileSync(manifest, '\uFEFF' + JSON.stringify({ ewp: { language: 'en' } }));
+    const original = readFileSync(manifest, 'utf8');
+    assert.equal(languageArgs([], context).language, 'en');
+    assert.equal(languageArgs([], { ...context, env: { EWP_LANG: 'zh-CN' } }).language, 'zh-CN');
+    assert.equal(languageArgs(['--lang', 'en', 'info'], { ...context, env: { EWP_LANG: 'zh-CN' } }).language, 'en');
+    assert.equal(languageArgs(['info', '--lang=zh-CN'], context).language, 'zh-CN');
+    assert.equal(languageArgs(['--lang=en'], { ...context, env: { EWP_LANG: 'invalid' } }).language, 'en');
+    for (const args of [['--lang'], ['--lang='], ['--lang', 'xx'], ['--lang=en', '--lang=zh-CN']]) {
+      assert.throws(() => languageArgs(args, context), /--lang/);
+    }
+    assert.throws(() => parseArgs(['unknown', '--lang', 'en'], context), /Unknown command/);
+    assert.throws(() => parseArgs(['unknown', '--lang', 'zh-CN'], context), /未知命令/);
+    assert.equal(readFileSync(manifest, 'utf8'), original, 'Invocation overrides never write project settings');
+    writeFileSync(manifest, '{broken');
+    assert.equal(languageArgs([], context).language, 'zh-CN');
+    assert.deepEqual(await Promise.all(['en', 'zh-CN'].map(language => withLanguage(language, async () => {
+      await Promise.resolve();
+      return text('中文', 'English');
+    }))), ['English', '中文']);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('global help, version and create help execute through a real directory symlink outside projects', { timeout: 30000 }, () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ewp-linked cli-'));
+  const entry = join(packageRoot, 'bin/ewp.mjs');
+  const linked = join(directory, 'nvm link');
+  try {
+    // Windows junctions exercise the nvm directory-symlink case without elevation.
+    symlinkSync(packageRoot, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    const linkedEntry = join(linked, 'bin/ewp.mjs');
+    assert.equal(isDirectExecution(linkedEntry, pathToFileURL(entry).href), true);
+    assert.equal(isDirectExecution(join(directory, 'missing'), pathToFileURL(entry).href), false);
+    assert.equal(isDirectExecution(join(packageRoot, 'language.mjs'), pathToFileURL(entry).href), false);
+    const run = args => {
+      const result = spawnSync(process.execPath, [linkedEntry, ...args], {
+        cwd: directory, env: { ...process.env, EWP_LANG: '' }, encoding: 'utf8', timeout: 8000
+      });
+      assert.equal(result.error, undefined);
+      assert.equal(result.status, 0, result.stderr);
+      return result.stdout;
+    };
+    for (const args of [[], ['help'], ['--help'], ['-h']]) {
+      const output = run(args);
+      assert.match(output, /用法：ewp/);
+      assert.match(output, /create/);
+      assert.match(output, /npm --prefix frontend run ewp/);
+    }
+    for (const flag of ['--version', '-v', '-V', 'version']) assert.equal(run([flag]).trim(), VERSION);
+    assert.match(run(['--lang', 'en', '-h']), /Usage: ewp/);
+    assert.match(run(['--lang', 'en', 'create', '-h']), /create-ewp — Create a desktop project/);
+    assert.match(run(['create', '-h', '--lang', 'zh-CN']), /创建桌面项目/);
+    assert.match(run(['create', '--lang=en', '--help']), /--template/);
+    const imported = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(pathToFileURL(linkedEntry).href)})`], { cwd: directory, encoding: 'utf8', timeout: 8000 });
+    assert.equal(imported.status, 0, imported.stderr);
+    assert.equal(imported.stdout, '', 'Importing CLI never executes it');
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('all menu tasks and aliases parse and Python receives language, task and debug safely', () => {
+  for (const task of MENU_TASKS) assert.ok(parseArgs([task.command, ...(task.args ?? [])]).task);
+  for (const [alias, command] of Object.entries({ browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'full-build': 'build:all', 'build:wheel': 'wheel', 'build:exe': 'exe' })) {
+    assert.equal(parseArgs([alias]).command, command);
+  }
+  assert.equal(parseArgs(['browser', '--no-open', '--port=1234']).web, true);
+  for (const args of [['build:all'], ['full-build'], ['build', '--all']]) assert.equal(parseArgs(args).task, 'full-build');
+  for (const flag of ['--wheel', '--exe']) assert.throws(() => parseArgs(['build', '--all', flag]), /只选择|Choose/);
+  assert.equal(parseArgs(['demo', '--debug']).debug, true);
+  assert.throws(() => parseArgs(['exe', '--debug']), /未知参数|Unknown option/);
+  for (const task of ['init', 'demo', 'wheel', 'exe', 'bundle', 'test', 'build']) {
+    const spec = pythonTaskSpec(root, { task, language: 'en', debug: task === 'demo' }, { exists: () => true });
+    assert.deepEqual(spec.args, ['-u', join(root, 'scripts/dev.py'), '--lang', 'en', task, ...(task === 'demo' ? ['--debug'] : [])]);
+    assert.equal(spec.options.env.EWP_LANG, 'en');
+    assert.equal(spec.options.env.PYTHONHOME, undefined);
+    assert.equal(spec.options.env.PYTHONPATH, undefined);
+  }
+  assert.throws(() => pythonTaskSpec(root, { task: 'demo', language: 'en' }, { exists: () => false, allowSystem: true }), /npm run init/);
+});
+
+test('menu dispatches every task, recovers after failures and handles exit without Python', async () => {
+  const answers = ['invalid', ...MENU_TASKS.map((_, index) => String(index + 1)), '0'];
+  const calls = [];
+  const output = [];
+  assert.equal(await runMenu(root, 'en', {
+    choose: async () => answers.shift(), log: line => output.push(line),
+    execute: async (directory, options) => {
+      assert.equal(directory, root);
+      calls.push(options);
+      if (calls.length === 1) throw new Error('fixture failure');
+      return calls.length === 2 ? 2 : 0;
+    }
+  }), 0);
+  assert.equal(calls.length, MENU_TASKS.length);
+  assert.ok(calls.every(options => options.language === 'en'));
+  assert.equal(calls.find(options => options.command === 'demo').debug, true);
+  assert.equal(calls.find(options => options.command === 'build:all').task, 'full-build');
+  assert.ok(output.some(line => line.includes('Invalid choice')));
+  assert.ok(output.some(line => line.includes('Task failed with exit code 2')));
+  for (const task of MENU_TASKS) assert.ok(output.some(line => line.includes(`npm run ${task.command}`)));
+  assert.equal(await runMenu(root, 'zh-CN', { choose: async () => null, log: () => {} }), 130);
+  assert.equal(await runMenu(root, 'en', { choose: async () => '1', execute: async () => 130, log: () => {} }), 130);
+  const directory = mkdtempSync(join(tmpdir(), 'ewp-menu-'));
+  try {
+    mkdirSync(join(directory, 'scripts'));
+    writeFileSync(join(directory, 'scripts/dev.py'), '');
+    const result = spawnSync(process.execPath, [join(packageRoot, 'bin/ewp.mjs'), 'menu', '--lang=en'], { cwd: directory, input: '0\n', encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /Development menu/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('help describes every task and both entry locations in each language', () => {
+  for (const language of ['en', 'zh-CN']) {
+    const help = helpText(language);
+    for (const task of MENU_TASKS) assert.ok(help.includes(task.command), task.command);
+    assert.match(help, /--lang zh-CN\|en > EWP_LANG > frontend\/package.json ewp.language > zh-CN/);
+    assert.match(help, /npm run build -- -w/);
+  }
 });
 
 test('published entry points and optional framework peers match the runtime contract', () => {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'easywindowspack');
-  assert.equal(pkg.version, '0.1.0');
+  assert.equal(pkg.version, '0.1.1');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.engines.node, '>=22.12.0');
   assert.equal(pkg.type, 'module');
@@ -205,9 +333,11 @@ test('workspace scripts delegate to the Node CLI and preserve npm build argument
   assert.equal(pkg.private, true);
   assert.deepEqual(pkg.workspaces, ['packages/*']);
   assert.match(pkg.devDependencies.vite, /^\^7\./);
-  for (const name of ['init', 'dev', 'build', 'build:wheel', 'build:exe', 'bundle', 'test', 'frontend:build', 'frontend:dev', 'frontend:preview', 'check']) {
+  for (const name of ['help', 'menu', 'info', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'build', 'build:all', 'full-build', 'build:wheel', 'build:exe', 'bundle', 'test', 'frontend:build', 'frontend:dev', 'frontend:preview', 'check']) {
     assert.match(pkg.scripts[name], /node packages\/easywindowspack\/bin\/ewp\.mjs /, name);
   }
+  assert.equal(pkg.scripts.ewp, 'node packages/easywindowspack/bin/ewp.mjs');
+  for (const task of MENU_TASKS) assert.ok(pkg.scripts[task.command], task.command);
   assert.equal(pkg.scripts.build, 'node packages/easywindowspack/bin/ewp.mjs build');
   assert.equal(pkg.scripts['prepare:npm'], 'node ../scripts/prepare-npm.mjs');
   assert.match(pkg.scripts['pack:npm'], /--pack-destination \.\.\/output\/npm/);
@@ -319,7 +449,7 @@ test('Vite picks a dynamic local port and denies project/backend files', async t
     if (String(value).startsWith('Frontend ready: ')) ready(String(value).slice('Frontend ready: '.length));
     else log(value, ...args);
   };
-  const session = runDev(root, { command: 'dev', web: true, open: false, port: 0, signal: AbortSignal.any([t.signal, controller.signal]) });
+  const session = runDev(root, { command: 'dev', web: true, open: false, port: 0, language: 'en', signal: AbortSignal.any([t.signal, controller.signal]) });
   void session.catch(() => {});
   try {
     const url = await deadline(Promise.race([readyUrl, session.then(() => { throw new Error('Dev exited before ready'); })]), 'Real dev readiness', t.signal, 5000);

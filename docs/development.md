@@ -4,9 +4,9 @@
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中，两个 ESM 包 `easywindowspack` / `create-ewp` 版本为 0.1.0。创建项目及发布状态边界见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 的 **0.1.0 已发布，0.1.1 本地修订待发布**。本文新增语言、帮助/菜单及完整构建约定属于 0.1.1，不能假定当前 registry `latest` 已提供。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend, with ESM `easywindowspack` / `create-ewp` at 0.1.0. See the [npm guide](npm-vite.md) for creation and publication boundaries.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages have **published 0.1.0; local 0.1.1 awaits release**. New language, help/menu, and full-build contracts here describe 0.1.1, not current registry `latest`. See the [npm guide](npm-vite.md) for creation and local tarballs.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 
@@ -19,9 +19,9 @@ npm --prefix frontend run dev
 npm --prefix frontend run dev -- --web
 ```
 
-根唯一启动脚本 `startup.cmd` 经 [scripts/startup.cmd](../scripts/startup.cmd) 调用 [scripts/dev.py](../scripts/dev.py)，无参数显示双语菜单；其他构建脚本位于 scripts。该脚本本身使用 Python 标准库；前端任务会调用 npm/Vite，因此当前应用开发和打包不能省略 Node。无需 Sass，除非宿主自行采用 SCSS。
+根唯一启动脚本 `startup.cmd` 经 [scripts/startup.cmd](../scripts/startup.cmd) 调用 [scripts/dev.py](../scripts/dev.py)，无参数按项目语言显示菜单；其他构建脚本位于 scripts。该脚本本身使用 Python 标准库；前端任务会调用 npm/Vite，因此当前应用开发和打包不能省略 Node。无需 Sass，除非宿主自行采用 SCSS。
 
-The only root launcher, `startup.cmd`, delegates through [scripts/startup.cmd](../scripts/startup.cmd) to [scripts/dev.py](../scripts/dev.py), displaying a bilingual menu without arguments. Other build scripts live under scripts. The script itself uses the standard library, but frontend tasks invoke npm/Vite, so current app development and packaging require Node. Sass is needed only if the host chooses SCSS.
+The only root launcher, `startup.cmd`, delegates through [scripts/startup.cmd](../scripts/startup.cmd) to [scripts/dev.py](../scripts/dev.py), displaying the menu in the project language without arguments. Other build scripts live under scripts. The script itself uses the standard library, but frontend tasks invoke npm/Vite, so current app development and packaging require Node. Sass is needed only if the host chooses SCSS.
 
 `init` 创建或复用项目 `.venv`，验证解释器后先安装 npm 依赖并构建 Vite 前端，再执行 `pip install -e ".[dev,tray]"`。这个顺序保证全新生成项目的 Python metadata 能找到编译资源。已有有效环境不会被删除重建；无效环境报错，需要先检查。仅使用框架库时仍可 `pip install -e .`；生成应用请使用完整初始化流程。
 
@@ -31,25 +31,55 @@ The only root launcher, `startup.cmd`, delegates through [scripts/startup.cmd](.
 
 `scripts/startup.cmd` prefers project `.venv`, then `py -3`, then `python` on PATH. Desktop, Python tests and packaging require the project environment and re-enter it when needed, without manual activation. `init` / `info` / `browser` / `frontend` need no existing `.venv`, although the legacy menu itself still starts in Python. Use npm frontend commands for browser development without Python. Reinitialize after source migration; public imports remain `easy_windows_pack`.
 
+## 项目语言 / Project language
+
+0.1.1 创建流程第一步选择人类语言 `zh-CN` / `en`，后续再选 JavaScript / TypeScript；创建时保存到 `frontend/package.json` 的 `ewp.language`。命令输出的语言优先级为 **显式 `--lang` → `EWP_LANG` → 保存值 → `zh-CN`**。已有项目运行时的 `--lang` / 环境变量只临时覆盖，不改配置；README、AI 指引与 demo 在创建时选语言，临时切换 CLI 不重写这些文件。
+
+The first 0.1.1 creation prompt selects human language, `zh-CN` / `en`; JavaScript / TypeScript is a later choice. Creation saves it as `ewp.language` in `frontend/package.json`. Command output resolves **explicit `--lang` → `EWP_LANG` → saved value → `zh-CN`**. Runtime overrides are temporary and leave configuration intact. README, AI guidance, and demo text use the creation language; CLI overrides do not rewrite those files.
+
+```powershell
+npm --prefix frontend run help -- --lang en
+npm --prefix frontend run ewp -- info --lang zh-CN
+.\startup.cmd menu --lang en
+```
+
+语言选择后，自有帮助、菜单和任务提示使用所选单语；npm 的 `Ok to proceed?` 及 npm / pip / Vite 第三方输出不翻译。生成器 `--yes` 不控制 npm 自己的确认；非交互语言按上述优先级，无设置时默认 `zh-CN`。
+
+After language selection, first-party help, menus, and task messages use one selected language. npm's `Ok to proceed?` prompt and npm / pip / Vite output are not translated. Generator `--yes` does not control npm's confirmation; non-interactive language follows the priority above, defaulting to `zh-CN` when unset.
+
 ## 菜单与命令 / Menu and commands
 
-无参数进入菜单，输入对应编号执行任务，`0` 退出。菜单与命令行共用实现；需要可选参数时直接传命令。
+根 `.\startup.cmd` 无参数进入菜单，输入编号执行任务，`0` 退出。全局安装后 `ewp` 无参数、`ewp -h` / `ewp --help` 输出帮助，无需已有项目；菜单需显式 `ewp menu`。菜单与直接任务共用实现；可选参数直接传命令。
 
-With no arguments, choose a numbered task from the menu; `0` exits. Menu and command-line tasks share the same implementation. Pass commands directly when optional flags are needed.
+Root `.\startup.cmd` without arguments opens the numbered menu; `0` exits. With global installation, `ewp` without arguments, `ewp -h`, or `ewp --help` shows help without a project. Use `ewp menu` to open the menu. Menu and direct tasks share the implementation; pass optional flags directly.
 
-| 命令 / Command | 行为 / Behavior |
-| --- | --- |
-| `startup.cmd init` | 创建/复用 `.venv` 并安装 Python 与 npm 依赖 / Create/reuse `.venv`, install Python and npm dependencies |
-| `startup.cmd browser` | 转 frontend 内 `npm run frontend:dev`，本机 Vite 预览 / Delegate to local Vite browser development |
-| `startup.cmd frontend` | 编译前端至 `output/frontend/` / Compile frontend |
-| `startup.cmd demo` | 编译前端后启动 `backend/src/demo.py` / Compile frontend, then launch desktop demo |
-| `startup.cmd demo --debug` | 桌面演示启用开发者工具 / Enable desktop developer tools |
-| `startup.cmd wheel` | 构建 wheel / Build wheel |
-| `startup.cmd exe` | Windows 单文件 PyInstaller 演示程序 / Windows single-file PyInstaller demo |
-| `startup.cmd bundle` | 构建含源码与开发文档的 source bundle / Build source bundle with developer documentation |
-| `startup.cmd build` | 依次 test → wheel → exe → bundle，仅 Windows / Sequential full build, Windows only |
-| `startup.cmd test` | Python unittest / Python unittest suite |
-| `startup.cmd info` | 显示解释器、项目环境和产物目录 / Show interpreter, project environment and output locations |
+frontend 内可运行 `npm run help` / `info` / `menu` 和 `npm run ewp -- <task> [options]`。全局安装后项目根可直接 `ewp <task>`；未全局安装则从根 `npm --prefix frontend run ewp -- <task>`。以下每个菜单任务均支持这三个入口，`startup.cmd` 列为 PowerShell 根目录写法。
+
+Inside frontend, run `npm run help` / `info` / `menu` or `npm run ewp -- <task> [options]`. Global installation allows `ewp <task>` at the project root; without it, use `npm --prefix frontend run ewp -- <task>`. Every menu task below supports all three entries; launcher examples use PowerShell at the project root.
+
+| 全局 CLI / Global CLI | 根启动脚本 / Root launcher | 行为 / Behavior |
+| --- | --- | --- |
+| `ewp help` / `ewp -h` / `ewp --help` | `.\startup.cmd help` / `.\startup.cmd -h` | 查看帮助 / Show help |
+| `ewp menu` | `.\startup.cmd menu` 或无参数 / or no arguments | 交互菜单 / Interactive menu |
+| `ewp init` | `.\startup.cmd init` | 创建/复用 `.venv`，安装依赖并编译前端 / Initialize dependencies and compile frontend |
+| `ewp dev [--web]` | `.\startup.cmd dev [--web]` | 桌面 HMR；--web 仅浏览器 / Desktop HMR; --web for browser only |
+| `ewp browser` | `.\startup.cmd browser` | Vite 浏览器 HMR，与 frontend:dev 相同 / Browser HMR, same as frontend:dev |
+| `ewp frontend` | `.\startup.cmd frontend` | 编译至 `output/frontend/`，与 frontend:build 相同 / Compile, same as frontend:build |
+| `ewp frontend:preview` / `ewp preview` | `.\startup.cmd frontend:preview` / `.\startup.cmd preview` | 预览编译结果，先构建 / Preview compiled output; build first |
+| `ewp demo` | `.\startup.cmd demo` | 编译后启动桌面，无 HMR / Compile then launch desktop, no HMR |
+| `ewp demo --debug` | `.\startup.cmd demo --debug` | 桌面演示启用开发者工具 / Enable demo developer tools |
+| `ewp wheel` | `.\startup.cmd wheel` | 构建 wheel / Build wheel |
+| `ewp exe` | `.\startup.cmd exe` | Windows 单文件 PyInstaller 程序 / Windows single-file executable |
+| `ewp build` | `.\startup.cmd build` | 默认 EXE；-w/--wheel、-e/--exe、--all 三选一 / Default EXE; select one build target |
+| `ewp bundle` | `.\startup.cmd bundle` | 含源码与文档的 source bundle / Source bundle with documentation |
+| `ewp full-build` / `ewp build:all` | `.\startup.cmd full-build` / `.\startup.cmd build:all` | test → wheel → exe → bundle，仅 Windows / Full pipeline, Windows only |
+| `ewp test` | `.\startup.cmd test` | Python unittest / Python unittest suite |
+| `ewp info` | `.\startup.cmd info` | Node CLI 显示 Node/配置/.venv 路径；启动脚本显示实际 Python 解释器与产物目录 / Node/config/venv paths versus actual Python interpreter and output directories |
+| `ewp check` | `.\startup.cmd check` | 运行 tests/npm-runtime.test.mjs；生成模板包含 3 项 Node runtime exports/config 检查 / Run the included three Node runtime exports/config checks in generated apps |
+
+仓库与新生成应用均提供 npm scripts：`help`、`ewp`、`menu`、`init`、`dev`、`browser`、`frontend`、`demo`、`wheel`、`exe`、`bundle`、`build`、`build:all`、`full-build`、`test`、`info`、`check`；另有 `frontend:dev` / `frontend:build` / `frontend:preview`、`build:wheel` / `build:exe`。在 frontend 内运行 `npm run <task>`；任意 CLI 任务可用 `npm run ewp -- <task> [options]`。`typecheck` 仅 TypeScript 模板提供。生成模板附带 `tests/npm-runtime.test.mjs`，`npm run check` / `ewp check` / `startup.cmd check` 执行 3 项 Node runtime exports/config 检查：公共 API/CSS、Vite 配置及应用 manifest/HTML 入口。Node CLI 支持 `build:wheel` / `build:exe`，启动脚本则用 `wheel` / `exe`。
+
+The checkout and new apps expose the npm scripts listed above. Run `npm run <task>` inside frontend, or `npm run ewp -- <task> [options]` for any CLI task. Only TypeScript templates provide `typecheck`. Generated templates include `tests/npm-runtime.test.mjs`; `npm run check`, `ewp check`, and `startup.cmd check` run three Node runtime exports/config checks: public API/CSS, Vite configuration, and application manifest/HTML entry points. Node CLI supports `build:wheel` / `build:exe`; use `wheel` / `exe` with the root launcher.
 
 ## 浏览器预览 / Browser preview
 
@@ -87,12 +117,14 @@ npm --prefix frontend run build -- -e
 .\startup.cmd wheel
 .\startup.cmd exe
 .\startup.cmd bundle
-.\startup.cmd build
+.\startup.cmd full-build
+npm --prefix frontend run build:all
+npm --prefix frontend run build -- --all
 ```
 
-`npm run build` 默认 EXE；`-- -w` / `-- --wheel` 选择 wheel，`-- -e` 显式选择 EXE。裸 `-w` 是 npm workspace 参数。`startup.cmd build` 保留 test → wheel → exe → bundle。两者构建语义不同，不用旧菜单的“完整构建”描述 npm 默认构建。
+项目工具的 `build` 默认 EXE，包括 `ewp build`、`npm run build` 和 `startup.cmd build`；`--wheel` / `-w` 选择 wheel，`--exe` / `-e` 显式 EXE，`--all` 选择完整 pipeline。npm 参数通过 `--` 传递，裸 `-w` 是 npm workspace 参数。完整链为 test → wheel → exe → bundle，可用 `ewp full-build` / `ewp build --all`、`startup.cmd full-build` / `startup.cmd build --all`、`npm run build:all` / `npm run build -- --all`。
 
-`npm run build` defaults to EXE; `-- -w` / `-- --wheel` selects wheel and `-- -e` explicitly selects EXE. Bare `-w` belongs to npm workspace selection. `startup.cmd build` retains test → wheel → exe → bundle. These are separate build semantics.
+Project-tool `build` defaults to EXE for `ewp build`, `npm run build`, and `startup.cmd build`. `--wheel` / `-w` selects wheel, `--exe` / `-e` explicitly selects EXE, and `--all` selects the full pipeline. Pass npm arguments after `--`; bare `-w` belongs to npm workspace selection. The full test → wheel → exe → bundle sequence is available as `ewp full-build` / `ewp build --all`, `startup.cmd full-build` / `startup.cmd build --all`, and `npm run build:all` / `npm run build -- --all`.
 
 | 目录 / Directory | 内容 / Contents |
 | --- | --- |
@@ -131,7 +163,7 @@ python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 .\scripts\build-demo.ps1 -Python .\.venv\Scripts\python.exe
 ```
 
-底层 CLI 的 `build` 是测试 + wheel + bundle，不包含 EXE；无参数的 `scripts/build.ps1` 运行该构建，不是新交互菜单。底层 CLI 默认也按 `output/` 分类；显式 `--output-dir` 控制产物目录。`clean` 是底层 CLI 的清理命令，会删除生成物，运行前查看其当前范围；开发菜单不提供 `clean`。`scripts/build-demo.ps1` 委托 `scripts/dev.py exe`，不再维护独立打包流程。
+底层 Python CLI 的 `build` 保持兼容：测试 + wheel + bundle，不包含 EXE；此语义不随项目工具 `build` 默认 EXE / `full-build` 改变。无参数的 `scripts/build.ps1` 运行底层构建，不是新交互菜单。底层 CLI 默认也按 `output/` 分类；显式 `--output-dir` 控制产物目录。`clean` 是底层 CLI 的清理命令，会删除生成物，运行前查看其当前范围；开发菜单不提供 `clean`。`scripts/build-demo.ps1` 委托 `scripts/dev.py exe`，不再维护独立打包流程。
 
 The low-level CLI `build` runs tests + wheel + bundle, without EXE. With no arguments, `scripts/build.ps1` runs that build rather than the new interactive menu. Default outputs are categorized under `output/`; `--output-dir` overrides artifact placement. Low-level `clean` removes generated content: inspect its current scope before use. It is not a menu task. `scripts/build-demo.ps1` delegates to `scripts/dev.py exe` instead of maintaining a separate packaging flow.
 

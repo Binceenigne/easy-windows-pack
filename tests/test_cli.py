@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from contextlib import redirect_stderr, redirect_stdout
+import io
 import json
+import os
 import posixpath
 import re
 import shutil
@@ -22,6 +25,148 @@ PROJECT_ROOT = Path(__file__).parents[1]
 
 
 class CliTests(unittest.TestCase):
+    def setUp(self):
+        environment = patch.dict(os.environ, {"EWP_LANG": ""})
+        environment.start()
+        self.addCleanup(environment.stop)
+
+    def test_language_precedence_fallback_and_bom(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "frontend").mkdir()
+            manifest = root / "frontend/package.json"
+            manifest.write_text('{"ewp":{"language":"en"}}', encoding="utf-8-sig")
+            self.assertEqual(cli.project_language(root), "en")
+            with patch.dict(os.environ, {"EWP_LANG": "zh-CN"}):
+                self.assertEqual(cli.project_language(root), "zh-CN")
+                self.assertEqual(cli.project_language(root, "en"), "en")
+            with patch.dict(os.environ, {"EWP_LANG": "invalid"}):
+                self.assertEqual(cli.project_language(root, "invalid"), "en")
+            for content in ('{', '[]', '{"ewp":[]}', '{"ewp":{"language":"fr"}}'):
+                manifest.write_text(content, encoding="utf-8")
+                self.assertEqual(cli.project_language(root), "zh-CN")
+            manifest.unlink()
+            self.assertEqual(cli.project_language(root), "zh-CN")
+
+    def test_cli_help_and_errors_are_single_language(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "frontend").mkdir()
+            for language, usage, help_text, opposite in (
+                ("zh-CN", "用法：", "显示帮助并退出", "show this help message"),
+                ("en", "usage:", "show this help message", "显示帮助并退出"),
+            ):
+                (root / "frontend/package.json").write_text(
+                    json.dumps({"ewp": {"language": language}}), encoding="utf-8")
+                with patch.object(cli, "PROJECT_ROOT", root):
+                    for arguments in (["--help"], ["build", "--help"],
+                                      ["--lang", language, "bundle", "--help"],
+                                      ["test", "--help", f"--lang={language}"]):
+                        with self.subTest(language=language, arguments=arguments):
+                            output = io.StringIO()
+                            with redirect_stdout(output), self.assertRaises(SystemExit) as error:
+                                cli.main(arguments)
+                            self.assertEqual(error.exception.code, 0)
+                            self.assertIn(usage, output.getvalue())
+                            self.assertIn(help_text, output.getvalue())
+                            self.assertNotIn(opposite, output.getvalue())
+                    for arguments, zh, en in (
+                        ([], "缺少必需参数", "the following arguments are required"),
+                        (["invalid"], "无效选项", "invalid choice"),
+                        (["build", "--unknown"], "无法识别的参数", "unrecognized arguments"),
+                        (["build", "--python"], "需要一个参数值", "expected one argument"),
+                        (["info", "--lang=invalid"], "无效选项", "invalid choice"),
+                    ):
+                        with self.subTest(language=language, arguments=arguments):
+                            output = io.StringIO()
+                            with redirect_stderr(output), self.assertRaises(SystemExit) as error:
+                                cli.main(arguments)
+                            self.assertEqual(error.exception.code, 2)
+                            self.assertIn(usage, output.getvalue())
+                            self.assertIn(en if language == "en" else zh, output.getvalue())
+                            self.assertNotIn(zh if language == "en" else en, output.getvalue())
+
+    def test_cli_build_errors_use_override_and_preserve_exit_code(self):
+        for language, expected, opposite in (("zh-CN", "[错误]", "[error]"), ("en", "[error]", "[错误]")):
+            output = io.StringIO()
+            with redirect_stderr(output), patch.object(cli, "run_tests", side_effect=cli.BuildError("failure", 23)):
+                self.assertEqual(cli.main(["test", "--lang", language]), 23)
+            self.assertIn(expected, output.getvalue())
+            self.assertNotIn(opposite, output.getvalue())
+            self.assertIsNone(cli._LANGUAGE.get())
+
+    def test_cli_child_environment_uses_last_override_and_preserves_dev_url(self):
+        with patch.dict(os.environ, {"EWP_LANG": "zh-CN", "EWP_DEV_URL": "http://127.0.0.1:3210/",
+                                     "PYTHONPATH": "foreign", "PYTHONHOME": "foreign"}), \
+                patch.object(cli.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(cli.main(["--lang=zh-CN", "test", "--lang=en"]), 0)
+            env = run.call_args.kwargs["env"]
+            self.assertEqual(env["EWP_LANG"], "en")
+            self.assertEqual(env["EWP_DEV_URL"], "http://127.0.0.1:3210/")
+            self.assertNotIn("PYTHONHOME", env)
+            self.assertNotIn("PYTHONPATH", env)
+            self.assertEqual(env["PYTHONUTF8"], "1")
+            self.assertEqual(os.environ["EWP_LANG"], "zh-CN")
+
+    def test_cli_actual_subprocess_inherits_project_language(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "frontend").mkdir()
+            (root / "frontend/package.json").write_text('{"ewp":{"language":"en"}}', encoding="utf-8")
+            marker = root / "child.txt"
+            with redirect_stdout(io.StringIO()) as output:
+                cli._run([sys.executable, "-c", "import os,pathlib,sys; pathlib.Path(sys.argv[1]).write_text(os.environ['EWP_LANG'])",
+                          str(marker)], cwd=root)
+            self.assertEqual(marker.read_text(), "en")
+            self.assertIn("[run]", output.getvalue())
+            self.assertNotIn("[执行]", output.getvalue())
+
+    def test_clean_removes_both_metadata_locations_but_preserves_sources(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.make_app(root)
+            for directory in ("easy_windows_pack.egg-info", "backend/base/easy_windows_pack.egg-info",
+                              "backend/base/ewpcore/__pycache__", "output", "build", "dist"):
+                target = root / directory
+                target.mkdir(parents=True)
+                (target / "PKG-INFO").write_text("generated", encoding="utf-8")
+            protected = root / "backend/base/source.egg-info/keep.py"
+            protected.parent.mkdir()
+            protected.write_text("# source", encoding="utf-8")
+            docs = root / "docs/keep.md"
+            docs.parent.mkdir()
+            docs.write_text("# docs", encoding="utf-8")
+            for language, expected, opposite in (("en", "[clean]", "[清理]"),):
+                with cli._language_context(root, language), redirect_stdout(io.StringIO()) as output:
+                    clean_project(root)
+                self.assertIn(expected, output.getvalue())
+                self.assertNotIn(opposite, output.getvalue())
+                self.assertEqual(output.getvalue().count("[ok] removed"), 1)
+            self.assertFalse((root / "easy_windows_pack.egg-info").exists())
+            self.assertFalse((root / "backend/base/easy_windows_pack.egg-info").exists())
+            self.assertTrue((root / "backend/base/ewpcore/__init__.py").is_file())
+            self.assertTrue(protected.is_file())
+            self.assertTrue(docs.is_file())
+
+    def test_clean_never_follows_generated_directory_symlinks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "project"
+            external = Path(temporary) / "external"
+            root.mkdir()
+            external.mkdir()
+            source = external / "keep.py"
+            source.write_text("# source", encoding="utf-8")
+            try:
+                (root / "build").symlink_to(external, target_is_directory=True)
+            except OSError:
+                self.skipTest("Symlink creation unavailable")
+            with redirect_stdout(io.StringIO()):
+                clean_project(root)
+            self.assertFalse((root / "build").exists())
+            self.assertTrue(source.is_file())
+
     def test_generated_ai_bundle_preserves_all_guidance_links(self):
         creator = PROJECT_ROOT / "frontend/packages/create-ewp/bin/create-ewp.mjs"
         prepared = creator.parent.parent / "templates/common/startup.cmd"
@@ -187,7 +332,7 @@ class CliTests(unittest.TestCase):
                     saved = original.with_name(original.name + ".saved")
                     original.rename(saved)
                     try:
-                        with self.assertRaisesRegex(cli.BuildError, "Bundle source does not exist"):
+                        with self.assertRaisesRegex(cli.BuildError, "源码包源文件不存在"):
                             build_bundle(project_root)
                         self.assertFalse((project_root / "output").exists())
                     finally:
@@ -230,6 +375,7 @@ class CliTests(unittest.TestCase):
                 "docs/.claude/skills/easy-dev/SKILL.md",
                 "docs/.easy-dev/install-state.json",
                 "docs/.easy-dev/agent.md",
+                "docs/.easy-dev/skills/easy-dev/SKILL.md",
             )
             excluded = (
                 "docs/.claude/settings.local.json", "docs/.claude/history.jsonl",

@@ -23,13 +23,16 @@ const reportPath = join(root, 'report.json');
 const json = path => JSON.parse(readFileSync(path, 'utf8'));
 const save = (path, value) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n');
 const sha256 = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const versions = Object.fromEntries(['create-ewp', 'easywindowspack'].map(name =>
+  [name, json(join(repository, 'frontend/packages', name, 'package.json')).version]));
 const report = existsSync(reportPath) ? json(reportPath) : {
   startedAt: new Date().toISOString(), root, project: join(root, 'Fresh Vue App'),
   harness: join(root, 'package harness'), template: 'vue', commands: [], checks: {}, findings: [],
   startup: { status: 'pending' },
   packs: Object.fromEntries(['create-ewp', 'easywindowspack'].map(name => {
-    const path = join(repository, 'output/npm', `${name}-0.1.0.tgz`);
-    return [name, { path, sha256: sha256(path) }];
+    const version = versions[name];
+    const path = join(repository, 'output/npm', `${name}-${version}.tgz`);
+    return [name, { path, version, sha256: sha256(path) }];
   }))
 };
 const project = report.project;
@@ -83,7 +86,8 @@ function installedAudit(cwd) {
   for (const name of Object.keys(report.packs)) {
     const entry = lock.packages[`node_modules/${name}`];
     assert.match(entry.resolved, /^file:/);
-    assert.equal(entry.version, '0.1.0');
+    assert.equal(entry.version, versions[name]);
+    assert.equal(json(join(cwd, 'node_modules', name, 'package.json')).version, versions[name]);
     assert.ok(inside(cwd, join(cwd, 'node_modules', name)), `${name} escaped the consumer`);
     assert.equal(sha256(report.packs[name].path), report.packs[name].sha256, 'Tarball changed during validation');
   }
@@ -99,7 +103,7 @@ function firstRun() {
   installedAudit(report.harness);
   const runtime = join(report.harness, 'node_modules/easywindowspack/bin/ewp.mjs');
   run(process.execPath, [runtime, 'create', project, '--template', report.template,
-    '--no-install', '--no-start'], report.harness, 'installed-ewp-create');
+    '--lang', 'en', '--no-install', '--no-start'], report.harness, 'installed-ewp-create');
   assert.equal(existsSync(join(project, 'output/frontend')), false);
   assert.equal(existsSync(join(project, '.venv')), false);
   const manifestPath = join(frontend, 'package.json');
@@ -107,6 +111,9 @@ function firstRun() {
     assert.equal(existsSync(join(project, path)), false, `Root must not contain ${path}`);
   }
   const manifest = json(manifestPath);
+  assert.equal(manifest.version, '0.1.0');
+  assert.equal(manifest.ewp.language, 'en');
+  assert.equal(manifest.dependencies.easywindowspack, `^${versions.easywindowspack}`);
   assert.equal(manifest.scripts.init, 'ewp init');
   assert.equal(manifest.scripts.build, 'ewp build');
   Object.assign(manifest.dependencies, dependencies);
@@ -116,7 +123,7 @@ function firstRun() {
   assert.equal(existsSync(join(project, 'output/frontend')), false, 'npm install must not prebuild the app');
   report.checks.noPrebuiltFrontend = true;
   flush();
-  const output = npm(['run', 'init'], frontend, 'first-init');
+  const output = npm(['run', 'init', '--', '--lang', 'en'], frontend, 'first-init');
   const npmAt = output.indexOf('Install frontend dependencies');
   const viteAt = output.search(/vite v[\d.]+ building/);
   const completeAt = output.indexOf('built in', viteAt);

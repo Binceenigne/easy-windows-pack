@@ -2,708 +2,243 @@
 
 # easy-windows-pack
 
-可选桌面集成现支持 `ApiToolsAdapter` 后台管理、设置与更新接口，以及
-`TurtleClawAdapter` 令牌安装、前端就绪确认和宿主提供的普通重启回调。
-两者均不硬依赖源项目，保留宿主权限检查与更新流程。
-
-前端组件库新增响应式点阵进度条、开屏遮罩、错峰渐入及可释放的更新轮询客户端。
-现有窗口单线程 JS dispatcher 和最小化防死锁逻辑保持不变。
-参见[双语接口契约](docs/desktop-integrations.md)和[离线组件示例](frontend/src/components.html)。
-
-### 可复用的 Windows WebView 桌面窗口框架
+用 Web 技术写界面，用 Python 连接桌面能力，打包成 Windows 应用。
 
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![pywebview](https://img.shields.io/badge/pywebview-5.4%2B-0f766e)](https://pywebview.flowrl.com/)
-[![Version](https://img.shields.io/badge/version-0.2.1-2563eb)](https://github.com/Binceenigne/easy-windows-pack/releases)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11&logoColor=white)](https://www.microsoft.com/windows)
+[![easywindowspack](https://img.shields.io/npm/v/easywindowspack?label=easywindowspack)](https://www.npmjs.com/package/easywindowspack)
+[![create-ewp](https://img.shields.io/npm/v/create-ewp?label=create-ewp)](https://www.npmjs.com/package/create-ewp)
+[![Node](https://img.shields.io/badge/Node-%3E%3D22.12-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Windows](https://img.shields.io/badge/platform-Windows-0078D4)](https://www.microsoft.com/windows)
 
-[中文](README.md) · [English](README.en.md) · [npm / Vite 指南](docs/npm-vite.md) · [开发文档](docs/README.md) · [构建工具](#构建工具) · [架构](#架构)
+**中文** · [English](README.en.md) · [文档导航](docs/README.md) · [npm / Vite 指南](docs/npm-vite.md)
 
 </div>
 
-`easy-windows-pack` 是一个面向 Windows + pywebview 的可复用 WebView 桌面窗口框架。它把窗口外壳从业务应用中拆出来，提供：
+`easy-windows-pack` 是基于 Python、pywebview 和 ESM 前端的 Windows WebView 框架。它提供可复用的窗口外壳和开发、构建工具，让业务界面与桌面能力分开维护。
 
-- 原生系统标题栏、默认自绘标题栏、最小自绘标题栏三种模式
-- 最小化、最大化/还原、关闭三个窗口按钮
-- 自绘标题栏拖拽移动
-- 最大化窗口拖动时自动还原，并保留鼠标相对标题栏的位置
-- Windows 原生 Aero Snap / Windows 11 Snap Layouts
-- 左、右、上、下和四个角共八个方向的边缘调整大小
-- 置顶、隐藏、显示、窗口尺寸设置
-- 可选关闭策略：退出进程或隐藏窗口
-- 业务 API 委托，窗口 API 与应用 API 可以共用同一个 pywebview `js_api`
-- 不依赖前端框架的 HTML/CSS/JavaScript 组件
-- 私有 npm workspace、ESM `easywindowspack@0.1.0` / `ewp` CLI、Vite HMR 与六套 Vanilla / Vue / React 的 JS / TS 项目模板
-- 双语开发菜单、兼容 CLI / PowerShell 入口、wheel、单文件 EXE 和 source bundle 输出
+- **选择熟悉的前端**：Vanilla、Vue、React，各有 JavaScript / TypeScript 模板。
+- **桌面窗口开箱即用**：Windows / macOS 两套外观，原生、默认自绘、紧凑自绘标题栏；支持窗口按钮、拖拽、边缘缩放和 Windows Snap。
+- **开发到分发**：Vite 热更新、Python 业务 API 桥接、Windows 单文件 EXE 与 wheel 构建。
+- **按需扩展**：托盘、点阵进度、启动遮罩、进入动画及宿主更新适配器。
 
-## 架构
+两个 npm 包均已发布 **0.1.0**：`create-ewp` 提供 `npm create ewp` 脚手架，`easywindowspack` 提供前端 runtime、CSS 和 `ewp` CLI。源码 npm manifests 与锁文件已同步为 **0.1.1，尚未发布**；下文新增语言选择、帮助、菜单与完整构建命令属于该修订，当前 registry 的 `latest` 仍为 0.1.0。Python 分发名为 `easy-windows-pack`，源码版本为 **0.2.1**，由项目 `init` 从本地源码安装。
 
-![easy-windows-pack 架构图](docs/images/architecture.svg)
+## 环境要求
 
-前端组件通过 pywebview API 发送窗口命令，`WindowController` 管理生命周期与状态，`win32.py` 将非客户区拖拽、缩放、吸附和置顶交给 Windows。
+| 用途 | 要求 |
+| --- | --- |
+| 创建项目、浏览器开发、前端编译 | Node.js **>=22.12.0**，npm |
+| 桌面开发、Python 测试、原生打包 | Python **>=3.10** |
+| Windows 桌面运行 | Windows + [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) |
 
-开发文档统一在根 [docs/](docs/README.md) 维护：[开发手册](docs/development.md)介绍环境、预览与构建，[架构与迁移指南](docs/architecture.md)说明目录边界；[实现摘要](docs/index.md)、[设计摘要](docs/design.md)与 [AI 路由](docs/agent.md)也位于 docs。根 AGENTS.md / CLAUDE.md 仅作标准自动发现入口，显式引导读取 docs 下的 Skills；后者不在工具默认自动发现目录中。
+安装 Python 时建议启用 Windows `py` launcher。macOS 外观是窗口 UI 主题；本项目的 EXE 打包面向 Windows。
 
-## 目录结构
+## 创建第一个应用
 
-```text
-easy-windows-pack/
-├── backend/
-│   ├── base/ewpcore/     # 框架源码；公开 Python 包仍为 easy_windows_pack
-│   └── src/demo.py       # 桌面演示与宿主装配
-├── frontend/
-│   ├── frame/ewpframe/   # window-frame.js、desktop-updates.js 桥接逻辑
-│   ├── components/
-│   │   ├── titlebar/     # window-frame.html / .css
-│   │   └── desktop/      # desktop-components.js / .css
-│   ├── index.html       # Vite 主页面入口
-│   ├── src/             # main.js、组件示例；旧 index.html 为弃用兼容入口
-│   ├── contracts/       # TypeScript 类型契约与接入说明
-│   ├── packages/
-│   │   ├── easywindowspack/ # ESM runtime、CSS、框架包装与 ewp CLI
-│   │   └── create-ewp/  # 交互生成器、common 与六套模板
-│   ├── package.json     # private npm workspace
-│   ├── package-lock.json # npm 锁文件；依赖在此目录安装
-│   └── vite.config.mjs  # Vite ^7.3.7；生产相对 URL
-├── docs/                # 文档与 AI 资源维护中心
-│   ├── agent.md         # AI 路由；项目根为 docs 的上一级
-│   ├── index.md         # 实现索引摘要
-│   ├── design.md        # 设计摘要
-│   ├── .agents/skills/easy-dev/ # 唯一 Skill 正文
-│   ├── .claude/skills/easy-dev/ # Claude 薄路由
-│   └── .easy-dev/       # 安装状态；生成项目的共用 AI 指引按选择生成
-├── scripts/             # startup.cmd、dev.py、build.cmd、build.ps1、build-demo.ps1
-│   └── prepare-npm.mjs  # 单源 npm 资源生成
-├── tests/               # Python 与浏览器测试
-├── .github/workflows/    # 跨平台测试和 Windows 构建
-├── output/              # frontend/、wheels/、exe/、bundles/、npm/、logs/
-├── build/               # spec/、pyinstaller/ 等构建缓存
-├── startup.cmd          # 根唯一启动脚本 → scripts/startup.cmd → scripts/dev.py
-├── AGENTS.md            # 标准薄入口 → docs/agent.md
-├── CLAUDE.md            # 标准薄入口 → docs/agent.md 与 Claude 路由
-├── LICENSE
-├── pyproject.toml
-└── requirements.txt
-```
-
-源码目录名 `ewpcore` 不改变公开导入：仍使用 `from easy_windows_pack import ...`，由 `pyproject.toml` 的 `package-dir` 映射到 `backend/base/ewpcore`。迁移后应重新执行可编辑安装，不要改成公开导入 `ewpcore`。
-
-## npm 快速开始
-
-环境：Node.js **>=22.12.0**，桌面初始化与打包需要 Python **>=3.10**，Windows 桌面需要 WebView2。frontend 内 npm workspace 为 private；两个 npm 包为 `0.1.0`，与 Python `easy-windows-pack@0.2.1` 独立版本。
-
-**发布状态未确认。** `create-ewp` / `easywindowspack` 公共名称的可用性和所有权需发布者核实。以下 registry 命令仅在两包发布后使用；无需全局安装即可创建项目：
+在准备存放项目的目录打开终端，无需全局安装：
 
 ```powershell
 npm create ewp@latest
-npm create ewp@latest "My App" -- --template react-ts --no-install --no-start
 ```
 
-交互选择项目名、Vanilla / Vue / React、JavaScript / TypeScript、AI 工具、是否安装、是否启动，共六模板。AI 默认全不选，可多选 codex / claude / copilot；所选 AI 资源放 docs 下，仅生成所选工具的标准薄入口，详见[AI 资源约定](docs/npm-vite.md#ai-资源布局--ai-resource-layout)。也可在发布后运行 `npm install -g easywindowspack`，再用 `ewp create`；后者转调用依赖 `create-ewp/cli`。未发布时的本地生成、tarball 验收与手动发布顺序见[双语指南](docs/npm-vite.md)。
+**版本提示：当前命令取得已发布的 0.1.0。** 要使用下述新流程，目前需使用本地 0.1.1 生成器和 runtime tarball；新版本发布后升级 `create-ewp` 与 `easywindowspack`。本地用法见 [npm / Vite 指南](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation)，不要假定当前 `latest` 已支持新语言选项。
 
-以下 npm 开发/构建命令均在源码仓库或生成项目的 frontend 目录执行（先从项目根运行 `cd frontend`）。保留在根目录时使用 `npm --prefix frontend`，例如 `npm --prefix frontend run dev`：
+0.1.1 交互的第一步选择**人类语言**：简体中文 `zh-CN` 或 English `en`，随后选择项目名、框架、编程语言 JavaScript / TypeScript、可选 AI 工具，以及是否安装依赖、初始化 Python 并启动桌面。AI 默认不选，安装与启动默认也不执行。
+
+新版本发布后，可用以下 **0.1.1 命令**固定配置；当前请按上述指南使用源码。生成器参数放在 npm 的 `--` 后，`--lang` 跳过第一步语言选择：
 
 ```powershell
+npm create ewp@0.1.1 my-app -- --lang zh-CN --template react-ts --ai codex,claude --no-install --no-start --yes
+npm create ewp@0.1.1 my-vue-app -- --lang en --template vue-ts --ai claude --no-install --no-start --yes
+```
+
+然后进入生成项目的 **frontend** 目录。以下以 `my-app` 为例，Vue 示例改为 `my-vue-app/frontend`：
+
+```powershell
+cd my-app/frontend
 npm install
 npm run init
 npm run dev
-# 只运行浏览器，不启动桌面
-npm run dev -- --web
-npm run frontend:dev
 ```
 
-`init` 创建/复用 Python `.venv` 并安装 Python 开发及 npm 依赖。`dev` 默认启动本机动态端口的 Vite/HMR，将实际 URL 经 `EWP_DEV_URL` 传给启用 debug 的 pywebview。浏览器模式无需 Python，也没有真实原生窗口能力。主页面为 [frontend/index.html](frontend/index.html)，旧 [frontend/src/index.html](frontend/src/index.html) 为弃用兼容入口。
+`init` 创建或复用项目根 `.venv`，安装 npm / Python 开发依赖并编译前端；无需手动激活虚拟环境。若生成器已经完成安装或初始化，可跳过对应步骤；若已经启动桌面，无需重复运行 `dev`。
+
+`dev` 启动 Vite 和桌面窗口，支持前端热更新。实际本机 URL 以终端输出为准，端口动态分配；按 Ctrl+C 停止服务和桌面进程。
+
+只开发浏览器界面时，安装 npm 依赖后运行 `npm run frontend:dev`，**不需要 Python**。浏览器预览可检查外观与前端交互；拖拽、缩放、Snap、托盘和 Python 桥接需在真实桌面验证。
+
+目标目录必须为空，包括不能含 `.git`。`--yes` 跳过生成器交互，默认项目名 `ewp-app`、模板 `vanilla`、无 AI、不安装、不启动；语言按下节优先级解析，无设置时为 `zh-CN`。`--install` 仅安装 npm 依赖；`--start` 还会初始化 Python 并启动桌面，不能与 `--no-install` 同用。
+
+也可选择全局 CLI；当前全局安装仍取得 0.1.0，新增用法需本地安装 0.1.1 tarball，或等待发布后升级：
 
 ```powershell
-npm run frontend:build
+npm install -g easywindowspack
+ewp create
+```
+
+0.1.1 发布后，全局 CLI 用 `npm install -g easywindowspack@0.1.1` 升级；已有项目在 frontend 内用 `npm install easywindowspack@^0.1.1` 升级 runtime。升级依赖不会自动补齐旧项目的 scripts、README 或 AI 指引，完整任务映射见 [开发手册](docs/development.md#菜单与命令--menu-and-commands)。
+
+## 项目语言
+
+创建时把所选语言保存到 `frontend/package.json` 的 `ewp.language`。运行命令时的优先级为 **显式 `--lang` → `EWP_LANG` 环境变量 → 项目保存值 → `zh-CN`**。运行已有项目时，`--lang` 只覆盖本次命令，不改保存值：
+
+```powershell
+npm run help -- --lang en
+npm run ewp -- info --lang zh-CN
+ewp menu --lang en
+```
+
+生成项目的 README、AI 指引和示例文案使用创建语言；语言选择完成后，自有 CLI 帮助、菜单、提示及任务说明按所选语言单语输出。**npm 的 `Ok to proceed?` 确认及 npm、pip、Vite 等第三方日志保留原生输出**；生成器 `--yes` 不控制 npm 自己的确认。临时切换 CLI 语言不会重写已有 README、AI 文件、示例或业务文案；修改 `ewp.language` 可改变后续命令的默认语言。
+
+## 模板与 AI 指引
+
+| 框架 | JavaScript | TypeScript |
+| --- | --- | --- |
+| Vanilla | `vanilla` | `vanilla-ts` |
+| Vue | `vue` | `vue-ts` |
+| React | `react` | `react-ts` |
+
+AI 指引按需生成，可用 `--ai codex,claude,copilot` 多选：
+
+| 选择 | 标准入口 | Skill / 共用指引 |
+| --- | --- | --- |
+| Codex | 根 `AGENTS.md` | `docs/.agents/skills/easy-dev/SKILL.md` |
+| Claude | 根 `CLAUDE.md` | `docs/.claude/skills/easy-dev/SKILL.md` |
+| Copilot | `.github/copilot-instructions.md` | 直接读取共用指引与共用 Skill |
+| 任一工具 | 仅生成所选工具的入口 | `docs/.easy-dev/agent.md` 与 `docs/.easy-dev/skills/easy-dev/SKILL.md` |
+
+Codex / Claude 的专属 Skill 都转到共用 Skill，再读取 `docs/.easy-dev/agent.md`。仅选 Claude 时不生成 `AGENTS.md` 或 `docs/.agents/`。未选择 AI 时不生成这些入口或资源；docs 下的 Skill 由标准入口显式引导读取。
+
+## 项目结构与业务代码
+
+以下是**生成应用**的主要目录，安装或构建后才会出现依赖、环境和产物：
+
+```text
+my-app/
+├─ frontend/
+│  ├─ src/                  # 业务界面与样式
+│  ├─ index.html            # Vite 页面入口
+│  ├─ package.json
+│  ├─ vite.config.mjs
+│  └─ node_modules/         # npm 安装后生成
+├─ backend/
+│  ├─ src/demo.py           # 桌面入口与业务 API
+│  └─ base/                # 共享 Python 窗口 runtime 与安装 metadata
+│     ├─ ewpcore/
+│     └─ *.egg-info/       # Python 安装/构建后生成，已忽略
+├─ scripts/                # 开发与打包工具
+├─ startup.cmd             # Windows 项目菜单
+├─ pyproject.toml
+├─ docs/                   # 选择 AI 时生成的指引
+├─ .venv/                  # init 创建的 Python 环境
+└─ output/                 # 编译、打包与日志产物
+```
+
+前端的 package、Vite / TypeScript 配置、锁文件和 npm 依赖都放在 `frontend/`，npm 命令也在这里执行。从项目根调用可加 `--prefix frontend`，例如 `npm --prefix frontend run dev`。
+
+业务界面从 Vanilla 的 `src/main.js` / `main.ts`、Vue 的 `src/App.vue`、React 的 `src/App.jsx` / `App.tsx` 开始，路径均相对 frontend。Python 业务方法写在 `backend/src/demo.py`；公开导入名仍是 `easy_windows_pack`。窗口核心与工具分别留在 `backend/base/ewpcore/` 和 `scripts/`。
+
+`backend/base/*.egg-info/` 是 setuptools 安装/构建生成的元数据，不属于 docs，不手工维护或提交；`.venv/Lib/site-packages/*.dist-info/` 是已安装包的正常元数据，同样不提交。包映射、忽略规则与旧缓存说明见 [架构](docs/architecture.md#源码路径与公开包名--source-path-and-public-package-name)。
+
+## 常用开发命令
+
+以下命令在 `frontend/` 执行：
+
+| 命令 | 用途 |
+| --- | --- |
+| `npm run help` | 查看自有 CLI 帮助 |
+| `npm run info` | 查看 Node、项目路径、前端配置与 `.venv` 路径 |
+| `npm run menu` | 打开项目任务菜单 |
+| `npm run ewp -- <task> [options]` | 直接执行任一 CLI 任务 |
+| `npm run init` | 初始化或复用 Python 环境，安装依赖 |
+| `npm run dev` | Vite + Python 桌面开发 |
+| `npm run dev -- --web` | 仅浏览器开发 |
+| `npm run browser` / `npm run frontend:dev` | 浏览器开发，无需 Python |
+| `npm run frontend` / `npm run frontend:build` | 编译前端到 `output/frontend/`，无需 Python |
+| `npm run frontend:preview` | 预览已编译前端，先运行 frontend:build |
+| `npm run demo -- --debug` | 编译后运行桌面并开启开发者工具，无 HMR |
+| `npm run wheel` / `npm run build:wheel` | 构建 Python wheel |
+| `npm run exe` / `npm run build:exe` / `npm run build` | 构建 Windows EXE |
+| `npm run bundle` | 构建源码 bundle |
+| `npm run build:all` / `npm run full-build` | test → wheel → exe → bundle |
+| `npm run typecheck` | TypeScript 模板的类型检查 |
+| `npm test` | 运行项目 Python 测试，需先 init |
+| `npm run check` | Node runtime exports/config 检查 |
+
+仓库与新生成项目均提供上表通用任务；`typecheck` 仅限 TypeScript 模板。生成模板附带 `tests/npm-runtime.test.mjs`；在 frontend 内执行 `npm run check`，或在项目根执行 `ewp check` / `startup.cmd check`，可运行 3 项 Node runtime exports/config 检查：公共 API/CSS、Vite 配置及应用 manifest/HTML 入口。
+
+全局安装 CLI 后，`ewp` 无参数、`ewp -h` / `ewp --help` 均输出帮助，创建帮助可用 `ewp create -h`，无需已有项目。项目根可运行 `ewp menu` 或 `ewp <task>`；未全局安装时，从根用 `npm --prefix frontend run menu`、`npm --prefix frontend run ewp -- <task>`，或在 frontend 使用上表入口。
+
+根目录的 `startup.cmd` 可双击或运行 `.\startup.cmd` 打开菜单；它委托 `scripts/startup.cmd` 和 `scripts/dev.py`，需要 Python。菜单任务也可直接调用，例如 `.\startup.cmd demo --debug`；`.\startup.cmd help` 查看帮助，`.\startup.cmd info` 检查实际 Python 解释器和产物目录。`ewp menu` 本身无需先初始化 Python。完整映射及故障排查见 [开发手册](docs/development.md)。
+
+## 构建与产物
+
+```powershell
 npm run build
 npm run build -- -w
 npm run build -- --wheel
 npm run build -- -e
+npm run build:all
 ```
 
-前端编译至 `output/frontend/`，生产资源 URL 相对化；`build` 默认构建 Windows EXE，`-w` / `--wheel` 选择 wheel，`-e` 显式选择 EXE。**npm 参数放在 `--` 之后，裸 `-w` 属于 npm workspace 选项。** EXE 由 Python/PyInstaller 打包，只装载编译后的前端。框架 wheel 保留核心与源组件/桥接资源；生成应用 wheel 使用编译 assets，详见[构建边界](docs/npm-vite.md#前端与-python-构建--frontend-and-python-builds)。
+`npm run build` 默认生成 Windows **EXE**；`-- -e` / `-- --exe` 显式选择 EXE，`-- -w` / `-- --wheel` 选择 Python wheel，也可用 `npm run build:exe` / `npm run build:wheel`。这两类打包均先编译前端，需先完成 `init`。
 
-前端通过 `easywindowspack` 的 `mountFrame` / `update` / `dispose` 管理外壳，样式显式导入 `easywindowspack/frame.css`；桌面组件、更新客户端与可选 `./vue` / `./react` 导出见[公共 API](docs/npm-vite.md#前端公共-api-与模板组合--frontend-public-api-and-template-composition)。Vue >=3.3、React >=18 为可选 peers，Vanilla 不依赖它们。六模板复用单源 runtime，Vue Teleport / React portal 保留业务内容的响应式与事件。
+完整 pipeline 为 **test → wheel → exe → bundle**：使用 `npm run build:all` / `npm run full-build`、`npm run build -- --all`，或 `ewp build:all` / `ewp full-build` / `ewp build --all`；根启动脚本支持 `.\startup.cmd full-build` / `.\startup.cmd build:all`。所有项目入口的 `build` 默认 EXE，EXE 与完整构建仅支持 Windows。
 
-## Python 安装与兼容接入
+**不要写 `npm run build -w`**：裸 `-w` 是 npm 的 workspace 参数。直接调用 CLI 时可写 `ewp build -w`。
 
-从 PyPI 安装：
+EXE 从 `backend/src/demo.py` 启动，携带并加载 `output/frontend/` 中的编译页面与资源。生成应用 wheel 包含编译前端；源码仓库的框架 wheel 则分发窗口核心及源组件，具体资源约定见 [npm / Vite 指南](docs/npm-vite.md)。
 
-```powershell
-pip install easy-windows-pack
+| 目录 | 内容 |
+| --- | --- |
+| `output/frontend/` | Vite 编译页面与 assets |
+| `output/exe/` | Windows EXE |
+| `output/wheels/` | Python wheel |
+| `output/bundles/` | 源码 bundle |
+| `output/npm/` | 仓库 npm 包归档 |
+| `output/logs/` | 初始化与构建日志 |
+
+`build/` 用于配置、暂存和缓存。底层兼容命令 `python -m easy_windows_pack.cli build` / `easy-windows-pack build` 保留 **test → wheel → bundle**，不包含 EXE；它与项目工具的 `full-build` 分开，见 [兼容命令](docs/development.md#兼容命令--compatible-commands)。
+
+## 集成到已有应用
+
+已有 Vite 前端可在其 npm 项目内安装 `easywindowspack`，导入公开 API 和 CSS。下面假设页面已有 `#app` 容器：
+
+```javascript
+import { mountFrame } from 'easywindowspack';
+import 'easywindowspack/frame.css';
+
+const frame = mountFrame('#app', {
+  title: 'My App', windowStyle: 'windows',
+  content: document.createElement('main'),
+});
+frame.content.textContent = 'Hello desktop';
+frame.update({ title: 'Ready' });
+// 应用卸载时调用 frame.dispose()。
 ```
 
-从源码安装：
+这会挂载前端外壳；桌面能力还需 Python 宿主。业务 API 放在 [桌面入口](backend/src/demo.py)，通过 `create_window(..., app_api=...)` 暴露；保留开发时读取 `EWP_DEV_URL`、生产时加载编译页面的逻辑。完整前端 API 见 [npm / Vite 指南](docs/npm-vite.md)，组件与更新接口见 [桌面集成](docs/desktop-integrations.md) 和 [类型契约](frontend/contracts/README.md)，主题见 [窗口外观](docs/window-styles.md)，Python 配置与托盘见 [WindowConfig](backend/base/ewpcore/config.py) 和 [托盘源码](backend/base/ewpcore/tray.py)。
+
+## 开发框架源码
 
 ```powershell
-pip install -e .
-```
-
-或者只安装运行时依赖：
-
-```powershell
-pip install -r .\requirements.txt
-```
-
-仓库开发建议先初始化项目环境，再运行桌面示例：
-
-```powershell
+git clone https://github.com/Binceenigne/easy-windows-pack.git
+cd easy-windows-pack
 .\startup.cmd init
-.\startup.cmd demo --debug
-```
-
-上述 Python 与启动脚本命令从项目根执行。初始化创建或复用 `.venv`，在其中执行 `pip install -e ".[dev,tray]"`，同时安装 frontend 内 npm 依赖。安装后可用该环境的 Python 运行 `backend/src/demo.py`；直接运行前需编译前端，或由开发命令提供 `EWP_DEV_URL`。`startup.cmd browser` 转 Vite，不提供真实原生桥接。
-
-运行包测试：
-
-```powershell
-python -m unittest discover -s .\tests -p "test_*.py" -v
-```
-
-## 构建工具
-
-根唯一启动脚本 `startup.cmd` 委托 `scripts/startup.cmd`，再调用标准库入口 `scripts/dev.py`；无参数时显示双语菜单，也可直接指定任务。其他构建脚本均位于 scripts。菜单保留 legacy 兼容语义；当前前端开发和编译需要 Node.js/Vite，Python 构建依赖由 `init` 安装到项目 `.venv`。完整用法见[开发手册](docs/development.md)与[npm / Vite 指南](docs/npm-vite.md)。
-
-```powershell
 .\startup.cmd
-.\startup.cmd init
-.\startup.cmd browser
-.\startup.cmd frontend
-.\startup.cmd demo --debug
-# 完整构建：测试 + wheel + 单文件 EXE + source bundle
-.\startup.cmd build
 ```
 
-![easy-windows-pack 构建流程](docs/images/build-flow.svg)
-
-默认按类别输出，日志保留在 `output/logs/`，PyInstaller 配置及缓存位于 `build/`：
-
-```text
-output/
-├── frontend/            # Vite 编译页面与 assets
-├── wheels/              # *.whl
-├── exe/                 # easy-windows-pack-demo.exe（单文件）
-├── bundles/             # *-bundle.zip、对应展开目录和 manifest
-├── npm/                 # npm pack tarball
-└── logs/                # 初始化与构建日志
-build/
-├── spec/                # PyInstaller spec
-└── pyinstaller/         # PyInstaller 工作缓存
-```
-
-| 命令 | 用途 |
-| --- | --- |
-| `init` | 创建/复用 `.venv`，安装 `.[dev,tray]` 及 npm 依赖 |
-| `browser` | 转 Vite 浏览器开发，在 `127.0.0.1` 动态端口打开主页面 |
-| `frontend` | 编译前端到 `output/frontend/` |
-| `demo --debug` | 编译前端后运行桌面演示并启用开发者工具；HMR 用 `npm run dev` |
-| `wheel` | 构建 wheel 到 `output/wheels/` |
-| `exe` | PyInstaller 单文件桌面演示到 `output/exe/`，仅 Windows |
-| `bundle` | Python、前端、示例、开发文档等源码包到 `output/bundles/` |
-| `build` | 按顺序运行 test → wheel → exe → bundle，仅 Windows |
-| `test` | 运行 Python `unittest`；浏览器与原生交互另行验收 |
-| `info` | 显示解释器、项目环境与各输出目录 |
-
-预览可用 `startup.cmd browser --port 8080 --no-open` 指定端口且不自动打开浏览器，按 Ctrl+C 停止服务。浏览器可检查外观和纯前端交互，但没有真实 native bridge；窗口拖拽、托盘与原生更新须在桌面宿主中验证。`startup.cmd build` 的 test → wheel → exe → bundle 与 `npm run build` 默认 EXE 是不同入口语义。SVG 展示菜单构建流程，npm 路径以双语指南为准。进度显示已完成阶段数，不按时间伪造完成百分比；失败或中断不会标记后续阶段成功。
-
-### 兼容入口
-
-原有 CLI 与 `scripts/build.ps1` 保留，`scripts/build.cmd` 是菜单兼容入口。底层 `build` 仍为测试 + wheel + source bundle，不包含 EXE；默认输出也使用 `output/` 分类目录。`clean` 属于底层 CLI，不是开发菜单任务。显式 `--output-dir` 仍可覆盖默认产物位置。
+也可在检出仓库后使用 npm 入口：
 
 ```powershell
-python -m easy_windows_pack.cli build
-easy-windows-pack build
-python -m easy_windows_pack.cli build --output-dir .\artifacts
-python -m easy_windows_pack.cli build --skip-tests
-python -m easy_windows_pack.cli build --skip-tests --skip-bundle
-python -m easy_windows_pack.cli bundle --output-dir .\artifacts
-.\scripts\build.ps1 -Python .\.venv\Scripts\python.exe
-.\scripts\build-demo.ps1 -Python .\.venv\Scripts\python.exe
+cd frontend
+npm ci
+npm run init
+npm run dev
 ```
 
-`scripts/build.ps1` 依次查找 `-Python` 参数、项目内 `.venv`、PATH 中的 `python.exe` 和 `py.exe`。`scripts/build-demo.ps1` 委托 `scripts/dev.py exe`，复用相同环境、日志与产物目录。
+源码仓库的 `frontend/` 是 **private npm workspace**，两个发布包的源码在 `frontend/packages/`；workspace 根本身不发布到 npm。生成应用只消费 runtime，不包含这套包开发目录。实现边界见 [架构](docs/architecture.md)，更多开发流程见 [文档导航](docs/README.md)。
 
-### WebView2 并发安全
+## 许可证
 
-`WindowController` 通过单一后台 dispatcher 串行执行 JavaScript。重复的窗口状态事件会合并，不会并发调用 `evaluate_js`。最小化或隐藏窗口时，待发送的 JavaScript 会被取消，原生窗口消息会立即发出；窗口切换期间不会在 pywebview 的原生事件回调中同步等待 WebView2。
-
-## 最小集成
-
-### 1. 创建窗口
-
-```python
-from pathlib import Path
-
-import webview
-
-from easy_windows_pack import WindowConfig, create_window
-
-ROOT = Path(__file__).parent
-
-config = WindowConfig(
-    title="My WebView App",
-    titlebar_mode="default",
-    width=1200,
-    height=800,
-    min_width=720,
-    min_height=480,
-    background_color="#ffffff",
-    close_action="exit",
-)
-
-instance = create_window(
-    config,
-    url=(ROOT / "output" / "frontend" / "index.html").as_uri(),
-)
-webview.start(gui="edgechromium")
-```
-
-该 Vite 应用示例先执行 `npm run frontend:build`；开发时由 `ewp dev` 提供 `EWP_DEV_URL`。下节手动复制静态组件的兼容宿主可使用自己的 HTML 路径。
-
-`create_window` 返回 `WindowInstance`，包含：
-
-- `instance.window`：原始 pywebview 窗口
-- `instance.controller`：Python 窗口控制器，可在托盘、更新器或业务代码中调用
-- `instance.api`：传给 JavaScript 的 `WindowApi`
-
-### 2. 使用前端组件
-
-将以下三个文件复制到自己的静态资源目录：
-
-- [frontend/components/titlebar/window-frame.html](frontend/components/titlebar/window-frame.html)
-- [frontend/components/titlebar/window-frame.css](frontend/components/titlebar/window-frame.css)
-- [frontend/frame/ewpframe/window-frame.js](frontend/frame/ewpframe/window-frame.js)
-
-在页面中引入 CSS，并把 `window-frame.html` 中的外壳放在业务内容外层：
-
-```html
-<link rel="stylesheet" href="window-frame.css">
-
-<div data-ewp-window-frame data-titlebar-mode="default">
-    <!-- 将 window-frame.html 的完整内容放在这里，或直接复制其结构 -->
-    <main data-ewp-content>
-        <h1>业务页面</h1>
-    </main>
-</div>
-
-<script src="window-frame.js"></script>
-```
-
-更实际的做法是直接复制 `window-frame.html` 的完整结构，因为它包含八个 resize handle 和三个按钮。业务页面应放在 `[data-ewp-content]` 内。
-
-### 3. 接收状态
-
-包会自动调用：
-
-```javascript
-window.easyWindowsPackApplyState({
-    maximized: false,
-    visible: true,
-    titleBarMode: "default"
-});
-```
-
-按钮和拖拽事件由 `window-frame.js` 自动绑定。业务代码可以调用：
-
-```javascript
-await window.easyWindowsPack.call('set_always_on_top', true);
-await window.easyWindowsPack.setTitleBarMode('minimal');
-```
-
-没有 pywebview 时，调用会返回：
-
-```javascript
-{ ok: false, error: 'pywebview API is not ready' }
-```
-
-## 新增桌面组件
-
-组件使用原生 JavaScript，不要求 Vue、React 或 CSS 框架。复制并引入
-[组件样式](frontend/components/desktop/desktop-components.css)和[组件脚本](frontend/components/desktop/desktop-components.js)，
-在 DOM 创建后初始化。需要更新功能时再引入[更新客户端](frontend/frame/ewpframe/desktop-updates.js)。
-
-### 点阵进度条
-
-```html
-<link rel="stylesheet" href="desktop-components.css">
-<div id="quotaProgress"></div>
-<script src="desktop-components.js"></script>
-<script>
-const progress = EasyWindowsPackComponents.createMatrixProgress(
-    document.getElementById('quotaProgress'),
-    { value: 70, remaining: 30, size: 4, label: '已用额度' }
-);
-progress.update({ value: 75, remaining: 25 });
-// 页面或组件卸载时调用，释放 ResizeObserver 和生成的 DOM。
-// progress.dispose();
-</script>
-```
-
-`value` 是填充百分比，`remaining` 是决定告警颜色的剩余百分比，两者独立；
-显示剩余额度时应传相同值，显示已用额度时可传 `value: 70, remaining: 30`，并相应修改 `label`。
-`size` 支持 `2`、`3`、`4`，表示每个点阵块的行列数，默认 `4`。
-`unlimited: true` 显示满格无限额度，可用 `unlimitedLabel` 设置辅助文本。
-容器需要可测量的宽度；组件自动监听尺寸变化，空间不足时回退为线性进度条。
-
-### 开屏遮罩与组件渐入
-
-在页面显示前创建渐入控制器，给需要依次出现的元素添加 `data-ewp-enter`。
-遮罩退出后再触发渐入，避免两段动画同时播放：
-
-```html
-<div id="boot" hidden>正在启动</div>
-<main id="workspace">
-    <header data-ewp-enter>工作台</header>
-    <section data-ewp-enter>业务内容</section>
-</main>
-<script>
-const components = EasyWindowsPackComponents;
-const entrance = components.createEntrance(document.getElementById('workspace'));
-const curtain = components.createBootCurtain(document.getElementById('boot'), {
-    timeout: 12000,
-    onComplete: ({ reason }) => {
-        entrance.reveal();
-        if (reason === 'timeout') console.warn('启动遮罩已超时，请检查初始化状态');
-    }
-});
-// 完成宿主 API 连接、首屏数据加载和必要渲染后调用：
-// curtain.setReady();
-// 卸载时：curtain.dispose(); entrance.dispose();
-</script>
-```
-
-`createEntrance()` 会立即隐藏并暂时禁用内容交互，`reveal()` 触发错峰进入；
-需要再次播放时先调用 `prepare()`。`createBootCurtain()` 默认提供 12 秒超时兜底，
-超时只代表移除遮罩，不代表业务初始化成功，页面应另行呈现失败或重试状态。
-组件支持系统 `prefers-reduced-motion`，也可设置 `document.documentElement.dataset.motion = 'off'` 关闭动效。
-
-### 更新客户端
-
-在宿主通过 `ApiToolsAdapter` 或 `TurtleClawAdapter` 暴露对应接口后使用：
-
-```javascript
-const updates = createDesktopUpdateClient({
-    host: 'turtleclaw', // API_TOOLS 使用 'api-tools'
-    onState: state => console.log('Update state:', state),
-    onError: error => console.error(error)
-});
-// 仅在首屏真正可用后确认就绪；启动检查不会自动下载或安装。
-await updates.markFrontendReady({ checkOnStartup: true });
-// 用户明确操作时调用：await updates.check(); await updates.download();
-// TurtleClaw 安装必须传入宿主提供的有效令牌：await updates.install(token);
-// API_TOOLS 使用 await updates.install() 请求重启应用更新。
-// 卸载时调用 updates.dispose()，停止轮询并移除监听器。
-```
-
-`cancel()` 需要宿主支持 `cancel_update_download`，不可假定两种宿主都支持。
-`restart()` 需要宿主提供 `restart_app`；TurtleClaw 普通重启必须显式注入回调。
-完整 Python 接入、白名单与返回值契约见[桌面集成说明](docs/desktop-integrations.md)，
-可运行的视觉示例见[组件演示](frontend/src/components.html)。
-
-### 使用建议
-
-- **建议使用 SCSS，不建议使用 Tailwind CSS** 作为本框架项目的主要样式组织方式。窗口外壳、点阵、遮罩和渐入包含联动状态与动画规则，SCSS 分模块维护更容易追踪这些关系，也能减少 HTML 中大量工具类和动态类名的维护成本。这是项目维护建议，不是兼容性限制。
-- SCSS 需在开发或构建阶段编译成 CSS，WebView 只加载编译后的 CSS。框架目前分发的是普通 CSS，并不内置 SCSS 源文件或 Sass 构建流程；直接使用组件无需安装 Sass。
-- 将业务样式放在独立 SCSS 模块中，编译后的业务 CSS 在组件 CSS 之后加载；优先使用组件已有的 CSS 自定义属性和带作用域的选择器，不要直接修改供应组件或全局覆盖 `span`、`i` 等标签。
-- 已有 Tailwind CSS 项目可以继续集成，但应检查 Preflight 对按钮、边框等默认样式的影响，避免在组件内部同时用工具类控制其动画、尺寸或可见性。
-- 一个 DOM 容器只创建一个组件实例，数据变化调用 `update()`，卸载时调用 `dispose()`。遮罩只用于必要的首屏初始化，不应等待非关键网络任务；高频数据刷新不要反复触发整页渐入。
-- 在窄窗口、DPI 缩放、键盘操作及减弱动画模式下验证界面。下载、安装、重启仍由宿主管理权限和确认，不要将动画完成视为更新成功。
-
-## WindowConfig 参数
-
-| 参数 | 默认值 | 说明 |
-| --- | --- | --- |
-| `title` | `WebView Application` | Windows 窗口标题，也用于无 native handle 时查找窗口 |
-| `titlebar_mode` | `default` | `native`、`default` 或 `minimal` |
-| `width` / `height` | `920` / `680` | 初始客户区尺寸，会被最小/最大值约束 |
-| `min_width` / `min_height` | 按模式推导 | 最小窗口尺寸；minimal 默认 `220 x 96`，其他模式默认 `260 x 120` |
-| `max_width` / `max_height` | `8192` / `8192` | 最大窗口尺寸 |
-| `resizable` | `True` | 是否允许窗口缩放 |
-| `shadow` | `True` | pywebview 窗口阴影 |
-| `always_on_top` | `False` | 是否创建为置顶窗口 |
-| `background_color` | `#ffffff` | WebView/native form 背景色 |
-| `close_action` | `exit` | `exit` 退出窗口，`hide` 隐藏窗口并保留进程 |
-| `maximize_on_start` | `False` | 创建后是否立即最大化 |
-
-所有数值都会被归一化。无效值回退到默认值，超出范围的值会被裁剪。
-
-## 三种标题栏模式
-
-### `native`
-
-使用 Windows / pywebview 原生标题栏：
-
-```python
-WindowConfig(titlebar_mode="native")
-```
-
-pywebview 参数为：
-
-```python
-frameless=False
-easy_drag=True
-```
-
-此模式下操作系统负责标题栏、三按钮、边缘缩放和 Snap Layouts，因此 HTML 组件会隐藏自绘标题栏与 resize handle。
-
-### `default`
-
-使用标准高度的自绘标题栏：
-
-```python
-WindowConfig(titlebar_mode="default")
-```
-
-Python 侧创建窗口时使用 `frameless=True`，HTML 三按钮通过 `window_action` 转发到 Python，拖拽通过 Win32 `HTCAPTION` 转发。
-
-### `minimal`
-
-使用 24px 高的紧凑自绘标题栏：
-
-```python
-WindowConfig(titlebar_mode="minimal")
-```
-
-它与 `default` 共享全部行为，只改变标题栏高度和按钮尺寸，适合工具型窗口。
-
-`original`、`system` 是 `native` 的兼容别名。前端只使用 `native`、`default`、`minimal` 三个标准值。
-
-## 窗口按钮逻辑
-
-前端按钮分别调用：
-
-```javascript
-window.pywebview.api.window_action('minimize');
-window.pywebview.api.window_action('maximize');
-window.pywebview.api.window_action('close');
-```
-
-Python 行为：
-
-- `minimize`：优先发 Win32 `WM_SYSCOMMAND/SC_MINIMIZE`，失败时回退到 `window.minimize()`。
-- `maximize`：检测当前是否已经最大化；已最大化则执行还原，否则执行最大化。
-- `close`：执行 `on_close` 回调；返回 `"hide"` 时隐藏，返回 `False` 或 `"cancel"` 时取消，其他情况退出窗口。
-
-最大化状态会反向同步到前端，最大化按钮图标会在方框和还原图标之间切换。
-
-## 拖拽、吸附和缩放
-
-### 移动与 Snap
-
-自绘标题栏的普通鼠标按下会调用：
-
-```javascript
-window.pywebview.api.native_drag('move');
-```
-
-Python 使用 Win32 `WM_NCLBUTTONDOWN + HTCAPTION`，所以窗口移动由 Windows 完成，支持系统自带的：
-
-- 拖到屏幕边缘的 Aero Snap
-- Windows 11 标题栏 Snap Layouts
-- 系统的显示器边界与 DPI 行为
-
-这也是为什么包不在 JavaScript 中自行计算 pointer move。自己计算会很容易和系统吸附、DPI 缩放、最大化还原产生偏差。
-
-当窗口已经最大化时拖动标题栏，包会：
-
-1. 读取鼠标相对于最大化窗口的横向比例。
-2. 使用 `ShowWindow(SW_RESTORE)` 还原窗口。
-3. 按这个比例重新定位还原窗口。
-4. 再发出 `HTCAPTION`，让用户继续拖动。
-
-### 边缘调整大小
-
-八个句柄映射到 Windows 的非客户区命中测试：
-
-| data-ewp-resize | Win32 命中测试 |
-| --- | --- |
-| `left` | `HTLEFT` |
-| `right` | `HTRIGHT` |
-| `top` | `HTTOP` |
-| `bottom` | `HTBOTTOM` |
-| `top-left` | `HTTOPLEFT` |
-| `top-right` | `HTTOPRIGHT` |
-| `bottom-left` | `HTBOTTOMLEFT` |
-| `bottom-right` | `HTBOTTOMRIGHT` |
-
-缩放开始时前端只发送一次命令，后续尺寸变化由 Windows 原生窗口管理完成。窗口最大化时句柄会自动隐藏。
-
-## 动态切换模式
-
-自绘模式之间可以即时切换：
-
-```javascript
-await window.easyWindowsPack.setTitleBarMode('minimal');
-await window.easyWindowsPack.setTitleBarMode('default');
-```
-
-`native` 与自绘模式之间必须重建 pywebview 窗口，因为 `frameless` 和 `easy_drag` 是创建参数，不是可靠的运行时属性。包会返回：
-
-```javascript
-{
-    ok: true,
-    titleBarMode: 'native',
-    activeTitleBarMode: 'default',
-    restartRequired: true
-}
-```
-
-应用可保存请求模式，然后销毁并用新的 `WindowConfig` 重新调用 `create_window`。
-
-## 业务 API 委托
-
-如果应用已经有业务 API，可以通过 `app_api` 传入：
-
-```python
-class AppApi:
-    def get_profile(self):
-        return {"name": "demo"}
-
-app_api = AppApi()
-instance = create_window(
-    WindowConfig(title="My App"),
-    url=page_url,
-    app_api=app_api,
-)
-```
-
-前端仍然可以调用：
-
-```javascript
-await window.pywebview.api.get_profile();
-await window.pywebview.api.window_action('minimize');
-```
-
-窗口方法优先于业务对象同名方法，以避免业务 API 覆盖窗口安全边界。
-
-也可以用回调接入托盘或应用生命周期：
-
-```python
-def on_close(controller):
-    if should_keep_running_in_tray():
-        return "hide"
-    return "exit"
-
-instance = create_window(
-    WindowConfig(close_action="hide"),
-    url=page_url,
-    on_close=on_close,
-)
-```
-
-`on_state_change(state)` 会在最大化、还原、最小化、显示、隐藏和尺寸变化时收到状态字典，适合保存窗口尺寸或更新托盘状态。
-
-## 系统托盘菜单与窗口置顶
-
-托盘面向 Windows，使用可选的 `pystray` 和 Pillow 依赖；基础安装不会加载托盘库：
-
-```powershell
-pip install "easy-windows-pack[tray]"
-# 从本地仓库安装：
-pip install -e ".[tray]"
-```
-
-以下示例使用仓库自带窗口页面。实际应用可将生成的图标替换为 PNG/ICO 路径或 Pillow 图像：
-
-```python
-from pathlib import Path
-from threading import Event
-
-import webview
-from PIL import Image
-from easy_windows_pack import (
-    TRAY_SEPARATOR, TrayController, TrayMenuItem, WindowConfig, create_window,
-)
-
-exiting = Event()
-instance = create_window(
-    WindowConfig(title="Tray example"),
-    url=Path("frontend/src/index.html").resolve().as_uri(),
-    on_close=lambda controller: "hide" if tray.running and not exiting.is_set() else "exit",
-)
-
-def exit_app():
-    exiting.set()
-    instance.controller.window_action("close")
-
-image = Image.new("RGBA", (64, 64), "#0f766e")
-tray = TrayController(instance.controller, icon=image, title="Tray example", on_exit=exit_app)
-tray.set_menu([
-    *tray.window_menu(),
-    TRAY_SEPARATOR,
-    TrayMenuItem("Print state", lambda: print(instance.controller.get_state()),
-                 enabled=lambda: instance.controller.visible),
-])
-
-def start_tray():
-    try:
-        tray.start()
-    except Exception as error:
-        print(f"Tray unavailable: {error}")
-
-try:
-    webview.start(start_tray, gui="edgechromium")
-finally:
-    tray.stop()
-    image.close()
-```
-
-默认菜单包含显示窗口（同时是左键默认动作）、隐藏窗口、置顶，以及提供 `on_exit` 时的退出项。
-传入 `menu=[]` 可创建空菜单；`set_menu(items)` 可在运行中替换菜单。
-`TrayMenuItem(text, callback, enabled=True, checked=None, default=False)` 接受无参数 Python 回调；
-`enabled` 和 `checked` 支持布尔值或无参数状态函数，`checked=None` 不显示勾选标记。
-用 `TRAY_SEPARATOR` 添加分隔符，一个菜单最多设置一个默认项。
-菜单回调之外的业务状态变更后调用 `refresh_menu()`；窗口显示、隐藏和置顶状态会自动同步。
-
-`start(timeout=5.0)` 启动后台托盘线程并等待就绪，运行中重复调用无副作用；缺少依赖、启动失败或超时会抛出异常。
-`stop()` 请求移除图标并解除状态监听，不关闭窗口、不等待托盘线程退出；原生循环退出时释放图像副本。
-窗口未关闭时可以重新启动托盘。关闭窗口会停止托盘，隐藏窗口则保留托盘。
-`request_exit()` 先停止托盘，再调用宿主必需的 `on_exit`，每次启动后只执行一次。
-菜单回调和状态刷新异常会记录日志，并保存在 `last_error`。
-回调和状态函数在后台或原生线程执行，应保持简短；其他 GUI 操作需按宿主框架要求切换线程。
-
-`WindowController` 与 `WindowApi` 都提供已有的 `set_always_on_top(enabled)`，
-以及新增的 `toggle_always_on_top()` / `get_always_on_top()`：
-
-```javascript
-// 在 pywebviewready 之后调用：
-const state = await window.pywebview.api.toggle_always_on_top();
-if (state.ok) console.log(state.alwaysOnTop);
-await window.pywebview.api.set_always_on_top(false);
-const current = await window.pywebview.api.get_always_on_top();
-```
-
-返回值为 `{ok, alwaysOnTop}`，原生设置失败时保留之前的状态。
-实现复用 Win32 置顶逻辑与串行 JS dispatcher，窗口隐藏或最小化时不会执行 JS。
-`get_state()` 与状态通知包含 `closed`、`alwaysOnTop`；可通过
-`add_state_listener()` / `remove_state_listener()` 增删额外监听器，不替换 `on_state_change`。
-监听器异常会被记录，不会阻断窗口操作。
-
-托盘配置仅供 Python 宿主使用，不能把 `TrayController` 作为 `app_api` 传入。
-浏览器接口不提供托盘命令字符串、Shell 执行或任意 Python/JS 执行能力。
-退出策略和业务回调仍由宿主管理；示例在托盘启动失败时允许正常关闭窗口，避免应用只能隐藏却无法从托盘恢复。
-
-## 从现有应用迁移
-
-现有 pywebview 应用通常可以按以下顺序迁移：
-
-1. 把业务窗口的 `window_action`、`native_drag`、`window_frame_options`、`window_min_size` 替换为 `WindowController` 和 `WindowConfig`。
-2. 把业务 `WebApi` 作为 `app_api` 传给 `create_window`，删除原窗口方法的重复转发。
-3. 复制 `frontend/components/titlebar/window-frame.html` 的外壳，将业务内容放入 `[data-ewp-content]`。
-4. 引入 `window-frame.css` 和 `window-frame.js`，移除业务侧重复的 resize handle、标题栏按钮和拖拽监听。
-5. 把原来的 `titleBarMode` / `activeTitleBarMode` 映射到 `WindowConfig.titlebar_mode`。
-6. 如果应用需要“关闭到托盘”，设置 `close_action="hide"` 或通过 `on_close` 动态返回 `"hide"`。
-7. 如果应用需要保存窗口尺寸，在 `on_state_change` 中读取 `state["windowSize"]` 并写入自己的存储。
-
-完整宿主装配见 [backend/src/demo.py](backend/src/demo.py)。仓库目录迁移映射见[架构与迁移指南](docs/architecture.md)；宿主自己的窗口创建参数对应 `WindowConfig`，业务 API 对应 `app_api`，原窗口控制职责对应 `WindowController`。
-
-## 限制与注意事项
-
-- 运行目标是 Windows；Win32 拖拽、缩放、Snap 和原生置顶只在 Windows 上生效。非 Windows 上置顶接口保留原有的状态模拟行为，不代表操作系统实际置顶。
-- 必须使用 pywebview 的 `edgechromium` GUI。`window.native` 和 Win32 handle 在 WebView2 创建后才可用。
-- 自绘标题栏必须保证按钮或输入控件不触发标题栏拖拽。组件已排除 `button`、`input`、`select`、`textarea` 和 `a`。
-- 不要把业务内容放在 resize handle 上方，否则边缘点击会被句柄截获。
-- `native` 模式下不要依赖自绘标题栏 DOM 来显示应用状态；系统标题栏由 Windows 管理。
-- 托盘是可选功能，宿主需提供图标、菜单回调和退出策略；单实例、窗口位置持久化和应用更新仍属于宿主应用生命周期。
+[MIT](LICENSE) · Copyright (c) 2026 Binceenigne

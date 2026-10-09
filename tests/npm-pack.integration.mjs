@@ -21,7 +21,10 @@ const templates = ['vanilla', 'vanilla-ts', 'vue', 'vue-ts', 'react', 'react-ts'
 const filter = process.argv.find(value => value.startsWith('--templates='))?.slice(12);
 const selected = filter ? filter.split(',') : templates;
 assert.ok(selected.length && selected.every(value => templates.includes(value)), 'Unknown --templates selection');
-const packs = Object.fromEntries(['create-ewp', 'easywindowspack'].map(name => [name, join(repository, 'output/npm', `${name}-0.1.0.tgz`)]));
+const versions = Object.fromEntries(['create-ewp', 'easywindowspack'].map(name =>
+  [name, json(join(repository, 'frontend/packages', name, 'package.json')).version]));
+const packs = Object.fromEntries(Object.entries(versions).map(([name, version]) =>
+  [name, join(repository, 'output/npm', `${name}-${version}.tgz`)]));
 const missing = Object.values(packs).filter(path => !existsSync(path));
 const skipped = missing.length && process.argv.includes('--optional') ? `Missing real tarballs: ${missing.join(', ')}` : false;
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
@@ -160,10 +163,12 @@ console.log('Installed exports and prepared assets resolve');\n`);
     assert.ok(entries.length, `Missing installed ${name}`);
     for (const [, entry] of entries) {
       assert.match(entry.resolved, /^file:/, `${name} unexpectedly resolved from registry`);
-      assert.equal(entry.version, '0.1.0');
+      assert.equal(entry.version, versions[name]);
     }
     assert.ok(within(project, join(project, 'node_modules', name)), `${name} must be physically installed`);
+    assert.equal(json(join(project, 'node_modules', name, 'package.json')).version, versions[name]);
   }
+  assert.equal(json(join(project, 'node_modules/easywindowspack/package.json')).dependencies['create-ewp'], `^${versions['create-ewp']}`);
   const declaration = join(project, 'node_modules/easywindowspack/index.d.ts');
   assert.equal(json(join(project, 'node_modules/easywindowspack/package.json')).exports['.'].types, './index.d.ts');
   assert.match(readFileSync(declaration, 'utf8'), /export function mountFrame/);
@@ -314,7 +319,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
   const outside = join(root, 'outside project');
   mkdirSync(harness); mkdirSync(outside);
   reportPath = join(root, 'report.json');
-  report = { startedAt: new Date().toISOString(), root, harness, packs: Object.fromEntries(Object.entries(packs).map(([name, path]) => [name, { path, sha256: hash(path) }])),
+  report = { startedAt: new Date().toISOString(), root, harness, packs: Object.fromEntries(Object.entries(packs).map(([name, path]) => [name, { path, version: versions[name], sha256: hash(path) }])),
     selected, commands: [], projects: [], checks: [], findings: [], nativePackaging: 'Deferred to main agent; no Python/EXE execution' };
   saveJson(reportPath, report);
   const signal = () => { void cleanup().finally(() => process.exit(130)); };
@@ -335,7 +340,7 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
     const runtimeCli = join(harness, 'node_modules/easywindowspack/bin/ewp.mjs');
     await t.test('installed ewp create runs before project root discovery', async () => {
       const destination = join(outside, 'Global Created App');
-      await execute(process.execPath, [runtimeCli, 'create', 'Global Created App', '--template', 'vue', '--no-install', '--no-start'], outside, 'ewp-create-outside');
+      await execute(process.execPath, [runtimeCli, 'create', 'Global Created App', '--lang', 'en', '--template', 'vue', '--no-install', '--no-start'], outside, 'ewp-create-outside');
       assert.ok(existsSync(join(destination, 'scripts/dev.py')));
       assert.ok(existsSync(join(destination, 'frontend/src/App.vue')));
       report.checks.push('installed ewp create outside project');
@@ -347,13 +352,15 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
         const record = { template, path: project, status: 'running' };
         report.projects.push(record);
         try {
-          await execute(process.execPath, [creator, `App ${template}`, '--template', template, '--no-install', '--no-start'], root, `${template}-create`);
+          await execute(process.execPath, [creator, `App ${template}`, '--lang', 'en', '--template', template, '--no-install', '--no-start'], root, `${template}-create`);
           const manifestPath = join(frontend, 'package.json');
           for (const path of ['package.json', 'package-lock.json', 'vite.config.mjs', 'tsconfig.json', 'node_modules']) {
             assert.equal(existsSync(join(project, path)), false, `Root must not contain ${path}`);
           }
           const manifest = json(manifestPath);
-          assert.equal(manifest.dependencies.easywindowspack, '^0.1.0', 'Generator public dependency contract');
+          assert.equal(manifest.version, '0.1.0', 'Application version is independent of the packages');
+          assert.equal(manifest.ewp.language, 'en');
+          assert.equal(manifest.dependencies.easywindowspack, `^${versions.easywindowspack}`, 'Generator public dependency contract');
           record.generatedViteRange = manifest.devDependencies.vite;
           if (manifest.devDependencies.vite !== '^7.3.7') {
             const finding = `${template}: packed generator declares Vite ${manifest.devDependencies.vite}; target is ^7.3.7. Update generator and repack.`;

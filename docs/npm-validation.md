@@ -2,6 +2,32 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-09 0.1.1 文档与最终包复验 / Final local package checks
+
+源码 workspace、两个 npm 包的 manifests 与锁文件已同步为 **0.1.1，尚未发布**；线上两个包仍为 **0.1.0**，Python 版本仍为 **0.2.1**。本轮新增语言、任务和模板行为使用本地 tarball 验证。
+
+Source workspace/package manifests and the lockfile are aligned at **0.1.1, unpublished**. Both registry packages remain at **0.1.0**; Python remains **0.2.1**. New behavior was verified with local tarballs.
+
+| 范围 / Scope | 结果 / Result |
+| --- | --- |
+| 本轮此前单测 / Earlier checks in this revision | Creator **122 passed**、runtime **19 passed**、Python **116 passed**；文档收尾沿用此前结果，未冗余重跑全测 / Retained earlier results; not rerun for documentation-only changes |
+| egg-info / Python metadata | 此前真实 editable 安装与 wheel 构建通过；`backend/base/*.egg-info` 为 setuptools 安装元数据，不属于 docs / Real editable installation and wheel build passed earlier; egg-info is generated installation metadata |
+| 最终 npm pack / Final npm pack | `npm --prefix frontend run pack:npm` 通过，生成 `create-ewp-0.1.1.tgz` 与 `easywindowspack-0.1.1.tgz` / Both local tarballs built |
+| 最终六模板集成 / Final six-template integration | **8/8 passed**；独立安装、公共 exports、六模板 Vite 构建、三套 TS 类型检查、Chrome 交互及 Vue HMR / Independent installation, exports, builds, types, Chrome and HMR passed |
+| 全新首次初始化 / Fresh initialization | **passed**；从无 `.venv`、无预编译前端的目录开始，先 npm/Vite 后 pip editable，解释器和 runtime 来源均在生成项目内 / Clean initialization order and project-local Python provenance verified |
+| wheel / 默认 EXE / 归档 | **全部通过 / All passed**；wheel 与 EXE 的前端资源与 Vite 输出逐字节一致，不包含未编译 Vue/TS/JSX 源文件 / Compiled bytes match; uncompiled frontend sources absent |
+| 生成应用 check / Generated app checks | `npm run check`、`ewp check`、`startup.cmd check` 各 **3/3 passed**；公共 API/CSS、Vite 配置、应用 manifest/HTML 入口 / Three checks passed through each entry |
+| 全局 CLI / Global CLI | 从最终本地 tarball 全局安装 0.1.1，在用户目录执行 `ewp --version`、`ewp -h --lang en`、无参数 `ewp` 均成功；nvm 路径下版本及双语帮助正常 / Installed final local tarballs globally; version and both help languages work outside a project through nvm |
+| 根 README / Root README | 中英文标题层级、表格列布局、代码围栏及图片/HTML 结构共 **77 个标记一致** / All 77 structural markers match between Chinese and English |
+
+最终 pack 报告：`build/npm-pack-validation/pack validation 2uIz4b/report.json`。最终 first-run 报告：`build/npm-first-run/first run wfvGYT/report.json`。这些报告和构建日志保存在忽略的 build 目录；两份报告记录最终 tarball SHA-256。
+
+Final pack and first-run reports above retain tarball SHA-256 and build logs under ignored build directories. Earlier pack report `pack validation MUi0DK` and first-init report `first run 3gVZ6p` describe the previous tarballs. Documentation changes altered package hashes, so final validation used a fresh directory rather than overwriting those reports or resuming against changed packs.
+
+最终 first-run 显式依次执行 `--stage=first`、`wheel`、`exe`、`audit`，后续阶段复用新建的 `--root`；未执行默认 `all` 或 `startup`，未启动原生窗口。本次未发布、推送或提交，也未修改产品代码。
+
+Final first-run used explicit `first`, `wheel`, `exe`, and `audit` stages with the new root. Native startup was not run; these results do not certify native window interaction. No publication, push, commit, or product-code change was made during this final documentation/validation pass.
+
 ## 2026-10-09 目录精简复验 / Layout migration checks
 
 - Python unittest：93 passed；包含启动脚本跨工作目录调用、退出码传递、源码包路径，以及生成器八种 AI 组合的归档链接检查。

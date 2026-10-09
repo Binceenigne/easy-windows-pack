@@ -22,14 +22,14 @@ Root `docs/` is the development documentation and AI resource center. Keep detai
 | [项目索引摘要 / Implementation summary](index.md) | 当前实现定位与复用入口 / Current implementation and reuse entry points |
 | [设计摘要 / Design summary](design.md) | 设计约定及详细文档入口 / Design conventions and detailed references |
 
-类型文件与紧邻资源的简短说明保留在 [frontend/contracts/](../frontend/contracts/README.md)，接口说明由本导航关联；不要复制出另一份开发手册。面向使用者的 API 和托盘示例继续保留在 [中文 README](../README.md) / [English README](../README.en.md)。
+类型文件与紧邻资源的简短说明保留在 [frontend/contracts/](../frontend/contracts/README.md)，不要复制出另一份开发手册。[中文 README](../README.md) / [English README](../README.en.md) 保留快速入门；完整前端 API 在 [npm 指南](npm-vite.md)，宿主集成在 [桌面集成](desktop-integrations.md)，Python 托盘接口见 [源码](../backend/base/ewpcore/tray.py)。
 
-Type declarations and short asset-local notes remain in [frontend/contracts/](../frontend/contracts/README.md). Link to them rather than duplicating the development guide. Public API and tray examples remain in the bilingual root READMEs.
+Type declarations and short asset-local notes remain in [frontend/contracts/](../frontend/contracts/README.md). Root READMEs provide quick starts; see the [npm guide](npm-vite.md) for the frontend API, [desktop integrations](desktop-integrations.md) for host integration, and [tray source](../backend/base/ewpcore/tray.py) for Python tray APIs.
 
 相关代码或目录变动时，同批更新对应的 `docs/` 页面及摘要链接；新增详细文档时补本导航。记录验证的日期、范围、结果和限制，历史通过记录不能作为当前改动的测试成功证据。开发规则入口见 [agent.md](agent.md)，只按任务加载所需 Skill 分片。
 
 Update the affected page and summary links with the implementation change. Add new detailed documents to this navigation. Record validation date, scope, result and limitations; historical passes do not certify a later change. Start with [agent.md](agent.md) and load only task-relevant skill references.
 
-AI 资源在 `docs/.agents`、`docs/.claude`、`docs/.easy-dev`；根 AGENTS.md / CLAUDE.md 仅保留标准薄入口。docs 下的 Skills 不属于工具默认自动发现目录，必须由入口显式读取。[主 Skill](.agents/skills/easy-dev/SKILL.md) 是唯一正文，[Claude 路由](.claude/skills/easy-dev/SKILL.md) 复用它；生成器按 AI 多选生成资源，默认全不选，布局见 [npm 指南](npm-vite.md#ai-资源布局--ai-resource-layout)。
+本仓库 AI 资源在 `docs/.agents`、`docs/.claude`、`docs/.easy-dev`；根 AGENTS.md / CLAUDE.md 为标准薄入口。修改开发指引前也须显式读取相关 Skill；docs 下的 Skills 不属于默认自动发现目录。本仓库 [Claude 路由](.claude/skills/easy-dev/SKILL.md) 复用 [主 Skill](.agents/skills/easy-dev/SKILL.md)。生成应用另用 `docs/.easy-dev/agent.md` 与共用 Skill：Codex / Claude 专属 Skill 均转到共用内容，仅选 Claude 不创建 Codex 目录。AI 默认全不选，详见 [npm 指南](npm-vite.md#ai-资源布局--ai-resource-layout)。
 
-AI resources live under `docs/.agents`, `docs/.claude` and `docs/.easy-dev`; root AGENTS.md / CLAUDE.md remain standard thin entries. Skills under docs are not auto-discovered by default: entries must explicitly load the [single skill source](.agents/skills/easy-dev/SKILL.md), reused by the [Claude router](.claude/skills/easy-dev/SKILL.md). Generated AI resources are opt-in; see the [npm guide](npm-vite.md#ai-资源布局--ai-resource-layout).
+This checkout keeps AI resources under docs and thin standard entries at the root. Read relevant skills before editing guidance too. The checkout's Claude router reuses its main skill. Generated apps instead share `docs/.easy-dev/agent.md` and a common skill; both tool-specific skills route to shared content, and Claude alone creates no Codex directory. AI resources are opt-in; see the [npm guide](npm-vite.md#ai-资源布局--ai-resource-layout).

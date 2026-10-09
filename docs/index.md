@@ -30,12 +30,12 @@ easy-windows-pack 是 Python + pywebview + ESM 前端的可复用 Windows WebVie
 
 ## npm 包与模板
 
-前端 [package.json](../frontend/package.json) 为 private workspace，不发布 workspace 根包；配置、锁文件与依赖均在 frontend。两个 npm 包均为 0.1.0；公开名称所有权与发布状态未确认。
+前端 [package.json](../frontend/package.json) 为 private workspace，不发布 workspace 根包；配置、锁文件与依赖均在 frontend。两个 npm 包的 **0.1.0 已发布；源码 npm manifests 与锁文件已同步为 0.1.1，尚未发布**；新增语言、帮助/菜单与完整构建行为已在源码实现，需使用本地源码/包，发布后再升级。Python 版本仍为 **0.2.1**。`backend/base/*.egg-info/` 是 setuptools 生成元数据，不属于 docs、不提交；`.venv` 中的 `.dist-info` 是正常安装元数据。
 
 | 实现 | 路径 / 公开入口 | 职责 |
 | --- | --- | --- |
 | easywindowspack | [包说明](../frontend/packages/easywindowspack/README.md)、[index.mjs](../frontend/packages/easywindowspack/index.mjs)、[类型](../frontend/packages/easywindowspack/index.d.ts) | ESM `mountFrame`、生命周期 update/dispose、CSS、desktop components/updates、可选 Vue/React；bin `ewp` |
-| create-ewp | [包说明](../frontend/packages/create-ewp/README.md)、[create.mjs](../frontend/packages/create-ewp/lib/create.mjs) | `@clack/prompts` 交互生成器；六模板及可选 codex/claude/copilot 多选，AI 默认全不选；发布后 `npm create ewp@latest`，或全局 runtime 的 `ewp create` |
+| create-ewp | [包说明](../frontend/packages/create-ewp/README.md)、[create.mjs](../frontend/packages/create-ewp/lib/create.mjs) | `@clack/prompts` 生成器；先选人类语言，再选六模板及可选 codex/claude/copilot；AI 默认全不选。`npm create ewp@latest` 或全局 `ewp create` 当前安装 0.1.0，新行为需待发布 0.1.1 |
 | Vanilla JS / TS（2 套） | [JS 入口](../frontend/packages/create-ewp/templates/vanilla/frontend/src/main.js)、[TS 入口](../frontend/packages/create-ewp/templates/vanilla-ts/frontend/src/main.ts) | 原生 `mountFrame` 与业务 DOM |
 | Vue JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/vue/frontend/src/Frame.vue)、[TS Frame](../frontend/packages/create-ewp/templates/vue-ts/frontend/src/Frame.vue) | 模板自有组合层以 Teleport 保留 slot 与 props 响应式 |
 | React JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/react/frontend/src/Frame.jsx)、[TS Frame](../frontend/packages/create-ewp/templates/react-ts/frontend/src/Frame.tsx) | 模板自有组合层以 portal 保留 children、props 和事件 |
@@ -44,16 +44,20 @@ easy-windows-pack 是 Python + pywebview + ESM 前端的可复用 Windows WebVie
 
 ## 开发与分发
 
+[language.mjs](../frontend/packages/easywindowspack/language.mjs) 维护 runtime 语言优先级与帮助；创建保存 `frontend/package.json` 的 `ewp.language`。命令采用 `--lang` → `EWP_LANG` → 保存值 → `zh-CN`，临时覆盖不重写文件；`--yes` 无设置时默认中文。npm 的 `Ok to proceed?` 及 pip/Vite 等第三方输出不翻译。
+
+生成 AI 布局与仓库路由分开：Codex / Claude 专属 Skill 均转到 `docs/.easy-dev/skills/easy-dev/SKILL.md`，再读共用 `docs/.easy-dev/agent.md`；Copilot 直接读共用内容。仅选 Claude 不生成 Codex 目录，未选 AI 不生成资源。仓库自身仍由 [agent.md](agent.md) 显式路由；详细路径见 [AI 布局](npm-vite.md#ai-资源布局--ai-resource-layout)。
+
 下表登记 4 个编排服务入口；不把其中每个子命令另计为服务。
 
 | 入口 | 职责 |
 | --- | --- |
 | [ewp.mjs](../frontend/packages/easywindowspack/bin/ewp.mjs) | Node CLI；create 委托、Vite 开发、实际 `EWP_DEV_URL` 与 Python 任务；默认 build 为 EXE |
-| [生成器 cli.mjs](../frontend/packages/create-ewp/lib/cli.mjs) | 项目名/框架/语言/AI 多选/安装/启动交互与生成流程 |
+| [生成器 cli.mjs](../frontend/packages/create-ewp/lib/cli.mjs) | 人类语言 → 项目名/框架/JS 或 TS/AI 多选/安装/启动；`--lang` 跳过语言选择 |
 | [prepare-npm.mjs](../scripts/prepare-npm.mjs) | 从 frontend/frame/components 与 backend/scripts 单源生成包资源 |
 | [scripts/dev.py](../scripts/dev.py) | Python 环境、legacy 菜单、frontend 编译与原生打包编排 |
 
-- [startup.cmd](../startup.cmd) → [scripts/startup.cmd](../scripts/startup.cmd) → Python 菜单：`init`、`browser`（Vite）、`frontend`、`demo`、`wheel`、`exe`、`bundle`、`build`、`test`、`info`；菜单 build 保留完整阶段，与 npm 默认 EXE 分开。
+- [startup.cmd](../startup.cmd) → [scripts/startup.cmd](../scripts/startup.cmd) → Python 菜单；与 npm / ewp 的 `build` 一致，默认 EXE。`full-build` / `build:all` / `build --all` 为 test → wheel → exe → bundle。仓库和新生成项目 scripts 包含 help、ewp、menu、init、dev、browser、frontend、demo、wheel、exe、bundle、build、build:all、full-build、test、info、check；另有 frontend:dev/build/preview 和 build:wheel/exe 别名。完整映射见 [开发手册](development.md#菜单与命令--menu-and-commands)；生成模板附带 `tests/npm-runtime.test.mjs`，`npm run check` / `ewp check` / `startup.cmd check` 执行 3 项 Node runtime exports/config 检查。
 - [cli.py](../backend/base/ewpcore/cli.py)、[pyproject.toml](../pyproject.toml)：底层 CLI 与公开包/资源分发；[scripts/build.cmd](../scripts/build.cmd) 和 [scripts/build.ps1](../scripts/build.ps1) 保留兼容入口，[scripts/build-demo.ps1](../scripts/build-demo.ps1) 委托菜单的 `exe` 任务。npm 命令在 frontend 内执行，或从根目录使用 `npm --prefix frontend`。
 - `output/frontend/`、`output/wheels/`、`output/exe/`、`output/bundles/`、`output/npm/`、`output/logs/` 为分类产物；`build/` 为配置、暂存与缓存。EXE 使用编译前端，框架 wheel 与应用 wheel 按各自 metadata 分发资源。
 - 当前验证记录见 [npm-validation.md](npm-validation.md)；历史迁移计数不作为 npm/Vite、浏览器或原生验收通过证据。

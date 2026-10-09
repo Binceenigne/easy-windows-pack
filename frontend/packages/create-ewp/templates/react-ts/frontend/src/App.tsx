@@ -9,17 +9,17 @@ export default function App() {
       <main className="app-view">
         <section className="welcome-card">
           <span className="eyebrow">React · TypeScript</span>
-          <h1>Your next desktop app.</h1>
-          <p className="description">从一个轻量窗口开始。<br />Build something that feels at home on your desktop.</p>
+          <h1>__EWP_heading__</h1>
+          <p className="description">__EWP_description__</p>
           <div className="controls">
-            <label>窗口外观 / Window style
+            <label>__EWP_windowStyle__
               <select value={windowStyle} onChange={event => setWindowStyle(event.target.value === 'windows' ? 'windows' : 'macos')}>
                 <option value="macos">macOS</option><option value="windows">Windows</option>
               </select>
             </label>
-            <button className="counter" type="button" onClick={() => setCount(value => value + 1)}>Count: {count}</button>
+            <button className="counter" type="button" onClick={() => setCount(value => value + 1)}>__EWP_counter__: {count}</button>
           </div>
-          <p className="hint">React portal 在共享窗口内容区内保持响应式。<br />Native window controls work in the desktop host.</p>
+          <p className="hint">__EWP_hint__</p>
         </section>
       </main>
     </Frame>

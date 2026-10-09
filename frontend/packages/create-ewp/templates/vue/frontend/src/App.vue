@@ -12,15 +12,15 @@ const title = document.title;
     <main class="app-view">
       <section class="welcome-card">
         <span class="eyebrow">Vue · JavaScript</span>
-        <h1>Your next desktop app.</h1>
-        <p class="description">从一个轻量窗口开始。<br />Build something that feels at home on your desktop.</p>
+        <h1>__EWP_heading__</h1>
+        <p class="description">__EWP_description__</p>
         <div class="controls">
-          <label>窗口外观 / Window style
+          <label>__EWP_windowStyle__
             <select v-model="windowStyle"><option value="macos">macOS</option><option value="windows">Windows</option></select>
           </label>
-          <button class="counter" type="button" @click="count++">Count: {{ count }}</button>
+          <button class="counter" type="button" @click="count++">__EWP_counter__: {{ count }}</button>
         </div>
-        <p class="hint">Vue slot 在共享窗口内容区内保持响应式。<br />Native window controls work in the desktop host.</p>
+        <p class="hint">__EWP_hint__</p>
       </section>
     </main>
   </Frame>

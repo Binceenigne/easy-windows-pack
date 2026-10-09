@@ -1,6 +1,6 @@
 {
   "name": "create-ewp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create an Easy Windows Pack desktop project with Vanilla, Vue or React",
   "type": "module",
   "license": "MIT",
