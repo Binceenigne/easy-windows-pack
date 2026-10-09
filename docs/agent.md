@@ -24,7 +24,7 @@
 
 scripts/prepare-npm.mjs 从 frontend、backend/base/ewpcore 和 scripts 单源生成包 assets 与 common runtime；不手工维护副本。生产 EXE 只携带 output/frontend 编译前端；框架 wheel 源资源和生成应用 wheel 编译资源分开核对 metadata。产物按 output 分类，build 仅作配置、暂存与缓存。backend/base/*.egg-info 是 setuptools 生成元数据，不属于 docs、不提交；.venv 内 dist-info 是正常安装元数据。Python 版本仍为 0.2.1。
 
-两个 npm 包的 0.1.0 已发布，源码 npm manifests 与锁文件已同步为 0.1.1、尚未发布；新增语言/任务在源码可用，不能宣称当前 latest 已支持。发布后再升级 registry 安装；npm publish 由用户手动执行。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
+两个 npm 包的 0.1.1 已于 2026-10-09 发布并确认 registry 可用；两包 registry 哈希与归档匹配，latest 创建及 Vue TS 项目安装、检查和前端构建冒烟已通过，证据见 [验收记录](npm-validation.md)。可用 npm install -g easywindowspack@latest 安装全局 CLI，或 npm create ewp@latest 创建项目。此次发布后文档更新仅同步 Git 源码，不覆盖已发 tarball，不重新 pack 或发布。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
 
 本入口不是大型检查表，不要求全仓扫描或多轮自检。用户要求与宿主有效规则优先；详细默认约定由主 Skill 单点维护。
 <!-- easy-dev:end -->

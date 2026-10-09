@@ -2,11 +2,44 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-09 0.1.1 发布与 registry 验收 / Publication and registry validation
+
+用户实际执行 `create-ewp@0.1.1` 与 `easywindowspack@0.1.1` 的 `npm publish`，两份均返回 `+` 成功。随后实际 registry 验证确认 **0.1.1 已发布且可用**：两包版本与哈希查询成功，哈希与归档匹配；`npm create ewp@latest` 创建及 Vue TS 项目安装、检查与前端构建冒烟全部通过。以下记录依据用户提供的实际执行结果。
+
+The user ran `npm publish` for `create-ewp@0.1.1` and `easywindowspack@0.1.1`; both returned `+` success responses. Subsequent registry checks confirmed **0.1.1 is published and available**: both version/hash queries succeeded and matched the archived tarballs; `npm create ewp@latest` creation and Vue TS installation, checks, and frontend build smoke tests all passed. The following records the actual execution results supplied by the user.
+
+Registry：`https://registry.npmjs.org/`。`npm view <package>@0.1.1 version dist.shasum --prefer-online --registry=https://registry.npmjs.org/` 两次查询均成功 / Both queries succeeded：
+
+| 包 / Package | 版本 / Version | `dist.shasum`（SHA-1） | 归档比对 / Archive comparison |
+| --- | --- | --- | --- |
+| `create-ewp` | `0.1.1` | `1fb3954bcb47840b6c22dab8ddbe3a35ce7abdac` | 匹配 / Match |
+| `easywindowspack` | `0.1.1` | `98f88a0887dc8977c43b8f1451d907a3fd589c81` | 匹配 / Match |
+
+创建命令成功：`npm create ewp@latest build/npm-registry-011 -- --lang en --template vue-ts --ai codex,claude --no-install --no-start --yes`。实际执行时，npm 层另带 `--yes --prefer-online --registry=https://registry.npmjs.org/`；生成器参数不变。项目使用英文、Vue TS 与 Codex/Claude 指引，随后在 `build/npm-registry-011/frontend` 执行以下步骤。
+
+Creation succeeded with the command above, using English, Vue TS, and Codex/Claude guidance. The actual invocation also supplied npm-level `--yes --prefer-online --registry=https://registry.npmjs.org/`, with the same generator arguments. The following steps then ran inside `build/npm-registry-011/frontend`.
+
+| 步骤 / Step | 结果 / Result |
+| --- | --- |
+| `npm install --prefer-online --registry=https://registry.npmjs.org/ --no-audit --no-fund` | 成功 / Passed |
+| `npm run help` | 成功 / Passed |
+| `npm run check` | **3 passed** |
+| `npm run typecheck` | 成功 / Passed |
+| `npm run frontend:build` | 成功 / Passed |
+
+本次 registry 冒烟覆盖上述 Vue TS 项目链路；全局 CLI、其他模板、Python 初始化及原生构建/启动不在本次范围内，其历史验收见下文。
+
+This registry smoke test covers the Vue TS project workflow above. Global CLI, other templates, Python initialization, and native build/startup are outside this run; their historical checks remain below.
+
+本次发布后文档更新仅同步 Git 源码（含两个包 README）；已发 tarball 不可覆盖，不重新 pack 或发布。未修改代码、版本或锁文件，未提交或推送。下列历史验收保留原日期与范围，不作为本次 registry 冒烟证据。
+
+This post-publication update changes Git documentation sources only, including both package READMEs. Published tarballs cannot be overwritten and are not repacked or republished. No code, versions, or lockfiles were changed; no commit or push was made. Historical checks below retain their original dates and scope and do not establish registry smoke-test success.
+
 ## 2026-10-09 0.1.1 文档与最终包复验 / Final local package checks
 
-源码 workspace、两个 npm 包的 manifests 与锁文件已同步为 **0.1.1，尚未发布**；线上两个包仍为 **0.1.0**，Python 版本仍为 **0.2.1**。本轮新增语言、任务和模板行为使用本地 tarball 验证。
+以下为同日发布前的本地验收记录：当时源码 workspace、两个 npm 包的 manifests 与锁文件已同步为 **0.1.1，尚未发布**；线上两个包仍为 **0.1.0**，Python 版本仍为 **0.2.1**。该轮新增语言、任务和模板行为使用本地 tarball 验证。
 
-Source workspace/package manifests and the lockfile are aligned at **0.1.1, unpublished**. Both registry packages remain at **0.1.0**; Python remains **0.2.1**. New behavior was verified with local tarballs.
+The following local checks preceded publication on the same day. At that time, source workspace/package manifests and the lockfile were aligned at **0.1.1, unpublished**; both registry packages remained at **0.1.0**, and Python remained **0.2.1**. New behavior was verified with local tarballs.
 
 | 范围 / Scope | 结果 / Result |
 | --- | --- |
@@ -24,7 +57,7 @@ Source workspace/package manifests and the lockfile are aligned at **0.1.1, unpu
 
 Final pack and first-run reports above retain tarball SHA-256 and build logs under ignored build directories. Earlier pack report `pack validation MUi0DK` and first-init report `first run 3gVZ6p` describe the previous tarballs. Documentation changes altered package hashes, so final validation used a fresh directory rather than overwriting those reports or resuming against changed packs.
 
-最终 first-run 显式依次执行 `--stage=first`、`wheel`、`exe`、`audit`，后续阶段复用新建的 `--root`；未执行默认 `all` 或 `startup`，未启动原生窗口。本次未发布、推送或提交，也未修改产品代码。
+最终 first-run 显式依次执行 `--stage=first`、`wheel`、`exe`、`audit`，后续阶段复用新建的 `--root`；未执行默认 `all` 或 `startup`，未启动原生窗口。该发布前验收阶段未发布、推送或提交，也未修改产品代码。
 
 Final first-run used explicit `first`, `wheel`, `exe`, and `audit` stages with the new root. Native startup was not run; these results do not certify native window interaction. No publication, push, commit, or product-code change was made during this final documentation/validation pass.
 

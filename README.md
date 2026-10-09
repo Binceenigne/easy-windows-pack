@@ -21,7 +21,7 @@
 - **开发到分发**：Vite 热更新、Python 业务 API 桥接、Windows 单文件 EXE 与 wheel 构建。
 - **按需扩展**：托盘、点阵进度、启动遮罩、进入动画及宿主更新适配器。
 
-两个 npm 包均已发布 **0.1.0**：`create-ewp` 提供 `npm create ewp` 脚手架，`easywindowspack` 提供前端 runtime、CSS 和 `ewp` CLI。源码 npm manifests 与锁文件已同步为 **0.1.1，尚未发布**；下文新增语言选择、帮助、菜单与完整构建命令属于该修订，当前 registry 的 `latest` 仍为 0.1.0。Python 分发名为 `easy-windows-pack`，源码版本为 **0.2.1**，由项目 `init` 从本地源码安装。
+两个 npm 包均已发布 **0.1.1**，registry 已可用：`create-ewp` 提供 `npm create ewp` 脚手架，`easywindowspack` 提供前端 runtime、CSS 和 `ewp` CLI。下文语言选择、帮助、菜单与完整构建命令属于 0.1.1。Python 分发名为 `easy-windows-pack`，源码版本为 **0.2.1**，由项目 `init` 从本地源码安装。
 
 ## 环境要求
 
@@ -41,11 +41,11 @@
 npm create ewp@latest
 ```
 
-**版本提示：当前命令取得已发布的 0.1.0。** 要使用下述新流程，目前需使用本地 0.1.1 生成器和 runtime tarball；新版本发布后升级 `create-ewp` 与 `easywindowspack`。本地用法见 [npm / Vite 指南](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation)，不要假定当前 `latest` 已支持新语言选项。
+**版本提示：0.1.1 已可用，`@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过。** 结果见 [验收记录](docs/npm-validation.md)，本地用法见 [npm / Vite 指南](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation)。
 
 0.1.1 交互的第一步选择**人类语言**：简体中文 `zh-CN` 或 English `en`，随后选择项目名、框架、编程语言 JavaScript / TypeScript、可选 AI 工具，以及是否安装依赖、初始化 Python 并启动桌面。AI 默认不选，安装与启动默认也不执行。
 
-新版本发布后，可用以下 **0.1.1 命令**固定配置；当前请按上述指南使用源码。生成器参数放在 npm 的 `--` 后，`--lang` 跳过第一步语言选择：
+可用以下 **0.1.1 命令**固定版本与配置。生成器参数放在 npm 的 `--` 后，`--lang` 跳过第一步语言选择：
 
 ```powershell
 npm create ewp@0.1.1 my-app -- --lang zh-CN --template react-ts --ai codex,claude --no-install --no-start --yes
@@ -69,14 +69,14 @@ npm run dev
 
 目标目录必须为空，包括不能含 `.git`。`--yes` 跳过生成器交互，默认项目名 `ewp-app`、模板 `vanilla`、无 AI、不安装、不启动；语言按下节优先级解析，无设置时为 `zh-CN`。`--install` 仅安装 npm 依赖；`--start` 还会初始化 Python 并启动桌面，不能与 `--no-install` 同用。
 
-也可选择全局 CLI；当前全局安装仍取得 0.1.0，新增用法需本地安装 0.1.1 tarball，或等待发布后升级：
+也可安装或升级全局 CLI，再创建项目：
 
 ```powershell
-npm install -g easywindowspack
+npm install -g easywindowspack@latest
 ewp create
 ```
 
-0.1.1 发布后，全局 CLI 用 `npm install -g easywindowspack@0.1.1` 升级；已有项目在 frontend 内用 `npm install easywindowspack@^0.1.1` 升级 runtime。升级依赖不会自动补齐旧项目的 scripts、README 或 AI 指引，完整任务映射见 [开发手册](docs/development.md#菜单与命令--menu-and-commands)。
+如需固定版本，全局 CLI 用 `npm install -g easywindowspack@0.1.1`；已有项目在 frontend 内用 `npm install easywindowspack@^0.1.1` 升级 runtime。升级依赖不会自动补齐旧项目的 scripts、README 或 AI 指引，完整任务映射见 [开发手册](docs/development.md#菜单与命令--menu-and-commands)。
 
 ## 项目语言
 

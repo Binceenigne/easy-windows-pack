@@ -26,7 +26,7 @@
 
 ## 开发入口
 
-frontend 内 npm workspace 为 private，不发布 workspace 根包；manifest、锁文件、Vite 配置与依赖也收于 frontend。`easywindowspack@0.1.0` 是 ESM runtime 与 bin `ewp`；`create-ewp@0.1.0` 基于 `@clack/prompts`，提供 Vanilla / Vue / React × JS / TS 六模板。AI 默认全不选，可多选 codex/claude/copilot，按选项生成 docs 内资源及标准薄入口。Node >=22.12、Python >=3.10，Windows 桌面需 WebView2；Vite 版本按真实 manifests 核对，当前仓库为 ^7.3.7。
+frontend 内 npm workspace 为 private，不发布 workspace 根包；manifest、锁文件、Vite 配置与依赖也收于 frontend。`easywindowspack` 是 ESM runtime 与 bin `ewp`；`create-ewp` 基于 `@clack/prompts`，提供 Vanilla / Vue / React × JS / TS 六模板。当前版本与发布状态以宿主 [npm 指南](../../../../npm-vite.md) 和 [验收记录](../../../../npm-validation.md) 为准。AI 默认全不选，可多选 codex/claude/copilot，按选项生成 docs 内资源及标准薄入口。Node >=22.12、Python >=3.10，Windows 桌面需 WebView2；Vite 版本按真实 manifests 核对，当前仓库为 ^7.3.7。
 
 以下 npm 命令在 frontend 内运行，或从项目根加 `--prefix frontend`。首选 `npm run init` 初始化/复用项目根 `.venv` 并安装 Python 开发与 npm 依赖，`npm run dev` 默认 Vite 动态本机端口 + debug pywebview，以 `EWP_DEV_URL` 传递实际 URL，支持 HMR；`npm run dev -- --web` 与 `frontend:dev` 不启动桌面。`frontend:build` 输出项目根 `output/frontend` 并使用生产相对 URL。浏览器没有真实 native bridge。
 
@@ -64,4 +64,4 @@ frontend 内 npm workspace 为 private，不发布 workspace 根包；manifest�
 
 生产 EXE 由 Python/PyInstaller 打包，前端只携带 `output/frontend` 的编译页面/assets，不装载未编译 Vue/React/TS 页面。框架 wheel metadata 仍分发核心与源组件/桥接；生成应用 wheel metadata 分发编译 assets，不因构建前执行 Vite 就混为一类。
 
-在 frontend 内执行 `npm pack --workspace <name> --pack-destination ../output/npm` 是本地打包，不等于发布或 registry 安装通过。公共名称可用性/所有权先由用户确认；`npm create ewp@latest`、全局 `npm install -g easywindowspack` → `ewp create` 都只描述发布后用法。发布顺序 create-ewp → easywindowspack；本宿主发布由用户手动执行，agent 不运行 publish。当前 npm/Vite 证据写入 `docs/npm-validation.md`，旧 `docs/build-validation.md` 仅为历史 migration checks。
+在 frontend 内执行 `npm pack --workspace <name> --pack-destination ../output/npm` 是本地打包，不等于发布或 registry 安装通过。安装入口为 `npm create ewp@latest`、全局 `npm install -g easywindowspack@latest` → `ewp create`；本宿主 0.1.1 已确认 registry 可用，`@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，范围与证据见宿主 [验收记录](../../../../npm-validation.md)。后续新版本发布顺序 create-ewp → easywindowspack；本宿主发布由用户手动执行，agent 不运行 publish。当前 npm/Vite 证据写入 `docs/npm-validation.md`，旧 `docs/build-validation.md` 仅为历史 migration checks。

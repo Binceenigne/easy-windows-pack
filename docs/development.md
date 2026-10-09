@@ -4,9 +4,9 @@
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 的 **0.1.0 已发布，0.1.1 本地修订待发布**。本文新增语言、帮助/菜单及完整构建约定属于 0.1.1，不能假定当前 registry `latest` 已提供。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 的 **0.1.1 已发布且 registry 可用**；2026-10-09 的 `@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定属于 0.1.1。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages have **published 0.1.0; local 0.1.1 awaits release**. New language, help/menu, and full-build contracts here describe 0.1.1, not current registry `latest`. See the [npm guide](npm-vite.md) for creation and local tarballs.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are **published at 0.1.1 and available from the registry**; `@latest` creation and Vue TS installation, checks, and frontend build smoke tests passed on 2026-10-09. See the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.1. See the [npm guide](npm-vite.md) for creation and local tarballs.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 

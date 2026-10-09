@@ -8,21 +8,21 @@ WebView2. The CLI uses the consuming project's `scripts/dev.py` and
 
 ## Availability and creation / 发布状态与创建
 
-Both npm packages have **published 0.1.0**. **0.1.1 is a local revision awaiting
-publication**; the new language, help/menu, and full-build behavior below belongs
-to 0.1.1. Current registry `latest` remains 0.1.0. Use local 0.1.1 packs today or
-upgrade both packages after release for the new behavior.
+Both npm packages are **published at 0.1.1 and available from the registry**.
+On 2026-10-09, `@latest` creation and Vue TS installation, checks, and frontend
+build smoke tests passed. See the validation record linked below.
 
-两包 0.1.0 已发布；0.1.1 本地修订尚未发布。当前 registry 安装不能提供下述新增行为，需本地 0.1.1 包或发布后升级。
+两包 0.1.1 已发布且 registry 可用；2026-10-09 的 @latest 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，详见文末验收记录。
 
-After publication, upgrade the global CLI with `npm install -g easywindowspack@0.1.1`
+Upgrade the global CLI with `npm install -g easywindowspack@latest`
 or the app runtime with `npm install easywindowspack@^0.1.1` inside frontend.
-Use `npm create ewp@0.1.1` for new apps. Dependency upgrades do not rewrite
+Use `npm create ewp@latest` for new apps; replace `@latest` with `@0.1.1` to pin
+the version. Dependency upgrades do not rewrite
 existing scripts, READMEs, AI guidance, or demos.
-上述命令仅供 0.1.1 发布后使用；旧项目 scripts 与指引需自行同步。
+可用上述命令安装或创建，固定版本时将 @latest 换成 @0.1.1；旧项目 scripts 与指引需自行同步。
 
 ```powershell
-npm install -g easywindowspack
+npm install -g easywindowspack@latest
 ewp create
 # Global installation is optional / 无需全局也可创建
 npm create ewp@latest
@@ -40,9 +40,9 @@ route through `docs/.easy-dev/skills/easy-dev/SKILL.md` to shared guidance at
 Non-interactive/`--yes` defaults: `ewp-app`, `vanilla`, no AI, no installation,
 no startup. Language follows the priority below, falling back to `zh-CN`.
 Other development tasks run within a project. Source npm manifests and the
-lockfile are aligned at 0.1.1, still unpublished; the user publishes
-`create-ewp` before `easywindowspack` after checking artifacts and permissions.
-0.1.1 第一项为人类语言，JS/TS 是后续选项；AI 仅生成所选工具目录，各工具读取共用指引。源码 npm manifests 与锁文件已同步为 0.1.1，尚未发布；agent 不发布。
+lockfile are aligned at 0.1.1. This README update changes Git source only;
+published tarballs cannot be overwritten and are not repacked or republished.
+0.1.1 第一项为人类语言，JS/TS 是后续选项；AI 仅生成所选工具目录，各工具读取共用指引。源码 npm manifests 与锁文件已同步为 0.1.1；此次 README 仅更新 Git 源码，已发 tarball 不可覆盖，不重新 pack 或发布。
 
 ## Project language / 项目语言
 

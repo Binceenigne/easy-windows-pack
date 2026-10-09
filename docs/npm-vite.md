@@ -4,9 +4,9 @@
 
 ## 包与环境 / Packages and requirements
 
-`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 的 **0.1.0 已发布**，**0.1.1 是本地待发布修订**，与 Python 分发 `easy-windows-pack` 的 `0.2.1` 分开管理。本文新增语言、帮助/菜单及完整构建约定描述 0.1.1；源码 npm manifests 与锁文件已同步，本地 pack 及安装结果见 [验收记录](npm-validation.md)。
+`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 的 **0.1.1 已发布且 registry 可用**，与 Python 分发 `easy-windows-pack` 的 `0.2.1` 分开管理。本文语言、帮助/菜单及完整构建约定描述 0.1.1；源码 npm manifests 与锁文件已同步，发布、registry 冒烟与本地验收见 [验收记录](npm-validation.md)。
 
-`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both **0.1.0 packages are published**; **0.1.1 is a local revision awaiting publication**. The Python distribution `easy-windows-pack` remains separately versioned at `0.2.1`. New language, help/menu, and full-build contracts below describe 0.1.1. Source npm manifests and the lockfile are aligned; see the [validation record](npm-validation.md) for local packing and installation results.
+`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both packages are **published at 0.1.1 and available from the registry**. The Python distribution `easy-windows-pack` remains separately versioned at `0.2.1`. Language, help/menu, and full-build contracts below describe 0.1.1. Source npm manifests and the lockfile are aligned; see the [validation record](npm-validation.md) for publication, registry smoke tests, and local checks.
 
 | 包 / Package | 用途 / Purpose |
 | --- | --- |
@@ -19,15 +19,15 @@ Require Node.js **>=22.12.0**; the repository uses **Vite ^7.3.7**. Python initi
 
 ## 发布状态与创建项目 / Publication status and project creation
 
-两个包的 **0.1.0 已在 npm 发布**，当前 `latest` 取得该版本。**0.1.1 尚未发布**：`--lang`、所选语言 README/AI/demo、自有帮助菜单与新的完整构建入口属于本地修订，不能用 0.1.0 的 registry 安装验证这些行为。下列 `@latest` 示例保留正式入口；带新参数的示例需本地 0.1.1 或新版本发布后升级使用。
+两个包的 **0.1.1 已在 npm 发布并可用**：2026-10-09 两包 `npm view` 返回的哈希与归档匹配，`npm create ewp@latest` 创建 Vue TS 项目及其依赖安装、帮助、检查、类型检查和前端构建均通过，详见 [验收记录](npm-validation.md)。`--lang`、所选语言 README/AI/demo、自有帮助菜单与完整构建入口属于 0.1.1；下列命令可用于安装或创建。
 
-Both **0.1.0 packages are published on npm**, and current `latest` resolves to that release. **0.1.1 is unpublished**: `--lang`, localized README/AI/demo content, first-party help/menu, and new full-build entries belong to the local revision. Registry installation of 0.1.0 cannot validate those changes. The `@latest` examples retain the release entry point; examples with new options require local 0.1.1 or an upgrade after release.
+Both packages are **published and available on npm at 0.1.1**: on 2026-10-09, both `npm view` hashes matched the archived tarballs. Vue TS creation through `npm create ewp@latest`, dependency installation, help, checks, type checking, and frontend build all passed; see the [validation record](npm-validation.md). `--lang`, localized README/AI/demo content, first-party help/menu, and full-build entries belong to 0.1.1. The commands below are installation and creation entry points.
 
-所有 npm manifests 与锁文件现已同步为 0.1.1，runtime 对 creator 的依赖及新生成项目的 runtime 依赖均为 `^0.1.1`。本地 tarball 已完成验收，但 0.1.1 仍未发布；发布前使用本地包覆盖。
+所有 npm manifests 与锁文件已同步为 0.1.1，runtime 对 creator 的依赖及新生成项目的 runtime 依赖均为 `^0.1.1`。本地 tarball 验收保留原日期与范围；本次发布后文档更新仅同步 Git 源码，已发 tarball 不可覆盖，不重新 pack 或发布。
 
-All npm manifests and the lockfile are aligned at 0.1.1; the runtime's creator dependency and generated apps' runtime dependency use `^0.1.1`. Local tarballs have passed validation, but 0.1.1 remains unpublished; use local package overrides until publication.
+All npm manifests and the lockfile are aligned at 0.1.1; the runtime's creator dependency and generated apps' runtime dependency use `^0.1.1`. Local tarball checks retain their original dates and scope. This post-publication documentation update changes Git sources only; published tarballs cannot be overwritten and are not repacked or republished.
 
-**发布后升级 / After publication:** 新建项目使用 `npm create ewp@0.1.1`；全局 CLI 用 `npm install -g easywindowspack@0.1.1`；已有项目在 frontend 内用 `npm install easywindowspack@^0.1.1`。依赖升级不自动改写已有 scripts、README、AI 指引或 demo；旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。These upgrades do not rewrite existing project files; add missing task scripts using the development guide.
+**安装与升级 / Installation and upgrades:** 新建项目可用 `npm create ewp@latest`；全局 CLI 可用 `npm install -g easywindowspack@latest`。固定版本时将 `@latest` 换成 `@0.1.1`；已有项目在 frontend 内用 `npm install easywindowspack@^0.1.1`。依赖升级不自动改写已有 scripts、README、AI 指引或 demo；旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。Use `@latest` for creation/global installation, or `@0.1.1` to pin the version; upgrade app runtime inside frontend. These upgrades do not rewrite existing project files; add missing task scripts using the development guide.
 
 无需全局安装即可创建；以下带 `--lang` 的示例是 0.1.1 用法：
 
@@ -38,12 +38,12 @@ npm create ewp@latest
 npm create ewp@latest "My App" -- --lang en --template react-ts --no-install --no-start
 ```
 
-也可全局安装 CLI，再从任意目录创建项目；当前 registry 全局安装也是 0.1.0，新用法需要升级：
+也可安装或升级全局 CLI，再从任意目录创建项目：
 
-Alternatively, install the CLI globally and create from any directory. Current registry installation is also 0.1.0; upgrade for the new usage:
+Alternatively, install or upgrade the CLI globally and create from any directory:
 
 ```powershell
-npm install -g easywindowspack
+npm install -g easywindowspack@latest
 ewp create
 ewp create "My App" --lang en --template vue-ts --no-install --no-start
 ```
@@ -52,9 +52,9 @@ ewp create "My App" --lang en --template vue-ts --no-install --no-start
 
 `ewp create` delegates to the dependency's `create-ewp/cli` without requiring an existing project root. `create-ewp` owns only its own binary and does not register another `ewp`. Global `ewp` with no arguments, `-h`, or `--help` shows help; `ewp create -h` shows creation help. None requires a project. Run other tasks from the project root or frontend.
 
-验证待发布 0.1.1 时，从源码仓库根目录使用本地生成器：
+开发时仍可从源码仓库根目录使用本地生成器：
 
-For unpublished 0.1.1, use the local generator from the checkout root:
+For development, you can still use the local generator from the checkout root:
 
 ```powershell
 npm --prefix frontend install
@@ -62,9 +62,9 @@ npm --prefix frontend run prepare:npm
 node frontend/packages/create-ewp/bin/create-ewp.mjs "../My App" --lang en --template vanilla-ts --no-install --no-start
 ```
 
-本地生成不需要 registry 中的 `create-ewp`；新生成项目依赖 `easywindowspack@^0.1.1`，该版本尚未发布，直接 `npm install` 不能从当前 registry 取得它。使用主维护流程生成的两个 0.1.1 tarball 或明确的本地依赖覆盖进行验收；不要把本地生成/pack 描述为新版本已发布或 registry 安装成功。
+本地生成不需要 registry 中的 `create-ewp`；新生成项目依赖已发布的 `easywindowspack@^0.1.1`，Vue TS 项目的 registry 安装冒烟已通过。本地开发验收也可使用已有 tarball 或明确的本地依赖覆盖；本地生成/pack 不能替代 registry 安装证据。
 
-Local generation needs no registry copy of `create-ewp`. New projects depend on unpublished `easywindowspack@^0.1.1`, so a plain `npm install` cannot obtain it from the current registry. Validate using both 0.1.1 tarballs produced by the main maintenance workflow or explicit local overrides. Local generation/packing does not prove a new release or registry installation.
+Local generation needs no registry copy of `create-ewp`. New projects depend on published `easywindowspack@^0.1.1`; registry installation smoke tests passed for the Vue TS project. Local development checks can also use existing tarballs or explicit overrides. Local generation/packing does not replace registry installation evidence.
 
 ## 交互、模板与选项 / Prompts, templates and options
 
@@ -265,9 +265,9 @@ npm pack --workspace easywindowspack --pack-destination ../output/npm
 
 Run the pack commands above and publish commands below inside frontend; ensure root `output/npm` exists before packing. Inspect binaries, library files, exports, CSS, types, licenses, READMEs, six templates and common runtime in the tarballs. Packing is not publication and does not certify clean-environment installation or native launch. Workspace `prepack` hooks use the same preparation source. Record evidence in [npm-validation.md](npm-validation.md).
 
-0.1.1 版本与 pack 由主维护流程准备，验证结果由其补入验收记录；本次不发布。后续由用户核实权限及产物后手动发布，顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli`，生成项目依赖 runtime。以下命令仅供操作说明；agent 不执行 publish：
+0.1.1 的两个包已由用户手动发布，registry 已可用，`@latest` 创建与 Vue TS 项目冒烟已通过，见 [验收记录](npm-validation.md)。此次文档更新不重新 pack 或发布，也不覆盖已发 tarball。后续新版本的手动发布顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli`，生成项目依赖 runtime。以下命令仅供后续新版本操作参考，不用于重发 0.1.1：
 
-The main maintenance workflow prepares 0.1.1 versions and packs, then records validation. This task performs no publication. The user publishes after checking permissions and artifacts, in order **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli`, and generated apps depend on the runtime. These are manual instructions; the agent does not execute publication:
+The user has manually published both 0.1.1 packages. Both are available from the registry, and `@latest` creation and Vue TS project smoke tests passed; see the [validation record](npm-validation.md). This documentation update does not repack, republish, or overwrite published tarballs. For future versions, the manual publication order is **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli`, and generated apps depend on the runtime. These commands are reference instructions for future versions, not for republishing 0.1.1:
 
 ```powershell
 npm publish -w create-ewp --access public

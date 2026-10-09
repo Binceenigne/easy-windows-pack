@@ -21,7 +21,7 @@ Build your UI with web technologies, connect desktop features with Python, and p
 - **Develop and distribute**: Vite hot updates, a Python application API bridge, Windows single-file EXEs, and wheel builds.
 - **Add features as needed**: System tray, matrix progress, boot curtain, entrance animation, and host update adapters.
 
-Both npm packages are published at **0.1.0**: `create-ewp` provides the `npm create ewp` scaffolder; `easywindowspack` provides the frontend runtime, CSS, and `ewp` CLI. Source npm manifests and the lockfile are aligned at **0.1.1, not yet published**. New language selection, help, menu, and full-build commands below belong to that revision; registry `latest` is currently 0.1.0. The Python distribution is named `easy-windows-pack`, with source version **0.2.1**, installed from local source by the project's `init` command.
+Both npm packages are published at **0.1.1** and available from the registry: `create-ewp` provides the `npm create ewp` scaffolder; `easywindowspack` provides the frontend runtime, CSS, and `ewp` CLI. Language selection, help, menu, and full-build commands below belong to 0.1.1. The Python distribution is named `easy-windows-pack`, with source version **0.2.1**, installed from local source by the project's `init` command.
 
 ## Requirements
 
@@ -41,11 +41,11 @@ Open a terminal in the directory where you want to create a project. No global i
 npm create ewp@latest
 ```
 
-**Version note: this command currently fetches published 0.1.0.** To use the new flow below today, use the local 0.1.1 generator and runtime tarballs. Upgrade `create-ewp` and `easywindowspack` after release. See the [npm / Vite guide](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation) for local use; current `latest` does not provide the new language options.
+**Version note: 0.1.1 is available; `@latest` creation and Vue TS installation, checks, and frontend build smoke tests passed.** See the [validation record](docs/npm-validation.md) for results and the [npm / Vite guide](docs/npm-vite.md#发布状态与创建项目--publication-status-and-project-creation) for local use.
 
 In 0.1.1, the first prompt selects the **human language**: Simplified Chinese `zh-CN` or English `en`. Then choose a project name, framework, programming language (JavaScript / TypeScript), optional AI tools, and whether to install dependencies, initialize Python, and launch the desktop. AI tools default to none; installation and startup also default to off.
 
-After publication, use these **0.1.1 commands** for a fixed configuration; until then, follow the source workflow linked above. Pass generator options after npm's `--` separator; `--lang` skips the first language prompt:
+Use these **0.1.1 commands** for a fixed version and configuration. Pass generator options after npm's `--` separator; `--lang` skips the first language prompt:
 
 ```powershell
 npm create ewp@0.1.1 my-app -- --lang zh-CN --template react-ts --ai codex,claude --no-install --no-start --yes
@@ -69,14 +69,14 @@ For browser UI work, install npm dependencies and run `npm run frontend:dev`; **
 
 The destination must be empty, including no `.git`. `--yes` skips generator prompts and defaults to project name `ewp-app`, template `vanilla`, no AI tools, no installation, and no startup. Language follows the priority below, falling back to `zh-CN`. `--install` installs npm dependencies only; `--start` also initializes Python and launches the desktop, and cannot be combined with `--no-install`.
 
-You can also install the CLI globally. The current registry installation is 0.1.0; new usage requires a local 0.1.1 tarball or an upgrade after release:
+You can also install or upgrade the CLI globally, then create a project:
 
 ```powershell
-npm install -g easywindowspack
+npm install -g easywindowspack@latest
 ewp create
 ```
 
-After 0.1.1 is published, upgrade the global CLI with `npm install -g easywindowspack@0.1.1` and existing projects with `npm install easywindowspack@^0.1.1` inside frontend. Updating dependencies does not add missing scripts or rewrite old READMEs or AI guidance. See the [development guide](docs/development.md#菜单与命令--menu-and-commands) for the complete task mapping.
+To pin the global CLI version, use `npm install -g easywindowspack@0.1.1`; upgrade existing projects with `npm install easywindowspack@^0.1.1` inside frontend. Updating dependencies does not add missing scripts or rewrite old READMEs or AI guidance. See the [development guide](docs/development.md#菜单与命令--menu-and-commands) for the complete task mapping.
 
 ## Project language
 

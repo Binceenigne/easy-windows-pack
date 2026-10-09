@@ -30,12 +30,12 @@ easy-windows-pack 是 Python + pywebview + ESM 前端的可复用 Windows WebVie
 
 ## npm 包与模板
 
-前端 [package.json](../frontend/package.json) 为 private workspace，不发布 workspace 根包；配置、锁文件与依赖均在 frontend。两个 npm 包的 **0.1.0 已发布；源码 npm manifests 与锁文件已同步为 0.1.1，尚未发布**；新增语言、帮助/菜单与完整构建行为已在源码实现，需使用本地源码/包，发布后再升级。Python 版本仍为 **0.2.1**。`backend/base/*.egg-info/` 是 setuptools 生成元数据，不属于 docs、不提交；`.venv` 中的 `.dist-info` 是正常安装元数据。
+前端 [package.json](../frontend/package.json) 为 private workspace，不发布 workspace 根包；配置、锁文件与依赖均在 frontend。两个 npm 包的 **0.1.1 已发布且 registry 可用**；2026-10-09 两包 registry 哈希与归档匹配，`@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，详见 [验收记录](npm-validation.md)。Python 版本仍为 **0.2.1**。`backend/base/*.egg-info/` 是 setuptools 生成元数据，不属于 docs、不提交；`.venv` 中的 `.dist-info` 是正常安装元数据。
 
 | 实现 | 路径 / 公开入口 | 职责 |
 | --- | --- | --- |
 | easywindowspack | [包说明](../frontend/packages/easywindowspack/README.md)、[index.mjs](../frontend/packages/easywindowspack/index.mjs)、[类型](../frontend/packages/easywindowspack/index.d.ts) | ESM `mountFrame`、生命周期 update/dispose、CSS、desktop components/updates、可选 Vue/React；bin `ewp` |
-| create-ewp | [包说明](../frontend/packages/create-ewp/README.md)、[create.mjs](../frontend/packages/create-ewp/lib/create.mjs) | `@clack/prompts` 生成器；先选人类语言，再选六模板及可选 codex/claude/copilot；AI 默认全不选。`npm create ewp@latest` 或全局 `ewp create` 当前安装 0.1.0，新行为需待发布 0.1.1 |
+| create-ewp | [包说明](../frontend/packages/create-ewp/README.md)、[create.mjs](../frontend/packages/create-ewp/lib/create.mjs) | `@clack/prompts` 生成器；先选人类语言，再选六模板及可选 codex/claude/copilot；AI 默认全不选。可用 `npm create ewp@latest`，或 `npm install -g easywindowspack@latest` 后执行 `ewp create`；`@latest` 创建与 Vue TS registry 冒烟已通过 |
 | Vanilla JS / TS（2 套） | [JS 入口](../frontend/packages/create-ewp/templates/vanilla/frontend/src/main.js)、[TS 入口](../frontend/packages/create-ewp/templates/vanilla-ts/frontend/src/main.ts) | 原生 `mountFrame` 与业务 DOM |
 | Vue JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/vue/frontend/src/Frame.vue)、[TS Frame](../frontend/packages/create-ewp/templates/vue-ts/frontend/src/Frame.vue) | 模板自有组合层以 Teleport 保留 slot 与 props 响应式 |
 | React JS / TS（2 套） | [JS Frame](../frontend/packages/create-ewp/templates/react/frontend/src/Frame.jsx)、[TS Frame](../frontend/packages/create-ewp/templates/react-ts/frontend/src/Frame.tsx) | 模板自有组合层以 portal 保留 children、props 和事件 |
