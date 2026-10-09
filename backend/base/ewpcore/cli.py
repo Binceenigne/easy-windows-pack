@@ -42,6 +42,7 @@ BUNDLE_SOURCES = (
     ".github/copilot-instructions.md",
     "docs/.agents/skills/easy-dev",
     "docs/.claude/skills/easy-dev",
+    "docs/.easy-dev/agent.md",
     "docs/.easy-dev/install-state.json",
     ".gitattributes",
     "README.md",

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import posixpath
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,6 +22,42 @@ PROJECT_ROOT = Path(__file__).parents[1]
 
 
 class CliTests(unittest.TestCase):
+    def test_generated_ai_bundle_preserves_all_guidance_links(self):
+        creator = PROJECT_ROOT / "frontend/packages/create-ewp/bin/create-ewp.mjs"
+        prepared = creator.parent.parent / "templates/common/startup.cmd"
+        node = shutil.which("node")
+        if not node or not prepared.is_file():
+            self.skipTest("Requires Node and npm run prepare:npm")
+        with tempfile.TemporaryDirectory(prefix="ewp ai bundle ") as temporary:
+            for mask in range(8):
+                tools = [tool for index, tool in enumerate(("codex", "claude", "copilot"))
+                         if mask & (1 << index)]
+                project = Path(temporary) / f"app-{mask}"
+                with self.subTest(tools=tools):
+                    subprocess.run(
+                        [node, str(creator), str(project), "--template", "vue-ts",
+                         "--ai", ",".join(tools) or "none", "--no-install", "--no-start"],
+                        cwd=temporary, check=True, capture_output=True,
+                    )
+                    with zipfile.ZipFile(build_bundle(project)) as bundle:
+                        prefix = f"app-{mask}-desktop-0.1.0-bundle/"
+                        names = set(bundle.namelist())
+                        manifest = json.loads(bundle.read(prefix + "easy-windows-pack.manifest.json"))
+                        for filename in ("frontend/package.json", "frontend/vite.config.mjs",
+                                         "frontend/tsconfig.json", "startup.cmd", "scripts/startup.cmd"):
+                            self.assertIn(prefix + filename, names)
+                        self.assertEqual(prefix + "docs/.easy-dev/agent.md" in names, bool(tools))
+                        for filename in manifest["files"]:
+                            if not filename.endswith(".md") or not (
+                                filename.startswith("docs/") or filename in (
+                                    "AGENTS.md", "CLAUDE.md", ".github/copilot-instructions.md")
+                            ):
+                                continue
+                            content = bundle.read(prefix + filename).decode("utf-8")
+                            for target in re.findall(r"\]\(([^)]+)\)", content):
+                                resolved = posixpath.normpath(posixpath.join(posixpath.dirname(filename), target))
+                                self.assertIn(prefix + resolved, names, f"{filename}: {target}")
+
     def test_reads_project_version(self) -> None:
         self.assertEqual(_read_project_version(PROJECT_ROOT), "0.2.1")
 
@@ -189,6 +229,7 @@ class CliTests(unittest.TestCase):
                 "docs/.agents/skills/easy-dev/references/architecture.md",
                 "docs/.claude/skills/easy-dev/SKILL.md",
                 "docs/.easy-dev/install-state.json",
+                "docs/.easy-dev/agent.md",
             )
             excluded = (
                 "docs/.claude/settings.local.json", "docs/.claude/history.jsonl",

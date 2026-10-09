@@ -4,13 +4,14 @@
 
 ## 2026-10-09 目录精简复验 / Layout migration checks
 
-- Python unittest：92 passed；包含启动脚本跨工作目录调用、退出码传递和源码包路径。
+- Python unittest：93 passed；包含启动脚本跨工作目录调用、退出码传递、源码包路径，以及生成器八种 AI 组合的归档链接检查。
 - npm runtime / creator：34 passed，1 个可选旧集成入口跳过；AI 八种组合的目录存在性和 Markdown 相对链接全部通过。
 - frontend 内 `npm ci`、Vite 生产构建、两个 npm 包打包通过，根目录不再需要 npm 配置或依赖。
 - 真实 tarball 六模板集成：8/8 passed；三套 TypeScript 类型检查、Chrome 交互、Vue HMR 通过。报告保存在忽略的 `build/npm-pack-validation/pack validation BtIUfU/report.json`。
 - 全新带空格目录：安装 → 首次初始化 → wheel → 默认 EXE → 归档检查通过。wheel / EXE 编译前端资源与 Vite 输出逐字节一致。报告保存在忽略的 `build/npm-first-run/first run GNj7St/report.json`。
 - 文档迁移：36 份 Markdown 的 297 个本地链接、19 个安装状态路径及两张 SVG XML 已检查。
 - 本轮未执行 npm 发布，也未重新验收原生窗口交互；浏览器验收不代替原生行为。
+- 交付补验发现并修复源码包遗漏 `docs/.easy-dev/agent.md`：先复现归档缺文件失败，再加入公开资源白名单，继续排除本地 AI 状态。更新后的真实 tarball 已在八种 AI 组合下验证生成布局、源码 ZIP 的所有 AI 链接，以及项目外调用 `startup.cmd --help`。报告：忽略的 `build/ai-layout-validation/packed apps 5xdxiV/report.json`。
 
 ## 2026-10-08 历史记录 / Previous validation
 
