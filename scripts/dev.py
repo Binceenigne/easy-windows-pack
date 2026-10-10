@@ -39,6 +39,8 @@ LABELS = {
     "preview": ("预览编译后的前端", "Preview built frontend"),
     "build": ("构建（默认 EXE）", "Build (EXE by default)"),
     "check": ("Node 运行时检查", "Node runtime checks"),
+    "app": ("构建应用（可选目录模式）", "Build application (onefile or onedir)"),
+    "installer": ("构建安装包", "Build installer"),
 }
 LANGUAGE: ContextVar[str | None] = ContextVar("ewp_dev_language", default=None)
 
@@ -402,8 +404,22 @@ def cleanup_legacy_metadata(root: Path) -> None:
     emit(text("已清理根目录旧元数据", "Removed legacy metadata from project root", root))
 
 
-def task_command(name: str, root: Path) -> list[str]:
+def task_command(
+    name: str, root: Path, *, config_path: str | None = None,
+    mode: str | None = None, installer: bool | None = None,
+) -> list[str]:
     python = str(venv_python(root))
+    if name in ("app", "installer") or (name == "exe" and any(
+            value is not None for value in (config_path, mode, installer))):
+        command = [python, "-m", "easy_windows_pack.cli",
+                   "installer" if name == "installer" else "app", "--project-root", str(root)]
+        if config_path is not None:
+            command.extend(["--config", config_path])
+        if mode is not None:
+            command.extend(["--mode", mode])
+        if installer:
+            command.append("--installer")
+        return command
     if name == "test":
         return [python, "-m", "unittest", "discover", "-s", "tests", "-v"]
     if name == "wheel":
@@ -447,7 +463,15 @@ def check_packager() -> None:
         ) from error
 
 
-def run_task(task: str, root: Path, log: TextIO | None) -> None:
+def run_task(
+    task: str, root: Path, log: TextIO | None, *, config_path: str | None = None,
+    mode: str | None = None, installer: bool | None = None,
+) -> None:
+    if task in ("app", "installer") or (task == "exe" and any(
+            value is not None for value in (config_path, mode, installer))):
+        run_command(task_command(task, root, config_path=config_path, mode=mode,
+                                 installer=installer), root=root, log=log)
+        return
     if task == "frontend":
         build_frontend(root, log)
         return
@@ -542,6 +566,7 @@ def info(root: Path) -> None:
     for directory, zh, en in (
         ("output/frontend", "Vite 前端产物", "Vite frontend assets"),
         ("output/wheels", "Wheel 包", "Wheels"), ("output/exe", "桌面程序", "Executables"),
+        ("output/apps", "应用程序", "Applications"), ("output/installers", "安装包", "Installers"),
         ("output/bundles", "源码包", "Source bundles"), ("output/logs", "构建与初始化日志", "Build and init logs"),
         ("build/spec", "打包配置", "PyInstaller specs"), ("build/pyinstaller", "打包缓存", "PyInstaller work"),
     ):
@@ -580,6 +605,13 @@ def parser(root: Path = ROOT, override: str | None = None) -> argparse.ArgumentP
             target.add_argument("--all", action="store_const", const="full-build", dest="build_target",
                                 help=choose("执行测试、wheel、EXE 和源码包构建", "Run tests, wheel, EXE and source bundle builds"))
             command.set_defaults(build_target="exe")
+        if name in ("build", "exe", "app", "installer", "full-build"):
+            command.add_argument("--mode", choices=("onefile", "onedir"), default=None,
+                                 help=choose("覆盖 ewp.pack.json 的应用模式", "Override application mode from ewp.pack.json"))
+            command.add_argument("--config", metavar="PATH", default=None,
+                                 help=choose("项目根目录下的配置路径（默认 ewp.pack.json）", "Config path relative to project root (default: ewp.pack.json)"))
+            command.add_argument("--installer", action="store_const", const=True, default=None,
+                                 help=choose("同时构建安装包", "Also build an installer"))
     menu_command = commands.add_parser("menu", help=choose("打开开发菜单", "Open development menu"))
     menu_command.add_argument("--lang", choices=("zh-CN", "en"), default=argparse.SUPPRESS, help=lang_help)
     help_command = commands.add_parser("help", help=choose("显示任务帮助", "Show task help"))
@@ -613,7 +645,7 @@ def _execute(args: argparse.Namespace, argv: Sequence[str], root: Path) -> int:
         elif name == "check":
             run_npm(root, ["run", "ewp", "--", "check"])
         else:
-            if name in ("exe", "full-build") and sys.platform != "win32":
+            if name in ("exe", "app", "installer", "full-build") and sys.platform != "win32":
                 raise DevError(text("EXE 与完整构建仅支持 Windows", "EXE and full build require Windows"))
             if name in ("browser", "dev", "preview") and not 0 <= args.port <= 65535:
                 raise DevError(text("端口必须为 0–65535", "Port must be 0–65535"))
@@ -637,8 +669,16 @@ def _execute(args: argparse.Namespace, argv: Sequence[str], root: Path) -> int:
             else:
                 tasks = ["test", "wheel", "exe", "bundle"] if name == "full-build" else [name]
                 stages: list[Stage] = []
+                native_options = {
+                    "config_path": getattr(args, "config", None),
+                    "mode": getattr(args, "mode", None),
+                    "installer": getattr(args, "installer", None),
+                }
                 for task in tasks:
-                    stages.append((text(*LABELS[task]), lambda log, task=task: run_task(task, root, log)))
+                    options = native_options if task in ("exe", "app", "installer") and any(
+                        value is not None for value in native_options.values()) else {}
+                    stages.append((text(*LABELS[task]), lambda log, task=task, options=options:
+                                   run_task(task, root, log, **options)))
                 run_stages(root, name, stages, logged=name != "test")
         return 0
     except DevError as error:
@@ -688,7 +728,12 @@ def main(argv: Sequence[str] | None = None, *, root: Path = ROOT) -> int:
         if sys.version_info < (3, 10):
             emit(text("需要 Python 3.10 或以上", "Python 3.10 or newer is required"))
             return 1
-        args = parser(root, LANGUAGE.get()).parse_args(arguments)
+        command_parser = parser(root, LANGUAGE.get())
+        args = command_parser.parse_args(arguments)
+        if getattr(args, "build_target", None) == "wheel" and any(
+            getattr(args, name, None) is not None for name in ("mode", "config", "installer")):
+            command_parser.error(text("--wheel 不能与 --mode、--config 或 --installer 同时使用",
+                          "--wheel cannot be used with --mode, --config or --installer", root))
         return execute(args, arguments, root) if args.command else menu(root, LANGUAGE.get())
 
 

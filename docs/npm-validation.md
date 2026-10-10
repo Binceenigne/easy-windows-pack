@@ -2,6 +2,55 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-10 安装向导与安全修复阶段 / Installer wizard and safety fixes
+
+以下为各 agent 实际执行后由主任务提供的分组结果；本文档任务未重跑运行时测试。GUI 改为目录 → 可选功能 → 按功能过滤的依赖 → 可选安装后选项 → 确认 → 进度 → 完成；卸载为确认 → 进度 → 完成，沿用原安装/卸载引擎。
+
+These grouped results were supplied by the main task after actual agent runs; this documentation task did not rerun runtime tests. The GUI now follows directory → optional features → feature-filtered prerequisites → optional post-install options → confirmation → progress → completion. Uninstall follows confirmation → progress → completion, using the existing install/uninstall engine.
+
+| 范围 / Scope | 本阶段结果 / Stage result |
+| --- | --- |
+| [Tk GUI 回归 / Tk GUI regression](../tests/test_installer_gui.py) | **10 passed** |
+| [installer 回归 / Installer regression](../tests/test_installer.py) | **57 passed** |
+| [CLI 回归 / CLI regression](../tests/test_cli.py) | **33 passed** |
+| 完整 Python 回归 / Full Python regression | **245 passed**，日志 `output/final-python-packaging.log` |
+| Node creator/runtime 回归 / Node regression | **145 passed，1 optional integration skipped**，日志 `output/final-npm-packaging.log` |
+| 最终六模板 npm pack 集成 / Final npm pack integration | **8/8 passed**，两包 0.1.2，报告 `build/npm-pack-validation/pack validation m01nHq/report.json` |
+| 最新 wheel 与冻结安装包 / Latest wheel and frozen installers | **passed**；独立安装 wheel 后构建 onefile/onedir、真实逐页 GUI 安装、运行、自卸载和源码 ZIP 解压重建 / Independent wheel, both modes, real wizard, app execution, self-uninstall and source ZIP restoration |
+
+长路径自删除已改为短 `-File` 临时 PowerShell 脚本 + JSON 清单，保留拥有哈希与用户文件保护；源码 ZIP 已保留空目录。上述测试分组不合成为全测总数，也不替代冻结 EXE 实测。Python **0.3.0**、npm 两包 **0.1.2** 均为本地待发布版本，发布由主任务另行处理；**PyPI 发布未验证**。
+
+Long-path self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, retaining ownership-hash checks and user-file protection. Source ZIPs preserve empty directories. These groups are not combined into a full-suite total and do not replace frozen EXE checks. Python **0.3.0** and both npm packages at **0.1.2** are local versions pending publication, handled separately by the main task; **PyPI publication is unverified**.
+
+最新冻结报告 `build/packaging-validation/wheel installer ygft7h_d/report.json` 为 `status: passed`：13 条外部命令成功，安装路径长 159–163 字符，40 个空目录恢复并清理；功能勾选、回退镜像、校验拒绝、命令钩子、配置项、开机自启和卸载注册表清理通过。新增或修改的用户文件保留。延迟删除通过 251 字符的 PowerShell `-File` 命令启动，退出后清理脚本和清单。wheel SHA-256：`b295f01ce52bba415ccb7e886cd3124565c219743f1d2e8a26ca47c814a901c3`，Python 模块与源码一致。
+
+The final ygft7h_d report has `status: passed`: all 13 external commands succeeded, with 159–163-character install paths and 40 empty directories. Feature selection, mirror fallback, checksum rejection, hooks, settings, startup and uninstall registry cleanup passed; new or modified user files survived. Deferred cleanup used a 251-character PowerShell `-File` invocation and removed temporary helper files. The wheel hash above identifies the source-matching artifact.
+
+上轮 `_16os8r_` 报告保留为历史证据。本轮网络验收使用本机 HTTP，未验证公网镜像、旧 Windows 或 WebView2 页面渲染兼容性。配置和分步流程见 [打包指南](packaging.md)。
+
+The earlier _16os8r_ report remains historical evidence. Network tests used local HTTP; public mirrors, old Windows versions and WebView2 rendering compatibility were not validated. See the [packaging guide](packaging.md) for configuration and wizard steps.
+
+## 2026-10-10 应用与安装包回归 / Application and installer regression
+
+以下保留同日较早阶段的记录：新增应用 onefile/onedir、安装包配置、独立 GUI/silent 安装器及卸载逻辑。测试结果由主任务提供，本文档任务未重跑运行时测试；历史 welcome、0.1.1 registry 与旧 EXE 验收不作为该阶段证据。
+
+The following retains the earlier stage from the same date: configured onefile/onedir applications, setup packaging, standalone GUI/silent installation and uninstall. The main task supplied these results; this documentation task did not rerun runtime tests. Earlier welcome, 0.1.1 registry and old EXE checks do not certify that stage.
+
+| 范围 / Scope | 本轮结果 / Current result |
+| --- | --- |
+| [installer 新测试 / New installer tests](../tests/test_installer.py) | **37 passed** |
+| [packaging 新测试 / New packaging tests](../tests/test_packaging.py) | **28 passed** |
+| CLI / 根目录相关 Python 回归 / CLI and project-root Python regression | **113 passed**，按主任务提供的范围记录 / Recorded with the scope supplied by the main task |
+| Node creator/runtime 回归 / Node creator/runtime regression | **146 total，145 passed，1 skipped** |
+
+上述测试组按各自报告范围列出，不据此推导额外总数或跨组覆盖。Python 源码版本为 **0.3.0**，npm 两包为 **0.1.2 待发布**；已有 registry 证据只覆盖 0.1.1，**PyPI 发布未验证**。
+
+These groups retain their reported scopes; no additional combined count or coverage is inferred. Python sources are **0.3.0** and both npm packages are **0.1.2, pending publication**. Registry evidence covers 0.1.1 only; **PyPI publication is unverified**.
+
+该阶段记录时，真实应用/setup/uninstaller EXE、GUI 与运行库下载验收尚待补充；后续历史实测和当前待重建状态见上节，旧系统兼容仍未验证。配置与使用说明见 [打包指南](packaging.md)。
+
+At the time of that record, real app/setup/uninstaller EXE, GUI and runtime-download checks were still pending. Later historical execution evidence and the current rebuild status appear above; old OS compatibility remains unverified. See the [packaging guide](packaging.md) for configuration and use.
+
 ## 2026-10-09 welcome 改版本地验收 / Local welcome validation
 
 本轮为参考 Vite / Tauri 的简洁双语根 README 与 Vite 风格 demo 收尾：根 demo 包含主题/语言切换、计数、窗口外观与标题栏控制、资源入口及响应式布局；六模板包含新 welcome、三份品牌图标与系统浅深色适配，使用创建时选定的文案语言。根 demo 的全部控制项不作为模板统一能力。实现定位与资产维护见 [窗口外观](window-styles.md#welcome-页面与品牌资产)。

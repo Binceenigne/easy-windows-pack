@@ -2,7 +2,7 @@ import nodeTest from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -10,6 +10,7 @@ import { runInNewContext } from 'node:vm';
 import { createRequire } from 'node:module';
 import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, pythonTaskSpec, spawnSpec, chooseLocalPort, runDev, main, MENU_TASKS, runMenu, isDirectExecution } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
 import { VERSION, languageArgs, helpText, text, withLanguage } from '../frontend/packages/easywindowspack/language.mjs';
+import { projectManifest } from '../frontend/packages/create-ewp/lib/create.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const packageRoot = join(root, 'frontend/packages/easywindowspack');
@@ -101,6 +102,150 @@ test('dev opens a browser only for --web and validates the port', () => {
   for (const value of ['-1', '65536', 'abc', '2.1', '']) assert.throws(() => parseArgs(['dev', '--port', value]), /integer|整数/);
   assert.throws(() => parseArgs(['dev', '--port']), /integer|整数/);
   assert.throws(() => parseArgs(['test', '--web']), /Unknown option|未知参数/);
+});
+
+test('application packaging flags parse on every native task and preserve config paths as argv', () => {
+  const config = 'config files/My Desktop & App.json';
+  for (const language of ['zh-CN', 'en']) for (const command of ['app', 'installer', 'exe', 'build', 'full-build', 'build:all', 'build:app']) {
+    const task = ['full-build', 'build:all'].includes(command) ? 'full-build' : command === 'build' ? 'exe' : command === 'build:app' ? 'app' : command;
+    for (const mode of ['onefile', 'onedir']) for (const args of [
+      [command, '--', '--mode', mode, '--config', config, '--installer'],
+      [command, `--config=${config}`, '--installer', `--mode=${mode}`]
+    ]) {
+      const options = parseArgs([...args, '--lang', language], { env: {} });
+      assert.equal(options.task, task);
+      assert.equal(options.mode, mode);
+      assert.equal(options.config, config);
+      assert.equal(options.installer, true);
+      const directory = join(tmpdir(), 'Project with spaces & symbols');
+      const spec = pythonTaskSpec(directory, { ...options, language }, { exists: () => true });
+      assert.deepEqual(spec.args, ['-u', join(directory, 'scripts/dev.py'), '--lang', language, task,
+        '--mode', mode, '--config', config, '--installer']);
+      assert.equal(spec.options.cwd, directory);
+      assert.equal(spec.options.env.EWP_LANG, language);
+      assert.deepEqual(spawnSpec(spec.command, spec.args, { platform: 'win32' }), { command: spec.command, args: spec.args, options: {} });
+    }
+  }
+  for (const args of [['exe'], ['build'], ['build', '--exe']]) {
+    const options = parseArgs(args);
+    assert.equal(options.task, 'exe');
+    for (const field of ['mode', 'config', 'installer']) assert.equal(options[field], undefined, field);
+    assert.deepEqual(pythonTaskSpec(root, { ...options, language: 'en' }, { exists: () => true }).args,
+      ['-u', join(root, 'scripts/dev.py'), '--lang', 'en', 'exe']);
+  }
+  for (const args of [['app'], ['installer']]) {
+    const options = parseArgs(args);
+    assert.equal(options.mode, undefined, 'Python uses the configured mode');
+    assert.equal(options.installer, undefined, 'Python owns installer task semantics');
+  }
+  assert.equal(parseArgs(['build', '--all', '--installer']).task, 'full-build');
+  assert.equal(parseArgs(['build', '--exe', '--mode=onedir']).task, 'exe');
+});
+
+test('packaging flags reject wheel conflicts, missing values and partial flag names in both languages', () => {
+  for (const language of ['zh-CN', 'en']) {
+    const parse = args => parseArgs([...args, '--lang', language], { env: {} });
+    const unknown = language === 'en' ? /Unknown option/ : /未知参数/;
+    for (const flags of [['--mode', 'onefile'], ['--config', 'my config.json'], ['--installer']]) {
+      for (const wheel of ['-w', '--wheel']) for (const order of [[wheel, ...flags], [...flags, wheel]]) {
+        assert.throws(() => parse(['build', ...order]), language === 'en' ? /cannot be combined/ : /不能.*同时使用/);
+      }
+      for (const command of ['wheel', 'build:wheel', 'test', 'dev', 'frontend:build', 'bundle']) {
+        assert.throws(() => parse([command, ...flags]), unknown);
+      }
+    }
+    for (const args of [['--mode'], ['--mode='], ['--mode', 'zip'], ['--mode', '--installer']]) {
+      assert.throws(() => parse(['app', ...args]), /--mode/);
+    }
+    for (const args of [['--config'], ['--config='], ['--config', ' '], ['--config', '--installer'], ['--config', 'bad\npath'], ['--config', 'bad\0path']]) {
+      assert.throws(() => parse(['app', ...args]), /--config/);
+    }
+    for (const flag of ['--model', '--mode-extra', '--configuration', '--config-extra', '--installer=false']) {
+      assert.throws(() => parse(['app', flag, 'onedir']), unknown);
+    }
+    assert.throws(() => parse(['app', '--mode=onefile', '--mode=onedir']), /--mode/);
+    assert.throws(() => parse(['app', '--config=a.json', '--config=b.json']), /--config/);
+  }
+});
+
+test('npm workspace and generated scripts forward native flags with spaces to the Python boundary', {
+  skip: !process.env.CREATE_EWP_PYTHON && 'Set CREATE_EWP_PYTHON to the configured Python interpreter.', timeout: 60000
+}, () => {
+  const directory = mkdtempSync(join(tmpdir(), 'ewp forwarding & space-'));
+  const frontend = join(directory, 'frontend');
+  const entry = join(packageRoot, 'bin/ewp.mjs');
+  try {
+    mkdirSync(join(directory, 'scripts'));
+    writeFileSync(join(directory, 'scripts/dev.py'), 'import json, sys\nprint(json.dumps(sys.argv[1:]))\n');
+    symlinkSync(dirname(dirname(process.env.CREATE_EWP_PYTHON)), join(directory, '.venv'), process.platform === 'win32' ? 'junction' : 'dir');
+    const bins = join(frontend, 'node_modules/.bin');
+    mkdirSync(bins, { recursive: true });
+    if (process.platform === 'win32') writeFileSync(join(bins, 'ewp.cmd'), `@echo off\r\n"${process.execPath}" "${entry}" %*\r\n`);
+    else symlinkSync(entry, join(bins, 'ewp'));
+    const workspace = JSON.parse(readFileSync(join(root, 'frontend/package.json'), 'utf8'));
+    const cli = 'node packages/easywindowspack/bin/ewp.mjs';
+    for (const scripts of [
+      Object.fromEntries(Object.entries(workspace.scripts).map(([name, value]) => [name, value.replace(cli, `node "${entry}"`)])),
+      projectManifest('my-app', 'vanilla', 'en').scripts
+    ]) {
+      writeFileSync(join(frontend, 'package.json'), JSON.stringify({ name: 'forwarding-fixture', private: true, scripts }));
+      for (const task of ['app', 'installer', 'exe', 'build', 'full-build', 'build:all', 'build:app']) {
+        const config = 'config files/My Desktop & App.json';
+        const spec = spawnSpec(process.platform === 'win32' ? 'npm.cmd' : 'npm',
+          ['run', task, '--', '--mode', 'onedir', '--config', config, '--installer', '--lang=en']);
+        const result = spawnSync(spec.command, spec.args, { ...spec.options, cwd: frontend, encoding: 'utf8', timeout: 10000 });
+        assert.equal(result.error, undefined, task);
+        assert.equal(result.status, 0, `${task}: ${result.stdout}\n${result.stderr}`);
+        const pythonTask = ['full-build', 'build:all'].includes(task) ? 'full-build' : task === 'build' ? 'exe' : task === 'build:app' ? 'app' : task;
+        assert.deepEqual(JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1)),
+          ['--lang', 'en', pythonTask, '--mode', 'onedir', '--config', config, '--installer']);
+      }
+    }
+  } finally { rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('Node task argv is accepted by scripts/dev.py and keeps legacy EXE selection', {
+  skip: !process.env.CREATE_EWP_PYTHON && 'Set CREATE_EWP_PYTHON to the configured Python interpreter.'
+}, () => {
+  const cases = [['app'], ['installer'], ['exe'], ['build'], ['full-build'],
+    ...['app', 'installer', 'exe', 'build', 'full-build'].map(command => [command, '--mode=onedir', '--config', 'configs/My App.json', '--installer'])];
+  const argumentsList = cases.map(args => pythonTaskSpec(root, { ...parseArgs(args), language: 'en' }, { exists: () => true }).args.slice(2));
+  const harness = `import importlib.util, json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location('ewp_dev_contract', root / 'scripts/dev.py')
+dev = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(dev)
+rows = []
+for argv in json.load(sys.stdin):
+    parsed = dev.parser(root, 'en').parse_args(argv)
+    task = parsed.command
+    command = dev.task_command('exe' if task == 'full-build' else task, root,
+        config_path=getattr(parsed, 'config', None), mode=getattr(parsed, 'mode', None),
+        installer=getattr(parsed, 'installer', None))
+    rows.append({'task': task, 'mode': parsed.mode, 'config': parsed.config,
+                 'installer': parsed.installer, 'command': command})
+print(json.dumps(rows))
+`;
+  const result = spawnSync(process.env.CREATE_EWP_PYTHON, ['-X', 'utf8', '-c', harness, root], {
+    input: JSON.stringify(argumentsList), cwd: tmpdir(), encoding: 'utf8', timeout: 10000
+  });
+  assert.equal(result.status, 0, result.stderr);
+  JSON.parse(result.stdout).forEach((row, index) => {
+    const options = parseArgs(cases[index]);
+    assert.equal(row.task, options.task);
+    assert.equal(row.mode, options.mode ?? null);
+    assert.equal(row.config, options.config ?? null);
+    assert.equal(row.installer, options.installer ?? null);
+    if (index >= 5 || row.task === 'app' || row.task === 'installer') {
+      assert.equal(row.command[2], 'easy_windows_pack.cli');
+      assert.equal(row.command[3], row.task === 'installer' ? 'installer' : 'app');
+      if (index >= 5) assert.deepEqual(row.command.slice(-5), ['--config', 'configs/My App.json', '--mode', 'onedir', '--installer']);
+    } else {
+      assert.equal(row.command[2], 'PyInstaller');
+      assert.ok(row.command.includes(join(root, 'output/exe')));
+    }
+  });
 });
 
 test('project discovery ascends from nested directories and never depends on CLI installation location', () => {
@@ -251,7 +396,9 @@ test('global help, version and create help execute through a real directory syml
 
 test('all menu tasks and aliases parse and Python receives language, task and debug safely', () => {
   for (const task of MENU_TASKS) assert.ok(parseArgs([task.command, ...(task.args ?? [])]).task);
-  for (const [alias, command] of Object.entries({ browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'full-build': 'build:all', 'build:wheel': 'wheel', 'build:exe': 'exe' })) {
+  assert.ok(MENU_TASKS.some(task => task.command === 'app'));
+  assert.ok(MENU_TASKS.some(task => task.command === 'installer'));
+  for (const [alias, command] of Object.entries({ browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'full-build': 'build:all', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app' })) {
     assert.equal(parseArgs([alias]).command, command);
   }
   assert.equal(parseArgs(['browser', '--no-open', '--port=1234']).web, true);
@@ -307,13 +454,18 @@ test('help describes every task and both entry locations in each language', () =
     for (const task of MENU_TASKS) assert.ok(help.includes(task.command), task.command);
     assert.match(help, /--lang zh-CN\|en > EWP_LANG > frontend\/package.json ewp.language > zh-CN/);
     assert.match(help, /npm run build -- -w/);
+    assert.match(help, /--mode onefile\|onedir/);
+    assert.match(help, /--config PATH/);
+    assert.match(help, /--installer/);
+    for (const path of ['ewp.pack.json', 'output/apps/', 'output/installers/', 'output/exe/']) assert.ok(help.includes(path), path);
+    assert.equal(/[\u3400-\u9fff]/u.test(help), language === 'zh-CN');
   }
 });
 
 test('published entry points and optional framework peers match the runtime contract', () => {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'easywindowspack');
-  assert.equal(pkg.version, '0.1.1');
+  assert.equal(pkg.version, '0.1.2');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.engines.node, '>=22.12.0');
   assert.equal(pkg.type, 'module');
@@ -333,7 +485,7 @@ test('workspace scripts delegate to the Node CLI and preserve npm build argument
   assert.equal(pkg.private, true);
   assert.deepEqual(pkg.workspaces, ['packages/*']);
   assert.match(pkg.devDependencies.vite, /^\^7\./);
-  for (const name of ['help', 'menu', 'info', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'build', 'build:all', 'full-build', 'build:wheel', 'build:exe', 'bundle', 'test', 'frontend:build', 'frontend:dev', 'frontend:preview', 'check']) {
+  for (const name of ['help', 'menu', 'info', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'app', 'installer', 'build', 'build:all', 'full-build', 'build:wheel', 'build:exe', 'build:app', 'bundle', 'test', 'frontend:build', 'frontend:dev', 'frontend:preview', 'check']) {
     assert.match(pkg.scripts[name], /node packages\/easywindowspack\/bin\/ewp\.mjs /, name);
   }
   assert.equal(pkg.scripts.ewp, 'node packages/easywindowspack/bin/ewp.mjs');

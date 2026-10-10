@@ -20,6 +20,7 @@
 | 六套 JS/TS 模板与交互 | `frontend/packages/create-ewp/lib/create.mjs`、`cli.mjs`、`templates/common` 及命中模板 |
 | Vite、生成资源与 Node CLI | `frontend/vite.config.mjs`、`scripts/prepare-npm.mjs`、`frontend/packages/easywindowspack/bin/ewp.mjs` |
 | 开发菜单与分发资源 | 根 `startup.cmd`、`scripts/startup.cmd`、`scripts/dev.py`、`backend/base/ewpcore/cli.py`、`pyproject.toml` |
+| 应用构建、安装 schema 与卸载 | `backend/base/ewpcore/packaging.py`、`installer.py`；宿主 `docs/packaging.md` |
 | 开发文档与迁移映射 | `docs/README.md`、`docs/npm-vite.md`、`docs/npm-validation.md`、`docs/development.md`、`docs/architecture.md` |
 
 `backend/base/ewpcore` 是物理源码目录，不是新的公开导入名。`pyproject.toml` 通过 `package-dir` 将公开包 `easy_windows_pack` 映射到该目录；继续使用 `from easy_windows_pack import ...`，迁移后重新安装可编辑项目。前端页面消费组件/桥接，后端框架不反向依赖 `backend/src` 示例。旧路径对应关系集中在宿主 `docs/architecture.md`，不要在多个 Skill 中复制另一份迁移表。
@@ -33,6 +34,8 @@ frontend 内 npm workspace 为 private，不发布 workspace 根包；manifest�
 `npm run build` 默认 EXE，`npm run build -- -w` / `-- --wheel` 选择 wheel，`-- -e` 显式 EXE；裸 `-w` 是 npm workspace 选项。根 `startup.cmd` → `scripts/startup.cmd` → `scripts/dev.py` 保留 legacy 菜单，其他构建脚本位于 scripts；`browser` 转 Vite、`frontend` 编译，菜单 `build` 保留 test + wheel + exe + bundle。底层 CLI / `scripts/build.ps1` 的 `build` 保留 test + wheel + bundle；`scripts/build-demo.ps1` 委托 `exe`。不要混用这些入口的默认语义。
 
 `wheel`、`exe`、`bundle` 产物进入分类 `output/`，npm tarball 使用 `output/npm`，日志在 `output/logs`，PyInstaller 暂存、spec 与工作缓存在 `build/`。进度按完成阶段显示，不模拟耗时百分比。详情在宿主 `docs/npm-vite.md` 和 `docs/development.md` 维护。
+
+配置构建使用 `app` / `installer` 与项目根 `ewp.pack.json`，支持 `onefile` / `onedir`，产物为 `output/apps` / `output/installers`。`build --mode onedir` 或显式 `--config` / `--installer` 也转入配置构建；无这些参数的 legacy build/exe 保留 `output/exe`。Python 源码 0.3.0 的 wheel 公开构建 API 与 `easy-windows-pack app/installer --project-root` 见 [打包指南](../../../../packaging.md)，PyPI 发布状态不能从源码版本推断。
 
 ## 公共 API 与生成资源
 
@@ -58,10 +61,10 @@ frontend 内 npm workspace 为 private，不发布 workspace 根包；manifest�
 
 ## 文档与分发
 
-根 `docs/` 是开发文档与 AI 资源中心：接口、窗口外观、开发手册和架构在对应页面增量维护，新文档补 `docs/README.md` 导航。将真实存在的组件/桥接入口登记到 `docs/index.md`；窗口主题与业务品牌分层记录到 `docs/design.md` 并链接专题页，不能把演示页主题变成所有宿主的强制配色。Skills 位于 docs 下，根标准入口必须显式引导读取，Claude 路由复用唯一主 Skill。
+根 `docs/` 是开发文档与 AI 资源中心：接口、窗口外观、开发手册、架构与打包在对应专题增量维护，新文档补 `docs/README.md` 导航。`docs/index.md` / `docs/design.md` 面向应用使用者，只在业务入口或 UI 规则变化时维护少量内容，不写框架内部清单、不要求数量盘点。Skills 位于 docs 下，根标准入口显式引导读取，Claude 路由复用唯一主 Skill。
 
 仅将 Markdown 放进仓库不等于它会进入 source bundle 或 wheel。修改打包时核查显式资源列表、分层前端资源和 manifest 的新入口，分别检查产物内容；AI 资源仅按明确清单和工具选择分发，不打包私有配置、缓存或凭据。资源进入 wheel 也不等于 agent 会自动发现，消费项目仍需放置入口。历史验收记录保留日期与范围，不作为迁移后的测试成功证据。
 
 生产 EXE 由 Python/PyInstaller 打包，前端只携带 `output/frontend` 的编译页面/assets，不装载未编译 Vue/React/TS 页面。框架 wheel metadata 仍分发核心与源组件/桥接；生成应用 wheel metadata 分发编译 assets，不因构建前执行 Vite 就混为一类。
 
-在 frontend 内执行 `npm pack --workspace <name> --pack-destination ../output/npm` 是本地打包，不等于发布或 registry 安装通过。安装入口为 `npm create ewp@latest`、全局 `npm install -g easywindowspack@latest` → `ewp create`；本宿主 0.1.1 已确认 registry 可用，`@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，范围与证据见宿主 [验收记录](../../../../npm-validation.md)。后续新版本发布顺序 create-ewp → easywindowspack；本宿主发布由用户手动执行，agent 不运行 publish。当前 npm/Vite 证据写入 `docs/npm-validation.md`，旧 `docs/build-validation.md` 仅为历史 migration checks。
+在 frontend 内执行 `npm pack --workspace <name> --pack-destination ../output/npm` 是本地打包，不等于发布或 registry 安装通过。安装入口为 `npm create ewp@latest`、全局 `npm install -g easywindowspack@latest` → `ewp create`；本宿主当前为 0.1.2 待发布，`@latest` 跟随 registry 已发布版本，0.1.1 发布与 registry 冒烟的历史证据见宿主 [验收记录](../../../../npm-validation.md)。发布顺序 create-ewp → easywindowspack；是否执行由用户授权和当前任务范围决定，已获授权不重复确认。当前 npm/Vite 证据写入 `docs/npm-validation.md`，旧 `docs/build-validation.md` 仅为历史 migration checks。

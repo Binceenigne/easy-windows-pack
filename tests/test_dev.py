@@ -198,6 +198,68 @@ class DevTests(unittest.TestCase):
             self.assertEqual(error.exception.code, 2)
             self.assertIn(expected, output.getvalue())
 
+    def test_native_tasks_forward_mode_config_and_installer_without_temp_files(self):
+        for task in ("app", "installer", "exe", "build"):
+            with self.subTest(task=task), patch.object(dev.sys, "platform", "win32"), \
+                    patch.object(dev, "reenter", return_value=False), patch.object(dev, "run_command") as run:
+                self.assertEqual(dev.main([task, "--mode", "onedir", "--installer", "--config", "configs/custom pack.json"],
+                                          root=self.root), 0)
+            expected = [str(dev.venv_python(self.root)), "-m", "easy_windows_pack.cli",
+                        "installer" if task == "installer" else "app", "--project-root", str(self.root),
+                        "--config", "configs/custom pack.json", "--mode", "onedir", "--installer"]
+            run.assert_called_once()
+            self.assertEqual(run.call_args.args[0], expected)
+            self.assertEqual(run.call_args.kwargs["root"], self.root)
+            self.assertIsNotNone(run.call_args.kwargs["log"])
+            self.assertFalse((self.root / "build/ewp.pack.override.json").exists())
+
+    def test_app_and_installer_menu_entries_use_wheel_cli_and_keep_config_defaults(self):
+        for task in ("app", "installer"):
+            choice = str(list(dev.LABELS).index(task) + 1)
+            with self.subTest(task=task), patch("builtins.input", side_effect=[choice, "0"]), \
+                    patch.object(dev.sys, "platform", "win32"), patch.object(dev, "reenter", return_value=False), \
+                    patch.object(dev, "run_command") as run:
+                self.assertEqual(dev.main([], root=self.root), 0)
+            self.assertEqual(run.call_args.args[0], [
+                str(dev.venv_python(self.root)), "-m", "easy_windows_pack.cli", task,
+                "--project-root", str(self.root),
+            ])
+
+    def test_full_build_native_flags_only_change_the_exe_stage(self):
+        with patch.object(dev.sys, "platform", "win32"), patch.object(dev, "reenter", return_value=False), \
+                patch.object(dev, "run_task") as run:
+            self.assertEqual(dev.main(["build", "--all", "--config", "custom.json", "--mode", "onedir"], root=self.root), 0)
+        self.assertEqual([call.args[0] for call in run.call_args_list], ["test", "wheel", "exe", "bundle"])
+        self.assertEqual(run.call_args_list[2].kwargs,
+                         {"config_path": "custom.json", "mode": "onedir", "installer": None})
+        self.assertTrue(all(not call.kwargs for call in (run.call_args_list[0], run.call_args_list[1], run.call_args_list[3])))
+
+    def test_wheel_rejects_native_packaging_flags_before_running(self):
+        for options in (["--mode", "onedir"], ["--config", "custom.json"], ["--installer"]):
+            with self.subTest(options=options), patch.object(dev, "run_command") as run, \
+                    redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as error:
+                dev.main(["build", "--wheel", *options], root=self.root)
+            self.assertEqual(error.exception.code, 2)
+            run.assert_not_called()
+
+    def test_native_task_failure_preserves_exit_code(self):
+        with patch.object(dev.sys, "platform", "win32"), patch.object(dev, "reenter", return_value=False), \
+                patch.object(dev, "run_command", side_effect=dev.DevError("native build failed", 47)):
+            self.assertEqual(dev.main(["app", "--mode", "onedir"], root=self.root), 47)
+
+    def test_dev_help_has_no_import_dependency_before_initialization(self):
+        code = (
+            "import builtins,runpy,sys; original = builtins.__import__; "
+            "blocked = lambda name,*args,**kwargs: (_ for _ in ()).throw(ImportError(name)) "
+            "if name.startswith('easy_windows_pack') else original(name,*args,**kwargs); "
+            "builtins.__import__ = blocked; script_path = sys.argv[1]; sys.argv = [script_path, '--help']; "
+            "runpy.run_path(script_path, run_name='__main__')"
+        )
+        completed = subprocess.run([sys.executable, "-I", "-c", code, str(PROJECT_ROOT / "scripts/dev.py")],
+                                   cwd=self.root, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        self.assertIn("--help", completed.stdout)
+
     def test_check_delegates_to_runtime_without_python_reentry(self):
         self.fake_package("en")
         with patch.object(dev, "reenter") as enter, patch.object(dev, "run_command") as run:

@@ -62,8 +62,13 @@ Run all subsequent npm commands in `frontend/`. `init` creates or reuses the pro
 | `npm run browser` | Browser development without Python |
 | `npm run build` | Build a Windows EXE into `output/exe/` |
 | `npm run build:wheel` | Build a Python wheel into `output/wheels/` |
+| `npm run app` | Build the configured app into `output/apps/` |
+| `npm run build -- --mode onedir` | Build an app directory containing the EXE and dependencies |
+| `npm run installer` | Build the app and setup, with setup under `output/installers/` |
 
 Complete `init` before packaging; builds compile the frontend automatically. Use the browser to debug UI, and the desktop app to verify native windows, tray, and the Python bridge.
+
+New commands describe local Python **0.3.0** / npm **0.1.2**, pending publication; `@latest` follows published versions. See the [packaging guide](docs/packaging.md) for configuration and step-by-step installation/uninstall, and [validation](docs/npm-validation.md) for the latest wheel rebuild and end-to-end checks awaiting final evidence.
 
 You can also double-click the project's root `startup.cmd` to open the task menu (requires Python).
 

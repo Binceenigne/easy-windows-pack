@@ -1,22 +1,119 @@
 # create-ewp
 
+Version 0.1.2 · Pending publication / 待发布 · MIT
+
+创建基于 Vite、Python 和 pywebview 的 Windows 桌面应用，支持 Vanilla / Vue / React 与 JavaScript / TypeScript。
+Create a Windows desktop app with Vite, Python and pywebview, using Vanilla / Vue / React with JavaScript / TypeScript.
+
+## 环境 / Requirements
+
+- Node.js >=22.12（含 npm）/ Node.js >=22.12, including npm.
+- 桌面开发与打包：Python >=3.10；Windows 桌面需要 WebView2。
+  Desktop development and packaging: Python >=3.10; Windows desktop needs WebView2.
+- 纯浏览器开发无需 Python。/ Browser-only development needs no Python.
+
+## 创建项目 / Create a project
+
+在项目的父目录运行，目标目录须为空。无需全局安装。
+Run in the parent directory of your new project; the destination must be empty. Global installation is optional.
+
+```powershell
+npm create ewp@latest
+```
+
+向导先选简体中文 / English，再选项目名、框架、JS / TS、AI 工具、安装依赖和启动桌面。
+The wizard asks for 简体中文 / English first, then project name, framework, JS / TS, AI tools, installation and desktop startup.
+
+也可指定选项后手动启动：/ Or specify options and start manually:
+
+```powershell
+npm create ewp@latest my-app -- --template vue-ts --lang en --no-install --no-start --yes
+cd my-app/frontend
+npm install
+npm run init
+npm run dev
+```
+
+`init` 创建或复用项目 `.venv`、安装依赖并编译前端，无需手动激活 Python 环境。
+`init` creates or reuses the project's `.venv`, installs dependencies and builds the frontend; no manual Python activation is needed.
+`dev` 打开桌面窗口并热更新前端；Ctrl+C 停止。/ `dev` opens the desktop window with frontend hot updates; Ctrl+C stops it.
+
+## 模板与语言 / Templates and language
+
+| 框架 / Framework | JavaScript | TypeScript |
+| --- | --- | --- |
+| Vanilla | `vanilla` | `vanilla-ts` |
+| Vue | `vue` | `vue-ts` |
+| React | `react` | `react-ts` |
+
+六模板均提供新版 SVG 品牌 welcome、计数示例、Windows / macOS 窗口外观选择、编辑提示和资源链接，支持系统浅深色。
+All six templates include the new SVG-branded welcome, a counter, Windows / macOS window themes, editing hints and resource links, with system light/dark appearance.
+生成项目依赖 `easywindowspack@^0.1.2`。/ Generated projects depend on `easywindowspack@^0.1.2`.
+
+`--lang zh-CN` / `--lang en` 跳过语言提示；创建语言用于 README、welcome 与可选 AI 指引。
+`--lang zh-CN` / `--lang en` skips the language prompt and selects the generated README, welcome and optional AI guidance language.
+CLI 输出优先级：`--lang` → `EWP_LANG` → 保存的 `ewp.language` → `zh-CN`；npm / pip / Vite 日志保持原样。
+CLI output priority: `--lang` → `EWP_LANG` → saved `ewp.language` → `zh-CN`; npm / pip / Vite logs retain their original output.
+
+AI 工具支持 Codex / Claude / Copilot，默认不选；可用 `--ai codex,claude,copilot` 多选。
+AI guidance supports Codex / Claude / Copilot, with none selected by default; use `--ai codex,claude,copilot` to select multiple tools.
+
+## 常用命令 / Common commands
+
+以下命令在生成项目的 `frontend/` 内运行；从项目根运行时加 `npm --prefix frontend`。
+Run these commands inside the generated project's `frontend/`; use `npm --prefix frontend` from its root.
+
+| 命令 / Command | 用途 / Purpose |
+| --- | --- |
+| `npm run help` | CLI 帮助 / CLI help |
+| `npm run dev` | 桌面热更新开发 / Desktop development with hot updates |
+| `npm run browser` | 浏览器开发 / Browser development |
+| `npm run build` | Windows EXE → `output/exe/` |
+| `npm run build:wheel` | Python wheel → `output/wheels/` |
+| `npm run app` | 配置应用 / Configured app → `output/apps/` |
+| `npm run installer` | 应用及安装包 / App and setup → `output/installers/` |
+
+打包前完成 `init`；构建自动编译前端。根 `startup.cmd` 可打开任务菜单。
+Complete `init` before packaging; builds compile the frontend automatically. Root `startup.cmd` opens the task menu.
+
+生成器创建项目根 `ewp.pack.json`；onefile / onedir、Tk 分步骤安装与卸载说明见 [打包指南 / Packaging](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/packaging.md)。配套 Python 0.3.0 待发布，最新 wheel 重建与端到端验收待最终证据。
+The generator creates root `ewp.pack.json`; see the packaging guide for onefile / onedir and the Tk installation/uninstall wizard. Python 0.3.0 is pending publication; the latest wheel rebuild and end-to-end checks await final evidence.
+
+## 全局 CLI 与文档 / Global CLI and docs
+
+可选全局安装：/ Optional global installation:
+
+```powershell
+npm install -g easywindowspack@latest
+ewp create
+ewp -h
+ewp create -h
+```
+
+`ewp` 无参数也显示帮助；在项目根用 `ewp menu` 打开菜单。
+`ewp` with no arguments also shows help; use `ewp menu` at the project root for the task menu.
+
+[中文入门](https://github.com/Binceenigne/easy-windows-pack/blob/main/README.md) · [English quick start](https://github.com/Binceenigne/easy-windows-pack/blob/main/README.en.md) · [npm / Vite 指南 / Guide](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-vite.md) · [开发手册 / Development](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)
+
+## 创建选项与开发细节 / Creation options and development details
+
 Create a self-contained Easy Windows Pack app / 创建独立桌面项目。
 Node >=22.12.0, Python >=3.10; Windows desktop requires WebView2.
 
-ESM; interactive prompts use `@clack/prompts`. Both npm packages are **published
-at 0.1.1 and available from the registry**. On 2026-10-09, `@latest` creation and
-Vue TS installation, checks, and frontend build smoke tests passed. See the
-validation record linked below.
-基于 @clack/prompts 的 ESM 生成器。两包 0.1.1 已发布且 registry 可用；2026-10-09 的 @latest 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，详见文末验收记录。
+ESM; interactive prompts use `@clack/prompts`. Both local npm packages are
+**0.1.2, pending publication**; `@latest` follows published registry versions.
+The historical 0.1.1 release passed `@latest` creation and Vue TS installation,
+checks and frontend-build smoke tests on 2026-10-09. See the validation record below.
+基于 @clack/prompts 的 ESM 生成器。两包本地版本为 0.1.2 待发布，@latest 跟随已发布版本；0.1.1 的发布与 2026-10-09 registry 冒烟保留为历史证据，详见文末验收记录。
 
-Run `npm create ewp@latest` without global installation. In the 0.1.1 flow, the
+Run `npm create ewp@latest` without global installation. In the source 0.1.2 flow, the
 first prompt selects human language (`zh-CN` / `en`), then project name,
 Vanilla/Vue/React, programming language (JavaScript/TypeScript), optional AI tools,
 npm installation, and desktop startup. Explicit `--lang` skips the first prompt.
 Alternatively, global `easywindowspack` provides `ewp create` via `create-ewp/cli`.
-无需全局安装即可创建。0.1.1 第一项为人类语言，JS/TS 是后续编程语言选项；显式 --lang 跳过语言提示。全局 CLI 可用 `npm install -g easywindowspack@latest` 安装或升级。
+无需全局安装即可创建。0.1.2 源码第一项为人类语言，JS/TS 是后续编程语言选项；显式 --lang 跳过语言提示。全局 CLI 可用 `npm install -g easywindowspack@latest` 安装或升级。
 
-0.1.1 non-interactive example / 0.1.1 非交互示例：
+Registry non-interactive example / registry 非交互示例：
 
 `npm create ewp@latest "My App" -- --lang en --template react-ts --ai claude --no-install --no-start --yes`
 
@@ -60,9 +157,9 @@ Installation runs `npm install` inside frontend only. Starting runs installation
 then `npm run init` and `npm run dev`; Python initialization is explicit.
 安装选项仅安装 npm 依赖；启动选项额外初始化 Python `.venv`，再启动桌面。
 
-The new generated app uses published `easywindowspack@^0.1.1` and Vite ^7.3.7,
-with Vue 3.5 or React 19 when selected. Registry installation smoke tests passed
-for the Vue TS project. Vue/React templates
+Source-generated apps use `easywindowspack@^0.1.2` (pending publication) and
+Vite ^7.3.7, with Vue 3.5 or React 19 when selected. Historical registry smoke
+tests cover the 0.1.1 Vue TS project. Vue/React templates
 own Frame composition layers, using Teleport/portals for reactive slots/children,
 prop updates and cleanup. All six templates share `mountFrame`; browser preview
 does not provide native controls. Runtime optional peers support Vue >=3.3 and
@@ -78,17 +175,17 @@ npm --prefix frontend run prepare:npm
 node frontend/packages/create-ewp/bin/create-ewp.mjs "../My App" --lang en --template vue-ts --no-install --no-start
 ```
 
-Generation uses local prepared templates. Generated apps depend on published
-`easywindowspack@^0.1.1`; local checks can also use existing tarballs or explicit
-overrides. Local generation is not registry validation.
-本地生成使用 prepared 模板，生成应用依赖已发布的 runtime；本地验收也可使用已有 tarball 或明确本地依赖，不能替代 registry 安装验证。
+Generation uses local prepared templates. Generated apps depend on
+`easywindowspack@^0.1.2`, pending publication; use matching local tarballs or
+explicit overrides for local checks. Local generation is not registry validation.
+本地生成使用 prepared 模板，生成应用依赖待发布的 runtime ^0.1.2；本地验收使用匹配的 tarball 或明确本地依赖，不能替代 registry 安装验证。
 
 Use `npm create ewp@latest` for new apps;
 upgrade the global CLI with `npm install -g easywindowspack@latest`, or the app runtime
-with `npm install easywindowspack@^0.1.1` inside frontend. Dependency upgrades do not
+with `npm install easywindowspack@^0.1.2` inside frontend after 0.1.2 is published. Dependency upgrades do not
 rewrite existing scripts, READMEs, AI guidance, or demos.
-Replace `@latest` with `@0.1.1` to pin the version.
-可用上述命令安装或创建，固定版本时将 @latest 换成 @0.1.1；旧项目任务 scripts 与指引需自行同步。
+Use `@0.1.1` to pin the historical published version.
+全局安装和创建跟随 registry；0.1.2 发布后再使用 ^0.1.2，@0.1.1 可固定历史版本；旧项目任务 scripts 与指引需自行同步。
 
 Inside the project's frontend directory with available dependencies; from the project root use `npm --prefix frontend` / 项目依赖可解析后，在 frontend 内执行；从项目根执行时使用 `npm --prefix frontend`：
 
@@ -125,9 +222,9 @@ launches desktop without HMR. `dev` has HMR; `frontend:preview` previews compile
 Global `ewp` without arguments or with `-h` shows help without a project. Use `ewp menu`
 inside a project; root `startup.cmd` without arguments also opens the menu.
 Both the checkout and generated apps provide npm scripts: `help`, `ewp`, `menu`,
-`init`, `dev`, `browser`, `frontend`, `demo`, `wheel`, `exe`, `bundle`, `build`,
+`init`, `dev`, `browser`, `frontend`, `demo`, `wheel`, `exe`, `app`, `installer`, `bundle`, `build`,
 `build:all`, `full-build`, `test`, `info`, `check`, plus `frontend:dev`,
-`frontend:build`, `frontend:preview`, `build:wheel`, and `build:exe`.
+`frontend:build`, `frontend:preview`, `build:wheel`, `build:exe`, and `build:app`.
 Only TypeScript templates provide `typecheck`. Generated templates include
 `tests/npm-runtime.test.mjs`; `npm run check`, `ewp check`, and `startup.cmd check`
 run three Node runtime exports/config checks: public API/CSS, Vite configuration,
@@ -180,13 +277,12 @@ npm pack --workspace easywindowspack --pack-destination ../output/npm
 ```
 
 The frontend workspace is private. Source npm manifests and the lockfile are
-aligned at 0.1.1, and both packages have been published by the user. Historical
-local pack checks and passed Vue TS registry smoke tests are recorded in the
-validation record. This README update changes Git source only. Published tarballs
-cannot be overwritten and are not repacked or republished for this update.
-For future versions, publish `create-ewp` before `easywindowspack`.
+aligned at 0.1.2, pending publication. Historical 0.1.1 local pack checks and Vue TS
+registry smoke tests are recorded in the validation record. This documentation
+task does not pack or publish; the main task handles the new release separately.
+Publish `create-ewp` before `easywindowspack`.
 Packing does not prove registry installation or native execution.
-两包 0.1.1 已由用户发布且 registry 可用；历史本地 pack 检查与已通过的 Vue TS registry 冒烟见验收记录。此次 README 仅更新 Git 源码，已发 tarball 不可覆盖，不重新 pack 或发布。后续新版本发布顺序为 create-ewp → easywindowspack。
+两包本地版本为 0.1.2 待发布；0.1.1 历史本地 pack 与 Vue TS registry 冒烟见验收记录。本文档任务不打包或发布，由主任务另行处理新版；发布顺序为 create-ewp → easywindowspack。
 
 Repository documentation: [bilingual guide](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-vite.md),
 [validation record](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md).

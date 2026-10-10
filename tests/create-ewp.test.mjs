@@ -138,9 +138,10 @@ test('filesystem failures and creator errors localize without losing process exi
 test('package names normalize independently of directories and cannot inject source', () => {
   for (const [input, expected] of [
     ['My Desktop App', 'my-desktop-app'], ['Éclair 2026', 'eclair-2026'], ['@scope/My App', 'scope-my-app'],
-    ['中文', 'ewp-app'], ['---', 'ewp-app'], ['"</title><script>', 'title-script']
+    ['中文', 'ewp-app'], ['---', 'ewp-app'], ['"</title><script>', 'title-script'],
+    ['uninstall', 'ewp-app'], ['CON', 'ewp-app'], ['lpt9', 'ewp-app'], ['node_modules', 'ewp-app']
   ]) assert.equal(normalizePackageName(input), expected);
-  assert.ok(normalizePackageName('a'.repeat(300)).length <= 180);
+  assert.equal(normalizePackageName('a'.repeat(300)).length, 80);
 });
 
 test('six templates × two languages × all AI combinations generate consistent resources and valid links', async t => {
@@ -153,16 +154,27 @@ test('six templates × two languages × all AI combinations generate consistent 
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
-      assert.equal(pkg.dependencies.easywindowspack, '^0.1.1');
+      assert.equal(pkg.dependencies.easywindowspack, '^0.1.2');
       assert.deepEqual(pkg.ewp, { language });
       assert.equal(pkg.scripts.ewp, 'ewp');
-      for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'bundle', 'test', 'check', 'full-build']) {
+      for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'app', 'installer', 'bundle', 'test', 'check', 'full-build']) {
         assert.equal(pkg.scripts[task], `ewp ${task === 'help' ? '--help' : task}`);
       }
       assert.equal(pkg.scripts.build, 'ewp build');
       assert.equal(pkg.scripts['build:all'], 'ewp full-build');
       assert.equal(pkg.scripts['build:wheel'], 'ewp build --wheel');
       assert.equal(pkg.scripts['build:exe'], 'ewp build --exe');
+      assert.equal(pkg.scripts['build:app'], 'ewp app');
+      assert.deepEqual(JSON.parse(read('ewp.pack.json')), {
+        schemaVersion: 1,
+        application: { id: pkg.name, name: pkg.name, version: pkg.version },
+        build: { mode: 'onefile', installer: false }, installer: { language },
+        features: [], prerequisites: [], hooks: {},
+        postInstall: [
+          { id: 'startup', type: 'startup', name: language === 'en' ? 'Start with Windows' : '开机自启', default: false },
+          { id: 'launch', type: 'launch', name: language === 'en' ? 'Launch after installation' : '安装后启动', default: false }
+        ]
+      });
       for (const task of ['frontend:build', 'frontend:dev', 'frontend:preview']) assert.equal(pkg.scripts[task], `ewp ${task}`);
       assert.match(read('pyproject.toml'), /name = "my-app-desktop"/);
       assert.match(read('pyproject.toml'), /version = "0.1.0"/);
@@ -214,6 +226,12 @@ test('six templates × two languages × all AI combinations generate consistent 
         ['docs/.agents', ai.includes('codex')], ['docs/.claude', ai.includes('claude')],
         ['docs/.easy-dev', ai.length > 0], ['.github', ai.includes('copilot')]
       ]) assert.equal(existsSync(join(result.directory, path)), enabled, path);
+      for (const path of ['docs/index.md', 'docs/design.md']) {
+        assert.ok(result.files.includes(path), path);
+        assert.ok(read(path).trimEnd().split('\n').length < 15, path);
+        assert.doesNotMatch(read(path), /backend\/base|ewpcore|PyInstaller|scripts\/dev\.py|full-build/);
+      }
+      if (!ai.length) assert.deepEqual(readdirSync(join(result.directory, 'docs')).sort(), ['design.md', 'index.md']);
       for (const path of result.files.filter(path => path.endsWith('.md') && /AGENTS|CLAUDE|copilot|docs\//.test(path))) {
         assertLinks(result.directory, path);
         assert.equal(/[\u3400-\u9fff]/u.test(read(path)), language === 'zh-CN', path);
@@ -227,6 +245,12 @@ test('six templates × two languages × all AI combinations generate consistent 
         assert.match(guidance, /frontend\/src\//);
         assert.match(guidance, /backend\/src\/demo.py/);
         assert.equal(guidance.includes('npm run typecheck'), template.endsWith('-ts'));
+        for (const content of [guidance, read(skill)]) {
+          assert.match(content, /\]\([^)]*index\.md\)/);
+          assert.match(content, /\]\([^)]*design\.md\)/);
+          assert.doesNotMatch(content, /backend\/base|ewpcore|prepare-npm|npm publish/);
+          assert.ok(content.trimEnd().split('\n').length < 15);
+        }
       }
       if (template.startsWith('vue')) {
         assert.match(config, /plugin-vue/);
@@ -249,6 +273,69 @@ test('six templates × two languages × all AI combinations generate consistent 
   assert.deepEqual(normalizeAi('none'), []);
   assert.deepEqual(normalizeAi('claude,codex,codex'), ['codex', 'claude']);
   assert.deepEqual(parse(['--ai=codex,claude,copilot']).ai, AI_TOOLS);
+});
+
+test('generated pack configs are accepted by the real Python schema and use project-relative defaults', {
+  skip: !process.env.CREATE_EWP_PYTHON && 'Set CREATE_EWP_PYTHON to the configured Python interpreter.'
+}, t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  const projects = [];
+  for (const template of TEMPLATES) for (const language of LANGUAGES) {
+    projects.push(createProject({ directory: join(root, `Pack ${template} ${language}`), name: 'My Desktop App', template, language, templatesDir }));
+  }
+  for (const name of ['a'.repeat(180), 'uninstall', 'CON', 'lpt9', '中文']) {
+    projects.push(createProject({ directory: join(root, `Names ${projects.length}`), name, templatesDir }));
+  }
+  const harness = `import copy, importlib.util, json, os, sys
+from pathlib import Path
+def load(name, path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+repository = Path(sys.argv[1])
+pack = load('ewp_pack_contract', repository / 'backend/base/ewpcore/packaging.py')
+installer = load('ewp_installer_contract', repository / 'backend/base/ewpcore/installer.py')
+results = []
+for directory in json.load(sys.stdin):
+    root = Path(directory)
+    config = pack.load_pack_config(root)
+    alternate = root / 'config files' / 'My Desktop & App.json'
+    alternate.parent.mkdir()
+    alternate.write_text(json.dumps(config), encoding='utf-8')
+    assert pack.load_pack_config(root, Path('config files/My Desktop & App.json')) == config
+    manifest = copy.deepcopy(config)
+    manifest['applicationPath'] = manifest['appPath'] = config['application']['id'] + '.exe'
+    manifest['installer'].pop('files')
+    installer.validate_manifest(manifest)
+    local = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData/Local'))
+    assert installer.default_directory(manifest) == (local / 'Programs' / config['application']['id']).absolute()
+    results.append({'config': config, 'directory': str(installer.default_directory(manifest))})
+print(json.dumps(results))
+`;
+  const result = spawnSync(process.env.CREATE_EWP_PYTHON, ['-X', 'utf8', '-c', harness, repository], {
+    cwd: tmpdir(), input: JSON.stringify(projects.map(project => project.directory)), encoding: 'utf8', timeout: 20000
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 0, result.stderr);
+  const rows = JSON.parse(result.stdout);
+  assert.equal(rows.length, projects.length);
+  rows.forEach(({ config, directory }, index) => {
+    const project = projects[index];
+    assert.equal(config.application.id, project.name);
+    assert.equal(config.application.name, project.name);
+    assert.equal(config.schemaVersion, 1);
+    assert.deepEqual(config.build, { mode: 'onefile', installer: false });
+    assert.deepEqual(config.installer, { language: project.language, files: [] });
+    assert.deepEqual(config.features, []);
+    assert.deepEqual(config.prerequisites, []);
+    assert.deepEqual(config.hooks, {});
+    assert.ok(config.postInstall.every(option => option.default === false));
+    assert.deepEqual(config.postInstall.map(option => option.type), ['startup', 'launch']);
+    assert.equal(config.postInstall.some(option => option.type === 'setting'), false);
+    assert.equal(directory.split(/[\\/]/).at(-1), project.name);
+  });
 });
 
 test('invalid AI selections fail before writes or installation', async t => {

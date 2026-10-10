@@ -56,15 +56,23 @@ export function helpText(language = 'zh-CN') {
   frontend:preview         预览已编译的前端
   demo [--debug]           编译前端后运行桌面演示，可开启开发者工具
   wheel | exe | bundle     构建 wheel / Windows EXE / 源码包
+  app | build:app           按配置构建应用，默认使用配置中的模式
+  installer                构建应用并强制生成安装包
   build [-w|--wheel] [-e|--exe] [--all]  默认构建 EXE，目标互斥
   build:all | full-build   完整构建：test → wheel → exe → bundle
   test | info | check      Python 测试 / 项目信息 / Node 检查
 
+应用打包参数（app / installer / exe / build / full-build）：
+  --mode onefile|onedir    覆盖应用模式；支持单文件或目录
+  --config PATH           配置路径相对项目根，默认 ewp.pack.json；含空格时加引号
+  --installer             同时生成安装包；build --wheel / -w 与以上参数互斥
+新打包产物：output/apps/ 和 output/installers/；exe 不带以上参数时使用 output/exe/。
 浏览器和 dev 参数：--no-open；--port <0..65535>（默认动态端口）
 语言：--lang zh-CN|en > EWP_LANG > frontend/package.json ewp.language > zh-CN
 语言参数可放在命令前后，仅覆盖本次输出。
 npm：npm run help；npm run menu；npm run demo -- --debug；npm run build:all
 npm wheel：npm run build -- -w（裸 -w 是 npm workspace 选项）
+npm 应用：npm run app -- --mode onedir --config "configs/My App.json" --installer
 Ctrl+C 关闭 Vite 与桌面进程树。
 `,
 `easywindowspack ${VERSION} (Node >=22.12)
@@ -83,15 +91,23 @@ Without a global install: npm --prefix frontend run ewp -- <task>
   frontend:preview         Preview the built frontend
   demo [--debug]           Build frontend and run desktop; optional developer tools
   wheel | exe | bundle     Build wheel / Windows EXE / source bundle
+  app | build:app           Build the configured application using its configured mode
+  installer                Build the application and always create an installer
   build [-w|--wheel] [-e|--exe] [--all]  Build EXE by default; choose one target
   build:all | full-build   Full build: test → wheel → exe → bundle
   test | info | check      Python tests / project information / Node checks
 
+Application packaging options (app / installer / exe / build / full-build):
+  --mode onefile|onedir    Override the application mode: single file or directory
+  --config PATH           Relative to project root; default: ewp.pack.json; quote spaces
+  --installer             Also create an installer; build --wheel / -w conflicts with these options
+New outputs: output/apps/ and output/installers/; exe without these options uses output/exe/.
 Browser and dev options: --no-open; --port <0..65535> (default: dynamic port)
 Language: --lang zh-CN|en > EWP_LANG > frontend/package.json ewp.language > zh-CN
 Language flags work before or after the command and only affect this invocation.
 npm: npm run help; npm run menu; npm run demo -- --debug; npm run build:all
 npm wheel: npm run build -- -w (bare -w is npm workspace)
+npm app: npm run app -- --mode onedir --config "configs/My App.json" --installer
 Ctrl+C closes Vite and the desktop process tree.
 `));
 }

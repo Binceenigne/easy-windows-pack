@@ -1,6 +1,6 @@
 {
   "name": "easy-windows-pack-workspace",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -23,6 +23,9 @@
     "full-build": "node packages/easywindowspack/bin/ewp.mjs full-build",
     "build:wheel": "node packages/easywindowspack/bin/ewp.mjs wheel",
     "build:exe": "node packages/easywindowspack/bin/ewp.mjs exe",
+    "app": "node packages/easywindowspack/bin/ewp.mjs app",
+    "build:app": "node packages/easywindowspack/bin/ewp.mjs app",
+    "installer": "node packages/easywindowspack/bin/ewp.mjs installer",
     "bundle": "node packages/easywindowspack/bin/ewp.mjs bundle",
     "test": "node packages/easywindowspack/bin/ewp.mjs test",
     "test:npm": "npm run prepare:npm && node --test ../tests/npm-runtime.test.mjs ../tests/create-ewp.test.mjs",
@@ -35,6 +38,6 @@
     "check": "node packages/easywindowspack/bin/ewp.mjs check",
     "prepack": "npm run prepare:npm"
   },
-  "dependencies": { "easywindowspack": "0.1.1" },
+  "dependencies": { "easywindowspack": "0.1.2" },
   "devDependencies": { "vite": "^7.3.7" }
 }

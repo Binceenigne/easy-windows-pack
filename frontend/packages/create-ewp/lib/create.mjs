@@ -82,14 +82,15 @@ export function normalizeAi(value = [], language = 'zh-CN') {
 }
 
 function aiInstructions(template, language) {
-  if (language === 'zh-CN') return `# 项目开发指引\n\n这是使用 ${template} 和 Python/pywebview 的 Easy Windows Pack 桌面应用。\n\n- 前端源码、package.json、Vite/TypeScript 配置与 node_modules 放在 frontend/；在该目录运行 npm 命令。\n- 先运行 npm install、npm run init，再运行 npm run dev。浏览器开发使用 npm run frontend:dev；根 startup.cmd 打开开发菜单。npm run help 查看命令。\n- UI 位于 frontend/src/，应用桥接方法位于 backend/src/demo.py。复用 easywindowspack 公开导出和 CSS，卸载时释放窗口外壳。\n- backend/base/ewpcore/ 是共享桌面运行时；应用行为保持独立，并保留 easy_windows_pack 公开导入名。\n- scripts/dev.py 编排 Python 和打包，scripts/startup.cmd 提供 Windows 菜单；脚本放在 scripts/。\n- 使用 npm run frontend:build${template.endsWith('-ts') ? ' 和 npm run typecheck' : ''} 验证；npm test 运行 Python 测试。npm run build 默认构建 EXE；npm run build -- --wheel 构建 wheel；npm run build:all 执行完整构建。\n- 生产前端位于 output/frontend/，其他产物位于 output/，临时构建数据位于 build/。不要编辑生成产物或提交依赖。\n- 浏览器预览不能验证原生拖拽、缩放、托盘或宿主 API；修改桥接时检查桌面行为。\n- 修改前检查现有实现，保持任务边界，并报告实际执行的检查。\n`;
-  return `# Project guidance\n\nThis is an Easy Windows Pack desktop app using ${template} and Python/pywebview.\n\n- Frontend source, package.json, Vite/TypeScript configuration and node_modules belong in frontend/. Run npm commands there.\n- Start with npm install, then npm run init and npm run dev. Use npm run frontend:dev for browser-only work. The root startup.cmd opens the development menu.\n- Edit frontend/src/ for UI and backend/src/demo.py for application bridge methods. Reuse the public easywindowspack exports and CSS; dispose mounted frames when unmounting.\n- backend/base/ewpcore/ contains the shared desktop runtime. Keep application behavior separate and preserve the public easy_windows_pack imports.\n- scripts/dev.py orchestrates Python and packaging; scripts/startup.cmd owns the Windows menu. Keep scripts under scripts/.\n- Validate with npm run frontend:build${template.endsWith('-ts') ? ' and npm run typecheck' : ''}; npm test runs Python tests. npm run build creates an EXE; npm run build -- --wheel creates a wheel.\n- Production assets go to output/frontend/; other build artifacts go to output/ and temporary build data to build/. Never edit generated output or commit dependencies.\n- Browser previews cannot validate native dragging, resize, tray or host APIs. Check desktop behavior when changing the bridge.\n- Review existing code before editing, keep changes scoped, and report the checks actually run.\n`;
+  if (language === 'zh-CN') return `# 应用开发指引\n\n这是使用 ${template} 的桌面应用。先读[应用摘要](../index.md)与[设计摘要](../design.md)，修改相关功能时简短更新它们。\n\n前端在 frontend/src/，应用桥接在 backend/src/demo.py。复用 easywindowspack 公开导出与 CSS，卸载时释放窗口外壳。\n\n在 frontend/ 执行 npm install、npm run init、npm run dev；浏览器开发用 npm run frontend:dev，命令说明见 npm run help。\n\n按改动运行 npm run frontend:build${template.endsWith('-ts') ? '、npm run typecheck' : ''} 或 npm test；涉及原生桥接时检查桌面行为。npm run app 按 ewp.pack.json 打包，npm run installer 生成安装包。\n`;
+  return `# Application guidance\n\nThis is a desktop app using ${template}. Read the [application summary](../index.md) and [design summary](../design.md) first, and update them briefly when related behavior changes.\n\nEdit frontend/src/ for UI and backend/src/demo.py for application bridge methods. Reuse public easywindowspack exports and CSS; dispose mounted frames when unmounting.\n\nRun npm install, npm run init and npm run dev inside frontend/. Use npm run frontend:dev for browser development and npm run help for commands.\n\nValidate relevant changes with npm run frontend:build${template.endsWith('-ts') ? ', npm run typecheck' : ''} or npm test; check desktop behavior when changing native bridges. npm run app uses ewp.pack.json; npm run installer creates an installer.\n`;
 }
 
 export function normalizePackageName(value) {
+  // The npm name also owns application.id in the strict Windows pack schema.
   const name = String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 180).replace(/-+$/g, '');
-  return name && !['node_modules', 'favicon-ico'].includes(name) ? name : 'ewp-app';
+    .toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80).replace(/-+$/g, '');
+  return name && !/^(?:node-modules|favicon-ico|uninstall|con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(name) ? name : 'ewp-app';
 }
 
 function stat(path) {
@@ -149,7 +150,7 @@ export function projectManifest(name, template, language = 'zh-CN') {
   if (!TEMPLATES.includes(template)) throw creatorError('unknownTemplate', { template, templates: TEMPLATES.join(', ') }, language);
   const framework = template.replace(/-ts$/, '');
   const typescript = template.endsWith('-ts');
-  const dependencies = { easywindowspack: '^0.1.1' };
+  const dependencies = { easywindowspack: '^0.1.2' };
   const devDependencies = { vite: '^7.3.7' };
   if (framework === 'vue') {
     dependencies.vue = '^3.5.0';
@@ -174,6 +175,8 @@ export function projectManifest(name, template, language = 'zh-CN') {
       ewp: 'ewp', init: 'ewp init', dev: 'ewp dev', browser: 'ewp browser',
       frontend: 'ewp frontend', demo: 'ewp demo', wheel: 'ewp wheel',
       exe: 'ewp exe', bundle: 'ewp bundle', build: 'ewp build',
+      app: 'ewp app', installer: 'ewp installer',
+      'build:app': 'ewp app',
       'build:wheel': 'ewp build --wheel',
       'build:exe': 'ewp build --exe',
       'build:all': 'ewp full-build', 'full-build': 'ewp full-build',
@@ -255,16 +258,33 @@ export function projectFiles({ name = 'ewp-app', template = 'vanilla', ai = [], 
   }
   files.set('frontend/package.json', JSON.stringify(manifest, null, 2) + '\n');
   files.set('pyproject.toml', pythonProject(manifest.name, language));
+  files.set('ewp.pack.json', JSON.stringify({
+    schemaVersion: 1,
+    application: { id: manifest.name, name: manifest.name, version: '0.1.0' },
+    build: { mode: 'onefile', installer: false },
+    installer: { language },
+    features: [], prerequisites: [], hooks: {},
+    postInstall: [
+      { id: 'startup', type: 'startup', name: language === 'en' ? 'Start with Windows' : '开机自启', default: false },
+      { id: 'launch', type: 'launch', name: language === 'en' ? 'Launch after installation' : '安装后启动', default: false }
+    ]
+  }, null, 2) + '\n');
   files.set('frontend/vite.config.mjs', viteConfig(framework));
   files.set('frontend/index.html', `<!doctype html>\n<html lang="${language}">\n  <head>\n    <meta charset="UTF-8" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${manifest.name}</title>\n  </head>\n  <body>\n    <div id="app"></div>\n    <script type="module" src="/src/main.${extension}"></script>\n  </body>\n</html>\n`);
   if (template.endsWith('-ts')) files.set('frontend/tsconfig.json', JSON.stringify(tsConfig(framework), null, 2) + '\n');
   const english = language === 'en';
+  files.set('docs/index.md', english
+    ? `# ${manifest.name}\n\nA desktop application using ${template}.\n\nThe starter page has a counter and window appearance selection.\nApplication UI: [${demoMessages.editFile}](../${demoMessages.editFile}); desktop bridge: [backend/src/demo.py](../backend/src/demo.py).\n\nSee the [design summary](design.md). Update this summary as application features change.\n`
+    : `# ${manifest.name}\n\n使用 ${template} 的桌面应用。\n\n起始页面提供计数与窗口外观选择。\n应用界面：[${demoMessages.editFile}](../${demoMessages.editFile})；桌面桥接：[backend/src/demo.py](../backend/src/demo.py)。\n\n参见[设计摘要](design.md)，随应用功能变化简短更新本摘要。\n`);
+  files.set('docs/design.md', english
+    ? `# Application design\n\nThe starter page uses a compact layout with clear text and a focused content area.\nLight and dark colors follow the system preference. Window appearance can be selected.\nApplication styles: [frontend/src/style.css](../frontend/src/style.css).\n\nSee the [application summary](index.md). Record application design decisions here as the UI develops.\n`
+    : `# 应用设计\n\n起始页面采用紧凑布局、清晰文字与集中的内容区域。\n深浅配色跟随系统偏好，窗口外观可选择。\n应用样式：[frontend/src/style.css](../frontend/src/style.css)。\n\n参见[应用摘要](index.md)，随界面开发简短记录应用设计约定。\n`);
   const sharedSkill = 'docs/.easy-dev/skills/easy-dev/SKILL.md';
   if (tools.length) {
     files.set('docs/.easy-dev/agent.md', aiInstructions(template, language));
     files.set(sharedSkill, english
-      ? `---\nname: easy-dev\ndescription: Develop and maintain this Easy Windows Pack application, including frontend, Python bridge and packaging changes.\n---\n# Easy Dev\n\nRead the [project development guidance](../../agent.md). Resolve project paths from the repository root, four levels above this file's directory.\n\nReuse existing components and public runtime APIs. Keep application code in frontend/src and backend/src, tools in scripts, and build products in output. Validate changed behavior and report checks actually run.\n`
-      : `---\nname: easy-dev\ndescription: 开发和维护此 Easy Windows Pack 应用的前端、Python 桥接与打包功能。\n---\n# Easy Dev\n\n先读[项目开发指引](../../agent.md)。项目根目录位于本文件所在目录上四级，源码路径均相对项目根。\n\n复用现有组件和公开运行时 API。应用代码放在 frontend/src 和 backend/src，工具放在 scripts，产物放在 output。验证修改后的行为，并报告实际执行的检查。\n`);
+      ? `---\nname: easy-dev\ndescription: Develop and maintain this desktop application.\n---\n# Easy Dev\n\nRead the [application guidance](../../agent.md), [application summary](../../../index.md) and [design summary](../../../design.md). Resolve project paths from the project root, four levels above this file's directory.\n\nReuse existing application components and public easywindowspack APIs. Keep summaries brief and report the checks actually run.\n`
+      : `---\nname: easy-dev\ndescription: 开发和维护此桌面应用。\n---\n# Easy Dev\n\n先读[应用指引](../../agent.md)、[应用摘要](../../../index.md)与[设计摘要](../../../design.md)。项目根目录位于本文件所在目录上四级，源码路径均相对项目根。\n\n复用现有应用组件和 easywindowspack 公开 API。摘要保持简短，报告实际执行的检查。\n`);
   }
   for (const tool of tools) {
     const prefix = tool === 'copilot' ? '../' : '';

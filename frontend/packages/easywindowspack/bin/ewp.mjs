@@ -8,7 +8,8 @@ import { createInterface } from 'node:readline/promises';
 import { VERSION, helpText, languageArgs, text, withLanguage } from '../language.mjs';
 
 export const HELP = helpText();
-const ALIASES = { browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'build:wheel': 'wheel', 'build:exe': 'exe', 'full-build': 'build:all' };
+const ALIASES = { browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app', 'full-build': 'build:all' };
+const PACKAGING_COMMANDS = ['app', 'installer', 'exe', 'build', 'build:all'];
 
 export function parseArgs(argv = [], context = {}) {
   const { args, language } = languageArgs(argv, context);
@@ -22,7 +23,7 @@ function parseCommand(args, language) {
   if (command === 'create') return { command, args, language };
   if (['help', '--help', '-h'].includes(command) || args.includes('--help') || args.includes('-h')) return { command: 'help' };
   if (['version', '--version', '-v', '-V'].includes(command)) return { command: 'version' };
-  if (!['menu', 'init', 'dev', 'demo', 'build', 'build:all', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
+  if (!['menu', 'init', 'dev', 'demo', 'app', 'installer', 'build', 'build:all', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
     throw new Error(text(`未知命令：${command}。请使用 ewp help。`, `Unknown command: ${command}. Use ewp help.`));
   }
   const parsed = { command, task: command, web: command.startsWith('frontend:'), open: true, port: 0 };
@@ -36,6 +37,18 @@ function parseCommand(args, language) {
       const target = arg === '--all' ? 'full-build' : ['-w', '--wheel'].includes(arg) ? 'wheel' : 'exe';
       if (buildTarget && buildTarget !== target) throw new Error(text('请只选择 --wheel、--exe 或 --all 中的一种。', 'Choose either --wheel, --exe or --all.'));
       buildTarget = target;
+    } else if (PACKAGING_COMMANDS.includes(command) && (arg === '--mode' || arg.startsWith('--mode='))) {
+      const value = arg === '--mode' ? args.shift() : arg.slice(7);
+      if (!['onefile', 'onedir'].includes(value)) throw new Error(text('--mode 必须是 onefile 或 onedir。', '--mode must be onefile or onedir.'));
+      if (parsed.mode !== undefined && parsed.mode !== value) throw new Error(text('--mode 参数冲突，请只选择一种模式。', 'Conflicting --mode options; choose one mode.'));
+      parsed.mode = value;
+    } else if (PACKAGING_COMMANDS.includes(command) && (arg === '--config' || arg.startsWith('--config='))) {
+      const value = arg === '--config' ? args.shift() : arg.slice(9);
+      if (!value?.trim() || (arg === '--config' && value.startsWith('-')) || /[\0\r\n]/.test(value)) throw new Error(text('--config 需要配置文件路径。', '--config requires a configuration path.'));
+      if (parsed.config !== undefined && parsed.config !== value) throw new Error(text('--config 参数冲突，请只选择一个配置文件。', 'Conflicting --config options; choose one configuration file.'));
+      parsed.config = value;
+    } else if (PACKAGING_COMMANDS.includes(command) && arg === '--installer') {
+      parsed.installer = true;
     } else if (command === 'demo' && arg === '--debug') {
       parsed.debug = true;
     } else if (['dev', 'frontend:dev', 'frontend:preview'].includes(command) && arg === '--no-open') {
@@ -47,6 +60,9 @@ function parseCommand(args, language) {
       if (!/^\d+$/.test(value ?? '') || Number(value) > 65535) throw new Error(text('--port 必须是 0 到 65535 之间的整数。', '--port must be an integer from 0 to 65535.'));
       parsed.port = Number(value);
     } else throw new Error(text(`${command} 的未知参数：${arg}。请使用 ewp help。`, `Unknown option for ${command}: ${arg}. Use ewp help.`));
+  }
+  if (buildTarget === 'wheel' && (parsed.mode !== undefined || parsed.config !== undefined || parsed.installer)) {
+    throw new Error(text('build --wheel / -w 不能与 --mode、--config 或 --installer 同时使用。', 'build --wheel / -w cannot be combined with --mode, --config or --installer.'));
   }
   if (command === 'build') parsed.task = buildTarget ?? 'exe';
   return parsed;
@@ -202,7 +218,9 @@ export function pythonTaskSpec(root, options, selection = {}) {
   const language = options.language ?? languageArgs([]).language;
   return {
     command: python.command,
-    args: [...python.args, '-u', join(root, 'scripts/dev.py'), '--lang', language, options.task, ...(options.debug ? ['--debug'] : [])],
+    args: [...python.args, '-u', join(root, 'scripts/dev.py'), '--lang', language, options.task,
+      ...(options.debug ? ['--debug'] : []), ...(options.mode ? ['--mode', options.mode] : []),
+      ...(options.config !== undefined ? ['--config', options.config] : []), ...(options.installer ? ['--installer'] : [])],
     options: { cwd: root, stdio: 'inherit', detached: process.platform !== 'win32', env: { ...pythonEnvironment(), EWP_LANG: language } }
   };
 }
@@ -360,6 +378,8 @@ export const MENU_TASKS = [
   { command: 'demo', args: ['--debug'], zh: '桌面演示（开发者工具）', en: 'Desktop demo (developer tools)' },
   { command: 'wheel', zh: '构建 Wheel', en: 'Build wheel' },
   { command: 'exe', zh: '构建 Windows EXE', en: 'Build Windows EXE' },
+  { command: 'app', zh: '按配置构建应用', en: 'Build configured application' },
+  { command: 'installer', zh: '构建应用安装包', en: 'Build application installer' },
   { command: 'bundle', zh: '构建源码包', en: 'Build source bundle' },
   { command: 'build:all', zh: '完整构建', en: 'Full build' },
   { command: 'test', zh: '运行测试', en: 'Run tests' },

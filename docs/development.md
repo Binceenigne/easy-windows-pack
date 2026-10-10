@@ -1,16 +1,18 @@
 # 开发手册 / Development guide
 
-[文档导航 / Documentation](README.md) · [npm / Vite 完整指南 / Full guide](npm-vite.md) · [目录与迁移 / Architecture and migration](architecture.md) · [npm 验收 / Validation](npm-validation.md)
+[文档导航 / Documentation](README.md) · [npm / Vite 完整指南 / Full guide](npm-vite.md) · [应用与安装包 / Packaging](packaging.md) · [目录与迁移 / Architecture and migration](architecture.md) · [npm 验收 / Validation](npm-validation.md)
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 的 **0.1.1 已发布且 registry 可用**；2026-10-09 的 `@latest` 创建与 Vue TS 项目安装、检查及前端构建冒烟已通过，见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定属于 0.1.1。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前为 **0.1.2 待发布**；0.1.1 发布与 registry 冒烟的历史证据见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定描述 0.1.2。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are **published at 0.1.1 and available from the registry**; `@latest` creation and Vue TS installation, checks, and frontend build smoke tests passed on 2026-10-09. See the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.1. See the [npm guide](npm-vite.md) for creation and local tarballs.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are now **0.1.2, pending publication**; historical 0.1.1 publication and registry smoke evidence remain in the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.2. See the [npm guide](npm-vite.md) for creation and local tarballs.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 
 Command examples in this guide run from the project root, with `--prefix frontend` for npm. Omit the prefix when already inside frontend. Python `.venv` and `output/` remain at the project root.
+
+Python 框架本地版本为 **0.3.0 待发布**，新增配置应用与安装包构建，PyPI 发布未验证。安装配置、公共构建 API、当前用户权限与卸载限制见 [打包指南](packaging.md)。 / The local Python framework is **0.3.0, pending publication**, adding configured app and installer packaging; PyPI publication is unverified. See the packaging guide for configuration, public API, current-user permissions and uninstall limits.
 
 ```powershell
 npm --prefix frontend install
@@ -33,9 +35,9 @@ The only root launcher, `startup.cmd`, delegates through [scripts/startup.cmd](.
 
 ## 项目语言 / Project language
 
-0.1.1 创建流程第一步选择人类语言 `zh-CN` / `en`，后续再选 JavaScript / TypeScript；创建时保存到 `frontend/package.json` 的 `ewp.language`。命令输出的语言优先级为 **显式 `--lang` → `EWP_LANG` → 保存值 → `zh-CN`**。已有项目运行时的 `--lang` / 环境变量只临时覆盖，不改配置；README、AI 指引与 demo 在创建时选语言，临时切换 CLI 不重写这些文件。
+0.1.2 创建流程第一步选择人类语言 `zh-CN` / `en`，后续再选 JavaScript / TypeScript；创建时保存到 `frontend/package.json` 的 `ewp.language`。命令输出的语言优先级为 **显式 `--lang` → `EWP_LANG` → 保存值 → `zh-CN`**。已有项目运行时的 `--lang` / 环境变量只临时覆盖，不改配置；README、AI 指引与 demo 在创建时选语言，临时切换 CLI 不重写这些文件。
 
-The first 0.1.1 creation prompt selects human language, `zh-CN` / `en`; JavaScript / TypeScript is a later choice. Creation saves it as `ewp.language` in `frontend/package.json`. Command output resolves **explicit `--lang` → `EWP_LANG` → saved value → `zh-CN`**. Runtime overrides are temporary and leave configuration intact. README, AI guidance, and demo text use the creation language; CLI overrides do not rewrite those files.
+The first 0.1.2 creation prompt selects human language, `zh-CN` / `en`; JavaScript / TypeScript is a later choice. Creation saves it as `ewp.language` in `frontend/package.json`. Command output resolves **explicit `--lang` → `EWP_LANG` → saved value → `zh-CN`**. Runtime overrides are temporary and leave configuration intact. README, AI guidance, and demo text use the creation language; CLI overrides do not rewrite those files.
 
 ```powershell
 npm --prefix frontend run help -- --lang en
@@ -70,6 +72,8 @@ Inside frontend, run `npm run help` / `info` / `menu` or `npm run ewp -- <task> 
 | `ewp demo --debug` | `.\startup.cmd demo --debug` | 桌面演示启用开发者工具 / Enable demo developer tools |
 | `ewp wheel` | `.\startup.cmd wheel` | 构建 wheel / Build wheel |
 | `ewp exe` | `.\startup.cmd exe` | Windows 单文件 PyInstaller 程序 / Windows single-file executable |
+| `ewp app [--mode onedir]` | `.\startup.cmd app [--mode onedir]` | 按项目配置构建应用 / Build configured application |
+| `ewp installer` | `.\startup.cmd installer` | 构建应用及安装包 / Build app and setup |
 | `ewp build` | `.\startup.cmd build` | 默认 EXE；-w/--wheel、-e/--exe、--all 三选一 / Default EXE; select one build target |
 | `ewp bundle` | `.\startup.cmd bundle` | 含源码与文档的 source bundle / Source bundle with documentation |
 | `ewp full-build` / `ewp build:all` | `.\startup.cmd full-build` / `.\startup.cmd build:all` | test → wheel → exe → bundle，仅 Windows / Full pipeline, Windows only |
@@ -77,9 +81,9 @@ Inside frontend, run `npm run help` / `info` / `menu` or `npm run ewp -- <task> 
 | `ewp info` | `.\startup.cmd info` | Node CLI 显示 Node/配置/.venv 路径；启动脚本显示实际 Python 解释器与产物目录 / Node/config/venv paths versus actual Python interpreter and output directories |
 | `ewp check` | `.\startup.cmd check` | 运行 tests/npm-runtime.test.mjs；生成模板包含 3 项 Node runtime exports/config 检查 / Run the included three Node runtime exports/config checks in generated apps |
 
-仓库与新生成应用均提供 npm scripts：`help`、`ewp`、`menu`、`init`、`dev`、`browser`、`frontend`、`demo`、`wheel`、`exe`、`bundle`、`build`、`build:all`、`full-build`、`test`、`info`、`check`；另有 `frontend:dev` / `frontend:build` / `frontend:preview`、`build:wheel` / `build:exe`。在 frontend 内运行 `npm run <task>`；任意 CLI 任务可用 `npm run ewp -- <task> [options]`。`typecheck` 仅 TypeScript 模板提供。生成模板附带 `tests/npm-runtime.test.mjs`，`npm run check` / `ewp check` / `startup.cmd check` 执行 3 项 Node runtime exports/config 检查：公共 API/CSS、Vite 配置及应用 manifest/HTML 入口。Node CLI 支持 `build:wheel` / `build:exe`，启动脚本则用 `wheel` / `exe`。
+仓库与新生成应用均提供 npm scripts：`help`、`ewp`、`menu`、`init`、`dev`、`browser`、`frontend`、`demo`、`wheel`、`exe`、`app`、`installer`、`bundle`、`build`、`build:all`、`full-build`、`test`、`info`、`check`；另有 `frontend:dev` / `frontend:build` / `frontend:preview`、`build:wheel` / `build:exe` / `build:app`。在 frontend 内运行 `npm run <task>`；任意 CLI 任务可用 `npm run ewp -- <task> [options]`。`typecheck` 仅 TypeScript 模板提供。生成模板附带 `tests/npm-runtime.test.mjs`，`npm run check` / `ewp check` / `startup.cmd check` 执行 3 项 Node runtime exports/config 检查：公共 API/CSS、Vite 配置及应用 manifest/HTML 入口。Node CLI 支持 `build:wheel` / `build:exe` / `build:app`，启动脚本则用 `wheel` / `exe` / `app`。
 
-The checkout and new apps expose the npm scripts listed above. Run `npm run <task>` inside frontend, or `npm run ewp -- <task> [options]` for any CLI task. Only TypeScript templates provide `typecheck`. Generated templates include `tests/npm-runtime.test.mjs`; `npm run check`, `ewp check`, and `startup.cmd check` run three Node runtime exports/config checks: public API/CSS, Vite configuration, and application manifest/HTML entry points. Node CLI supports `build:wheel` / `build:exe`; use `wheel` / `exe` with the root launcher.
+The checkout and new apps expose the npm scripts listed above. Run `npm run <task>` inside frontend, or `npm run ewp -- <task> [options]` for any CLI task. Only TypeScript templates provide `typecheck`. Generated templates include `tests/npm-runtime.test.mjs`; `npm run check`, `ewp check`, and `startup.cmd check` run three Node runtime exports/config checks: public API/CSS, Vite configuration, and application manifest/HTML entry points. Node CLI supports `build:wheel` / `build:exe` / `build:app`; use `wheel` / `exe` / `app` with the root launcher.
 
 ## 浏览器预览 / Browser preview
 
@@ -114,6 +118,9 @@ npm --prefix frontend run frontend:build
 npm --prefix frontend run build
 npm --prefix frontend run build -- -w
 npm --prefix frontend run build -- -e
+npm --prefix frontend run app
+npm --prefix frontend run build -- --mode onedir
+npm --prefix frontend run installer
 .\startup.cmd wheel
 .\startup.cmd exe
 .\startup.cmd bundle
@@ -126,11 +133,21 @@ npm --prefix frontend run build -- --all
 
 Project-tool `build` defaults to EXE for `ewp build`, `npm run build`, and `startup.cmd build`. `--wheel` / `-w` selects wheel, `--exe` / `-e` explicitly selects EXE, and `--all` selects the full pipeline. Pass npm arguments after `--`; bare `-w` belongs to npm workspace selection. The full test → wheel → exe → bundle sequence is available as `ewp full-build` / `ewp build --all`, `startup.cmd full-build` / `startup.cmd build --all`, and `npm run build:all` / `npm run build -- --all`.
 
+`app` 读取项目根 `ewp.pack.json`，支持 `--mode onefile|onedir`、`--config`、`--installer`；`installer` 强制构建 setup。显式打包参数也可传给 `build` / `exe` / 完整构建的 EXE 阶段，使其输出到 `output/apps/`；无这些参数的 legacy build/exe 仍输出 `output/exe/`。wheel 选择不能与打包参数组合。默认配置、功能文件与安装器流程见 [打包指南](packaging.md)。
+
+`app` reads root `ewp.pack.json` and accepts `--mode onefile|onedir`, `--config`, and `--installer`; the installer task forces setup creation. Explicit packaging flags can also route the EXE stage of build/exe/full builds to `output/apps/`. Legacy build/exe without them retains `output/exe/`. Wheel selection rejects packaging flags. See the [packaging guide](packaging.md) for defaults, feature files and setup behavior.
+
+Tk 安装器依次显示目录、可选功能、按功能过滤的依赖、可选安装后选项、确认、进度和完成；返回保留选择，必选项锁定，失败可重试，成功仅可完成。卸载为确认 → 进度 → 完成，沿用原引擎；详情见 [安装向导](packaging.md#功能文件与-gui--feature-files-and-gui)。
+
+The Tk installer shows directory, optional features, feature-filtered prerequisites, optional post-install options, confirmation, progress and completion. Back preserves selections; required items stay locked; failures allow retry; success offers only Finish. Uninstall follows confirmation → progress → completion using the existing engine; see the [wizard](packaging.md#功能文件与-gui--feature-files-and-gui).
+
 | 目录 / Directory | 内容 / Contents |
 | --- | --- |
 | `output/frontend/` | Vite 编译页面与 assets，生产 `base: './'` / Compiled pages/assets with relative production URLs |
 | `output/wheels/` | 框架源资源 wheel 或生成应用编译资源 wheel，按各自 metadata / Framework source-asset or generated app compiled-asset wheel, according to metadata |
 | `output/exe/` | `easy-windows-pack-demo.exe`，PyInstaller `--onefile --windowed` 桌面演示 / Single-file windowed demo |
+| `output/apps/` | 配置构建的 onefile EXE 或完整 onedir 应用目录 / Configured onefile EXE or full onedir app directory |
+| `output/installers/` | `<application.id>-setup.exe`，内含独立 uninstaller / Setup with embedded standalone uninstaller |
 | `output/bundles/` | 源码 zip、展开目录及 manifest / Source zip, staging directory and manifest |
 | `output/npm/` | workspace npm pack 的 tarball / Workspace npm tarballs |
 | `output/logs/` | 初始化和构建任务的 UTF-8 日志 / UTF-8 initialization and build logs |
@@ -145,6 +162,10 @@ Both `build/` and `output/` are generated directories, not source or documentati
 
 Initialization and packaging tasks print a log path; standalone test, browser, demo and info mainly use the terminal. Inspect distributions separately: framework wheels contain core plus source components/bridges/contracts; generated app wheels include compiled assets according to their metadata; EXEs carry only compiled `output/frontend/` as frontend resources; source bundles retain sources and docs, excluding environments, caches and old outputs. See the [npm guide](npm-vite.md) for preparation and packing.
 
+源码 ZIP 同时保留配置引用的安全 source 及空目录，解压后可重新构建。长路径卸载自删除使用短 `-File` 临时 PowerShell 脚本和 JSON 清单，校验拥有哈希并保留用户文件。最新 wheel 重建与真实 EXE 端到端验收仍待最终证据，历史报告与当前分组结果分别记录在 [验收记录](npm-validation.md)。
+
+Source ZIPs also preserve safe config-referenced sources and empty directories for rebuilding after extraction. Long-path uninstall self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, verifies ownership hashes and preserves user files. The latest wheel rebuild and real EXE end-to-end checks still await final evidence; historical reports and current grouped results are recorded separately in [validation](npm-validation.md).
+
 ## 兼容命令 / Compatible commands
 
 原 CLI 与 [scripts/build.ps1](../scripts/build.ps1) 保留，[scripts/build.cmd](../scripts/build.cmd) 是菜单兼容入口：
@@ -157,6 +178,8 @@ easy-windows-pack build
 python -m easy_windows_pack.cli test
 python -m easy_windows_pack.cli bundle
 python -m easy_windows_pack.cli info
+easy-windows-pack app --project-root "D:\Projects\My App" --mode onedir
+easy-windows-pack installer --project-root "D:\Projects\My App" --config ewp.pack.json
 python -m easy_windows_pack.cli build --output-dir .\artifacts
 python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 .\scripts\build.ps1 -Python .\.venv\Scripts\python.exe
@@ -166,6 +189,10 @@ python -m easy_windows_pack.cli build --skip-tests --skip-bundle
 底层 Python CLI 的 `build` 保持兼容：测试 + wheel + bundle，不包含 EXE；此语义不随项目工具 `build` 默认 EXE / `full-build` 改变。无参数的 `scripts/build.ps1` 运行底层构建，不是新交互菜单。底层 CLI 默认也按 `output/` 分类；显式 `--output-dir` 控制产物目录。`clean` 是底层 CLI 的清理命令，会删除生成物，运行前查看其当前范围；开发菜单不提供 `clean`。`scripts/build-demo.ps1` 委托 `scripts/dev.py exe`，不再维护独立打包流程。
 
 The low-level CLI `build` runs tests + wheel + bundle, without EXE. With no arguments, `scripts/build.ps1` runs that build rather than the new interactive menu. Default outputs are categorized under `output/`; `--output-dir` overrides artifact placement. Low-level `clean` removes generated content: inspect its current scope before use. It is not a menu task. `scripts/build-demo.ps1` delegates to `scripts/dev.py exe` instead of maintaining a separate packaging flow.
+
+底层 CLI 新增 `app`（别名 `exe`）与 `installer`；默认项目根为当前目录，`--project-root` 可指定调用方的应用目录。`--output-dir` 属于旧 build/bundle，不用于 app/installer；后者固定使用项目 output 分类。详见 [CLI 与 wheel API](packaging.md#python-wheelcli-与-api--python-wheel-cli-and-api)。
+
+Low-level CLI adds `app` (alias `exe`) and `installer`. Its root defaults to the current directory; `--project-root` selects the caller's app. Legacy build/bundle's `--output-dir` is not an app/installer flag; these tasks use categorized project output. See the [CLI and wheel API](packaging.md#python-wheelcli-与-api--python-wheel-cli-and-api).
 
 ## 验证与故障定位 / Validation and troubleshooting
 

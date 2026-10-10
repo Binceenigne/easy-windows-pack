@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 from contextvars import ContextVar
+from fnmatch import fnmatchcase
 from functools import partial
 import json
 import os
@@ -15,6 +16,8 @@ import zipfile
 from pathlib import Path
 from typing import Sequence
 
+from .packaging import build_package, load_pack_config
+
 
 class BuildError(RuntimeError):
     """Raised when a build command cannot produce its requested artifact."""
@@ -25,10 +28,9 @@ class BuildError(RuntimeError):
 
 
 def _find_project_root() -> Path:
-    for candidate in (Path.cwd(), *Path(__file__).resolve().parents):
-        if (candidate / "pyproject.toml").is_file() and (candidate / "backend/base/ewpcore").is_dir():
-            return candidate
-    return Path.cwd()
+    # Installed wheels operate on the caller's project, including projects that
+    # have no local copy of the framework or repository development scripts.
+    return Path.cwd().resolve()
 
 
 PROJECT_ROOT = _find_project_root()
@@ -114,6 +116,7 @@ BUNDLE_SOURCES = (
     "backend",
     "frontend",
     "scripts",
+    "ewp.pack.json",
     ".gitignore",
     "tests",
     "docs",
@@ -136,6 +139,11 @@ BUNDLE_SOURCES = (
 REQUIRED_BUNDLE_SOURCES = (
     "backend", "frontend", "scripts", "startup.cmd", "scripts/startup.cmd",
     "scripts/dev.py", "frontend/package.json", "README.md", "LICENSE", "pyproject.toml",
+)
+BUNDLE_EXCLUDED_PATTERNS = (
+    "__pycache__", "*.py[cod]", "*.egg-info", "node_modules", ".venv",
+    "output", "build", "dist", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+    ".tox", ".nox", "__pypackages__",
 )
 
 
@@ -190,11 +198,47 @@ def _run(command: Sequence[str], *, cwd: Path) -> None:
     env.pop("PYTHONPATH", None)
     env.update(PYTHONUTF8="1", PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
     env["EWP_LANG"] = _LANGUAGE.get() or project_language(cwd)
-    completed = subprocess.run(command, cwd=cwd, env=env)
+    completed = subprocess.run(_process_command(command), cwd=cwd, env=env)
     if completed.returncode:
         raise BuildError(_text(f"命令失败，退出码 {completed.returncode}：{printable}",
                        f"Command failed with exit code {completed.returncode}: {printable}", cwd),
                          completed.returncode if completed.returncode > 0 else 1)
+
+
+def _process_command(command: Sequence[str]) -> list[str] | str:
+    """Preserve literal argv when invoking npm.cmd through Windows cmd.exe."""
+    if sys.platform != "win32" or Path(command[0]).suffix.lower() not in (".cmd", ".bat"):
+        return list(command)
+    if any(any(char in token for char in '\"%\r\n\0') for token in command):
+        raise BuildError("Cannot safely quote Windows batch argument")
+    shell = os.environ.get("COMSPEC") or str(Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32/cmd.exe")
+    prefix = subprocess.list2cmdline([shell, "/d", "/s", "/v:off", "/c"])
+    return prefix + ' "' + " ".join('"' + token + '"' for token in command) + '"'
+
+
+def _build_frontend(project_root: Path, python: str = sys.executable) -> None:
+    """Use a project's build entry when present; accept precompiled wheel hosts."""
+    manifest = project_root / "frontend/package.json"
+    if not manifest.is_file():
+        return
+    script = project_root / "scripts/dev.py"
+    if script.is_file():
+        _run([python, str(script), "frontend"], cwd=project_root)
+        return
+    try:
+        package = json.loads(manifest.read_text(encoding="utf-8-sig"))
+        scripts = package.get("scripts", {})
+        if not isinstance(scripts, dict):
+            raise ValueError("scripts must be an object")
+    except (ValueError, AttributeError) as error:
+        raise BuildError(f"Invalid frontend/package.json: {error}") from error
+    if "frontend:build" not in scripts:
+        return
+    npm = shutil.which("npm.cmd" if sys.platform == "win32" else "npm")
+    if npm is None:
+        raise BuildError(_text("缺少 npm，请安装 Node.js 并重新打开终端",
+                               "Missing npm; install Node.js and reopen the terminal", project_root))
+    _run([npm, "run", "frontend:build"], cwd=project_root / "frontend")
 
 
 def run_tests(project_root: Path = PROJECT_ROOT, python: str = sys.executable) -> None:
@@ -209,9 +253,7 @@ def build_wheel(
     output_dir: Path | None = None,
     python: str = sys.executable,
 ) -> Path:
-    if (project_root / "frontend/package.json").is_file():
-        # Share npm resolution, Windows batch quoting and Vite behavior with the menu.
-        _run([python, str(project_root / "scripts/dev.py"), "frontend"], cwd=project_root)
+    _build_frontend(project_root, python)
     output = output_dir or project_root / "output/wheels"
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="easy-windows-pack-wheel-") as temporary:
@@ -249,8 +291,7 @@ def _copy_bundle_source(project_root: Path, staging: Path, relative_name: str) -
             destination,
             dirs_exist_ok=True,
             ignore=shutil.ignore_patterns(
-                "__pycache__", "*.py[cod]", "*.egg-info", "node_modules", ".venv",
-                "output", "build", "dist", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+                *BUNDLE_EXCLUDED_PATTERNS,
                 # AI directories are copied only through the explicit public entries above.
                 ".agents", ".claude", ".easy-dev",
             ),
@@ -262,6 +303,23 @@ def _copy_bundle_source(project_root: Path, staging: Path, relative_name: str) -
         raise BuildError(_text(f"源码包源文件不存在：{source}", f"Bundle source does not exist: {source}", project_root))
 
 
+def _bundle_config_sources(config: dict, project_root: Path) -> list[str]:
+    """Collect validated sources without bypassing the bundle's artifact exclusions."""
+    sources: set[str] = set()
+    for collection in (config["features"], [config["installer"]]):
+        for item in collection:
+            for file_entry in item["files"]:
+                source = file_entry["source"]
+                if any(fnmatchcase(part.casefold(), pattern)
+                       for part in source.split("/") for pattern in BUNDLE_EXCLUDED_PATTERNS):
+                    raise BuildError(_text(
+                        f"源码包 source 不能来自生成或依赖目录：{source}",
+                        f"Source bundle cannot include generated or dependency source: {source}",
+                        project_root))
+                sources.add(source)
+    return sorted(sources)
+
+
 def build_bundle(project_root: Path = PROJECT_ROOT, output_dir: Path | None = None) -> Path:
     for source in REQUIRED_BUNDLE_SOURCES:
         if not (project_root / source).exists():
@@ -269,6 +327,16 @@ def build_bundle(project_root: Path = PROJECT_ROOT, output_dir: Path | None = No
                                    f"Bundle source does not exist: {project_root / source}", project_root))
     name = _read_project_name(project_root)
     version = _read_project_version(project_root)
+    config_path = project_root / "ewp.pack.json"
+    config_sources: list[str] = []
+    if config_path.exists() or config_path.is_symlink():
+        try:
+            config = load_pack_config(project_root)
+            config_sources = _bundle_config_sources(config, project_root)
+        except (OSError, ValueError) as error:
+            raise BuildError(_text(f"源码包配置 {config_path.name} 无效：{error}",
+                                   f"Source bundle configuration {config_path.name} is invalid: {error}",
+                                   project_root)) from error
     output = output_dir or project_root / "output/bundles"
     output.mkdir(parents=True, exist_ok=True)
     bundle_name = f"{name}-{version}-bundle"
@@ -282,6 +350,8 @@ def build_bundle(project_root: Path = PROJECT_ROOT, output_dir: Path | None = No
     for source in BUNDLE_SOURCES:
         if (project_root / source).exists():
             _copy_bundle_source(project_root, staging, source)
+    for source in config_sources:
+        _copy_bundle_source(project_root, staging, source)
 
     manifest = {
         "name": name,
@@ -306,7 +376,7 @@ def build_bundle(project_root: Path = PROJECT_ROOT, output_dir: Path | None = No
 
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zip_file:
         for path in sorted(staging.rglob("*")):
-            if path.is_file():
+            if path.is_file() or (path.is_dir() and not any(path.iterdir())):
                 zip_file.write(path, f"{bundle_name}/{path.relative_to(staging)}")
     print(_text(f"[完成] 源码包目录：{staging}", f"[ok] bundle directory: {staging}", project_root))
     print(_text(f"[完成] 源码包压缩文件：{archive}", f"[ok] bundle archive: {archive}", project_root))
@@ -352,8 +422,8 @@ def print_info(project_root: Path = PROJECT_ROOT) -> None:
                 "version": _read_project_version(project_root),
                 "projectRoot": str(project_root),
                 "python": sys.executable,
-                "commands": ["build", "bundle", "clean", "info", "test"],
-                "artifacts": ["wheel", "source-bundle.zip"],
+                "commands": ["app", "exe", "installer", "build", "bundle", "clean", "info", "test"],
+                "artifacts": ["application", "installer.exe", "wheel", "source-bundle.zip"],
             },
             ensure_ascii=False,
             indent=2,
@@ -361,8 +431,8 @@ def print_info(project_root: Path = PROJECT_ROOT) -> None:
     )
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    language = _LANGUAGE.get() or project_language(PROJECT_ROOT)
+def _build_parser(project_root: Path = PROJECT_ROOT) -> argparse.ArgumentParser:
+    language = _LANGUAGE.get() or project_language(project_root)
     choose = lambda zh, en: en if language == "en" else zh
     parser = _LocalizedParser(
         prog="easy-windows-pack",
@@ -372,6 +442,8 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     lang_help = choose("临时选择语言（优先于 EWP_LANG 和项目配置）", "Temporary language (overrides EWP_LANG and project config)")
     parser.add_argument("--lang", choices=("zh-CN", "en"), default=argparse.SUPPRESS, help=lang_help)
+    root_help = choose("应用项目根目录（默认当前目录）", "Application project root (default: current directory)")
+    parser.add_argument("--project-root", metavar="PATH", default=argparse.SUPPRESS, help=root_help)
     subparsers = parser.add_subparsers(dest="command", required=True, title=choose("任务", "tasks"),
                                      parser_class=partial(_LocalizedParser, language=language))
 
@@ -392,45 +464,76 @@ def _build_parser() -> argparse.ArgumentParser:
     clean.add_argument("--project-root", help=argparse.SUPPRESS)
 
     info = subparsers.add_parser("info", help=choose("打印项目与产物元数据", "Print project and artifact metadata"))
-    for command in (build, bundle, test, clean, info):
+    app = subparsers.add_parser("app", aliases=["exe"], help=choose("构建应用程序", "Build application"))
+    installer = subparsers.add_parser("installer", help=choose("构建应用程序与安装包", "Build application and installer"))
+    for command in (app, installer):
+        command.add_argument("--config", metavar="PATH", default=None,
+                             help=choose("项目根目录下的配置路径（默认 ewp.pack.json）", "Config path relative to project root (default: ewp.pack.json)"))
+        command.add_argument("--mode", choices=("onefile", "onedir"), default=None,
+                             help=choose("覆盖配置中的应用模式", "Override configured application mode"))
+        command.add_argument("--installer", action="store_const", const=True, default=None,
+                             help=choose("同时构建安装包", "Also build an installer"))
+    for command in (build, bundle, test, info, app, installer):
+        command.add_argument("--project-root", metavar="PATH", default=argparse.SUPPRESS, help=root_help)
+    for command in (build, bundle, test, clean, info, app, installer):
         command.add_argument("--lang", choices=("zh-CN", "en"), default=argparse.SUPPRESS, help=lang_help)
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
-    with _language_context(PROJECT_ROOT, _language_override(arguments)):
-        return _main(arguments)
+    root_parser = argparse.ArgumentParser(add_help=False)
+    root_parser.add_argument("--project-root")
+    # Resolve the explicit root before selecting the saved language for help.
+    roots, _ = root_parser.parse_known_args(arguments)
+    project_root = _resolve_path(roots.project_root, Path.cwd()).resolve() if roots.project_root else PROJECT_ROOT.resolve()
+    with _language_context(project_root, _language_override(arguments)):
+        return _main(arguments, project_root)
 
 
-def _main(argv: Sequence[str]) -> int:
-    args = _build_parser().parse_args(argv)
+def _main(argv: Sequence[str], project_root: Path = PROJECT_ROOT) -> int:
+    args = _build_parser(project_root).parse_args(argv)
     try:
         if args.command == "test":
-            run_tests(PROJECT_ROOT, args.python)
+            run_tests(project_root, args.python)
         elif args.command == "bundle":
-            build_bundle(PROJECT_ROOT, _resolve_path(args.output_dir, PROJECT_ROOT) if args.output_dir else None)
+            build_bundle(project_root, _resolve_path(args.output_dir, project_root) if args.output_dir else None)
         elif args.command == "clean":
-            clean_project(PROJECT_ROOT)
+            clean_project(project_root)
         elif args.command == "info":
-            print_info(PROJECT_ROOT)
+            print_info(project_root)
+        elif args.command in ("app", "exe", "installer"):
+            _build_frontend(project_root)
+            artifacts = build_package(project_root, Path(args.config) if args.config is not None else None,
+                                      installer=True if args.command == "installer" else args.installer,
+                                      mode=args.mode)
+            for artifact in artifacts.values():
+                print(_text(f"[完成] 产物：{artifact}", f"[ok] artifact: {artifact}", project_root))
         elif args.command == "build":
-            output_dir = _resolve_path(args.output_dir, PROJECT_ROOT)
+            output_dir = _resolve_path(args.output_dir, project_root)
             if not args.skip_tests:
-                run_tests(PROJECT_ROOT, args.python)
+                run_tests(project_root, args.python)
             output_dir.mkdir(parents=True, exist_ok=True)
             if not args.skip_wheel:
-                build_wheel(PROJECT_ROOT, output_dir if args.output_dir else None, args.python)
+                build_wheel(project_root, output_dir if args.output_dir else None, args.python)
             if not args.skip_bundle:
-                build_bundle(PROJECT_ROOT, output_dir if args.output_dir else None)
-            print(_text(f"[完成] 构建完成：{output_dir}", f"[ok] build complete: {output_dir}", PROJECT_ROOT))
+                build_bundle(project_root, output_dir if args.output_dir else None)
+            print(_text(f"[完成] 构建完成：{output_dir}", f"[ok] build complete: {output_dir}", project_root))
         return 0
     except BuildError as error:
-        print(_text(f"[错误] {error}", f"[error] {error}", PROJECT_ROOT), file=sys.stderr)
+        print(_text(f"[错误] {error}", f"[error] {error}", project_root), file=sys.stderr)
         return error.code
-    except (OSError, subprocess.SubprocessError) as error:
-        print(_text(f"[错误] {error}", f"[error] {error}", PROJECT_ROOT), file=sys.stderr)
-        return 1
+    except (OSError, subprocess.SubprocessError, ValueError, RuntimeError) as error:
+        print(_text(f"[错误] {error}", f"[error] {error}", project_root), file=sys.stderr)
+        code = getattr(error, "returncode", getattr(error, "code", None))
+        # The packaging subprocess currently reports its exit code in RuntimeError.
+        if code is None and isinstance(error, RuntimeError):
+            match = re.search(r"\bexit code (-?\d+)\b", str(error))
+            code = int(match.group(1)) if match else None
+        return code if isinstance(code, int) and code > 0 else 1
+    except KeyboardInterrupt:
+        print(_text("操作已取消", "Operation cancelled", project_root), file=sys.stderr)
+        return 130
 
 
 if __name__ == "__main__":

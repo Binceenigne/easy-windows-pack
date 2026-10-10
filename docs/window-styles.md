@@ -37,11 +37,11 @@ CSS 是数值定义来源；不要复制一份完整调色板到页面，也不�
 
 根 [main.js](../frontend/src/main.js) / [demo.css](../frontend/src/demo.css) 实现 Vite 风格 welcome：品牌 hero、计数、编辑提示、文档/GitHub/桌面组件入口，以及中文/英文、浅色/深色、Windows/macOS 外观和标题栏模式控制。页面主题初始读取系统偏好，手动切换使用 `data-demo-theme`；主题和窗口外观独立。窄窗调整控件与页脚排列，低高度收紧间距与 logo 尺寸，焦点可见并支持减弱动画。
 
-六套 [生成模板](index.md#npm-包与模板) 共用 [style.css](../frontend/packages/create-ewp/templates/common/frontend/src/style.css)，提供 welcome、计数、窗口外观选择、对应源码编辑提示和资源链接；文案由创建时 `--lang` 或语言选择决定，主题由 `prefers-color-scheme` 适配。根 demo 的手动语言/主题切换和标题栏模式控制不要求各模板全部具备。
+六套 [生成模板](npm-vite.md#交互模板与选项--prompts-templates-and-options) 共用 [style.css](../frontend/packages/create-ewp/templates/common/frontend/src/style.css)，提供 welcome、计数、窗口外观选择、对应源码编辑提示和资源链接；文案由创建时 `--lang` 或语言选择决定，主题由 `prefers-color-scheme` 适配。根 demo 的手动语言/主题切换和标题栏模式控制不要求各模板全部具备。
 
 品牌图标来自用户提供的 `ewp-svg-icons.zip`：权威源为 [ewp-color.svg](../frontend/src/assets/ewp-color.svg)、[ewp-dark.svg](../frontend/src/assets/ewp-dark.svg)、[ewp-mono.svg](../frontend/src/assets/ewp-mono.svg)。Hero 使用 color，浅色背景的品牌标记使用 dark，深色背景使用 mono；模板通过 `picture/source` 选择标记，根 demo 随主题更新。它们是品牌资产，标题栏操作图标继续遵循上表的 SVG 与 macOS 圆点规范。
 
-[prepare-npm.mjs](../scripts/prepare-npm.mjs) 检查三份权威 SVG 并复制到 `frontend/packages/create-ewp/templates/common/frontend/src/assets/`，生成器随 common 资源分发给六模板。该目录由 [.gitignore](../.gitignore) 排除；修改权威源后从根执行 `npm --prefix frontend run prepare:npm`，不手工编辑生成副本。本轮仅更新本地源码与文档，线上 0.1.1 尚未包含新 welcome，验收见 [本地记录](npm-validation.md#2026-10-09-welcome-改版本地验收--local-welcome-validation)。
+[prepare-npm.mjs](../scripts/prepare-npm.mjs) 检查三份权威 SVG 并复制到 `frontend/packages/create-ewp/templates/common/frontend/src/assets/`，生成器随 common 资源分发给六模板。该目录由 [.gitignore](../.gitignore) 排除；修改权威源后从根执行 `npm --prefix frontend run prepare:npm`，不手工编辑生成副本。六模板新版 SVG welcome 纳入 0.1.2 待发布，此前验收见 [本地记录](npm-validation.md#2026-10-09-welcome-改版本地验收--local-welcome-validation)。
 
 ## 交互与验证边界
 

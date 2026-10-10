@@ -1,6 +1,6 @@
 ---
 name: easy-dev
-description: 开发或重构页面、组件、样式、服务时使用；加载本仓库唯一的 easy-dev 正文，优先复用并持续维护 index.md 与 design.md。
+description: 开发或重构页面、组件、样式、服务时使用；加载唯一的 easy-dev 正文，按任务维护框架专题，业务入口或 UI 规则变化才维护应用摘要。
 ---
 # Easy Dev 入口
 
