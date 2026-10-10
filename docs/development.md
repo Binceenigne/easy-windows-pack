@@ -4,15 +4,15 @@
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前为 **0.1.2 待发布**；0.1.1 发布与 registry 冒烟的历史证据见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定描述 0.1.2。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前为 **0.1.2 待发布**，`npm login` 返回 **HTTP 401**，等待用户认证；0.1.1 发布与 registry 冒烟的历史证据见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定描述 0.1.2。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are now **0.1.2, pending publication**; historical 0.1.1 publication and registry smoke evidence remain in the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.2. See the [npm guide](npm-vite.md) for creation and local tarballs.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are now **0.1.2, pending publication**, awaiting user authentication after `npm login` returned **HTTP 401**; historical 0.1.1 publication and registry smoke evidence remain in the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.2. See the [npm guide](npm-vite.md) for creation and local tarballs.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 
 Command examples in this guide run from the project root, with `--prefix frontend` for npm. Omit the prefix when already inside frontend. Python `.venv` and `output/` remain at the project root.
 
-Python 框架本地版本为 **0.3.0 待发布**，新增配置应用与安装包构建，PyPI 发布未验证。安装配置、公共构建 API、当前用户权限与卸载限制见 [打包指南](packaging.md)。 / The local Python framework is **0.3.0, pending publication**, adding configured app and installer packaging; PyPI publication is unverified. See the packaging guide for configuration, public API, current-user permissions and uninstall limits.
+Python 框架本地版本为 **0.3.0**，新增配置应用与安装包构建；**wheel 已构建并通过独立安装与冻结向导 E2E，PyPI 未发布**。安装配置、公共构建 API、当前用户权限与卸载限制见 [打包指南](packaging.md)。 / The local Python framework is **0.3.0**, adding configured app and installer packaging. **Its wheel is built and passed independent installation and frozen wizard E2E validation; it has not been published to PyPI.** See the packaging guide for configuration, public API, current-user permissions and uninstall limits.
 
 ```powershell
 npm --prefix frontend install
@@ -162,9 +162,9 @@ Both `build/` and `output/` are generated directories, not source or documentati
 
 Initialization and packaging tasks print a log path; standalone test, browser, demo and info mainly use the terminal. Inspect distributions separately: framework wheels contain core plus source components/bridges/contracts; generated app wheels include compiled assets according to their metadata; EXEs carry only compiled `output/frontend/` as frontend resources; source bundles retain sources and docs, excluding environments, caches and old outputs. See the [npm guide](npm-vite.md) for preparation and packing.
 
-源码 ZIP 同时保留配置引用的安全 source 及空目录，解压后可重新构建。长路径卸载自删除使用短 `-File` 临时 PowerShell 脚本和 JSON 清单，校验拥有哈希并保留用户文件。最新 wheel 重建与真实 EXE 端到端验收仍待最终证据，历史报告与当前分组结果分别记录在 [验收记录](npm-validation.md)。
+源码 ZIP 同时保留配置引用的安全 source 及空目录，解压后可重新构建。长路径卸载自删除使用短 `-File` 临时 PowerShell 脚本和 JSON 清单，校验拥有哈希并保留用户文件。当前 Python 全测 **245 passed**、Node **145 passed / 1 skipped**、六模板 pack **8/8 passed**（`m01nHq`）；0.3.0 wheel 的独立冻结向导 E2E **passed**（`ygft7h_d`），覆盖 159–163 字符安装路径、40 个空目录及用户文件保留。报告与 wheel SHA-256 见 [本轮验收](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes)。
 
-Source ZIPs also preserve safe config-referenced sources and empty directories for rebuilding after extraction. Long-path uninstall self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, verifies ownership hashes and preserves user files. The latest wheel rebuild and real EXE end-to-end checks still await final evidence; historical reports and current grouped results are recorded separately in [validation](npm-validation.md).
+Source ZIPs also preserve safe config-referenced sources and empty directories for rebuilding after extraction. Long-path uninstall self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, verifies ownership hashes and preserves user files. Current checks: Python **245 passed**, Node **145 passed / 1 skipped**, and six-template pack integration **8/8 passed** (`m01nHq`). Independent frozen wizard E2E validation of the 0.3.0 wheel **passed** (`ygft7h_d`), covering 159–163-character install paths, 40 empty directories and user-file preservation. See [current validation](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes) for reports and the wheel SHA-256.
 
 ## 兼容命令 / Compatible commands
 

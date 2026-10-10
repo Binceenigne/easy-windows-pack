@@ -68,7 +68,7 @@ npm run dev
 
 打包前先完成 `init`；构建会自动编译前端。浏览器适合调试界面，原生窗口、托盘和 Python 桥接需在桌面验证。
 
-新增构建命令对应本地待发布的 Python **0.3.0** / npm **0.1.2**；`@latest` 跟随已发布版本。配置与分步骤安装/卸载说明见 [打包指南](docs/packaging.md)，最新 wheel 重建及端到端验收待补最终证据，见 [验收记录](docs/npm-validation.md)。
+新增构建命令对应 Python **0.3.0** / npm **0.1.2**。**0.3.0 wheel 已在本地构建并通过独立冻结安装向导 E2E，PyPI 未发布**；npm **0.1.2 待发布**（`npm login` 返回 HTTP 401，等待用户认证），`@latest` 跟随已发布版本。配置与分步骤安装/卸载说明见 [打包指南](docs/packaging.md)，当前通过结果、报告与 wheel 哈希见 [验收记录](docs/npm-validation.md)。
 
 也可双击项目根的 `startup.cmd` 打开任务菜单（需要 Python）。
 

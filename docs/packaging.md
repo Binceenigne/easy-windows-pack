@@ -2,9 +2,9 @@
 
 [文档导航 / Documentation](README.md) · [npm / Vite](npm-vite.md) · [开发手册 / Development](development.md) · [验收记录 / Validation](npm-validation.md)
 
-本指南对应本地待发布版本：Python `easy-windows-pack` **0.3.0**，npm `easywindowspack` / `create-ewp` **0.1.2**。npm **0.1.1** 已有历史 registry 验收；当前版本的发布状态不能由本地构建推断，**PyPI 发布未验证**。下述新增能力需要对应源码或包含它们的本地包，不能假定 registry 的 `@latest` 已包含它们。
+本指南对应 Python `easy-windows-pack` **0.3.0** 与 npm `easywindowspack` / `create-ewp` **0.1.2**。**0.3.0 wheel 已在本地构建并通过独立冻结向导 E2E**（`ygft7h_d`）：onefile/onedir、159–163 字符安装路径、40 个空目录及用户文件保留均通过，报告与 wheel SHA-256 见 [本轮验收](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes)。**PyPI 未发布**；npm **0.1.2 待发布**，`npm login` 返回 **HTTP 401**，等待用户认证。npm **0.1.1** 的 registry 验收保留为历史证据。下述新增能力使用对应源码或本地包；registry 的 `@latest` 跟随已发布版本。
 
-This guide describes local versions pending publication: Python `easy-windows-pack` **0.3.0** and npm `easywindowspack` / `create-ewp` **0.1.2**. npm **0.1.1** has historical registry validation. Local builds do not establish publication of the current versions; **PyPI publication is unverified**. Use these sources or local packages containing the new capabilities rather than assuming registry `@latest` includes them.
+This guide describes Python `easy-windows-pack` **0.3.0** and npm `easywindowspack` / `create-ewp` **0.1.2**. **The 0.3.0 wheel is built locally and passed independent frozen wizard E2E validation** (`ygft7h_d`), covering onefile/onedir, 159–163-character install paths, 40 empty directories and user-file preservation. See [current validation](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes) for reports and the wheel SHA-256. **It has not been published to PyPI**. npm **0.1.2 remains pending publication**, awaiting user authentication after `npm login` returned **HTTP 401**. npm **0.1.1** registry checks remain historical evidence. Use the corresponding sources or local packages for these capabilities; registry `@latest` follows published versions.
 
 ## 构建入口与产物 / Commands and artifacts
 

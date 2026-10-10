@@ -18,9 +18,9 @@ These grouped results were supplied by the main task after actual agent runs; th
 | 最终六模板 npm pack 集成 / Final npm pack integration | **8/8 passed**，两包 0.1.2，报告 `build/npm-pack-validation/pack validation m01nHq/report.json` |
 | 最新 wheel 与冻结安装包 / Latest wheel and frozen installers | **passed**；独立安装 wheel 后构建 onefile/onedir、真实逐页 GUI 安装、运行、自卸载和源码 ZIP 解压重建 / Independent wheel, both modes, real wizard, app execution, self-uninstall and source ZIP restoration |
 
-长路径自删除已改为短 `-File` 临时 PowerShell 脚本 + JSON 清单，保留拥有哈希与用户文件保护；源码 ZIP 已保留空目录。上述测试分组不合成为全测总数，也不替代冻结 EXE 实测。Python **0.3.0**、npm 两包 **0.1.2** 均为本地待发布版本，发布由主任务另行处理；**PyPI 发布未验证**。
+长路径自删除已改为短 `-File` 临时 PowerShell 脚本 + JSON 清单，保留拥有哈希与用户文件保护；源码 ZIP 已保留空目录。上述测试分组不合成为全测总数，也不替代冻结 EXE 实测。Python **0.3.0 wheel 已在本地构建并通过独立冻结验收**，**尚未发布到 PyPI**；npm 两包 **0.1.2 待发布**，`npm login` 返回 **HTTP 401**，等待用户认证。
 
-Long-path self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, retaining ownership-hash checks and user-file protection. Source ZIPs preserve empty directories. These groups are not combined into a full-suite total and do not replace frozen EXE checks. Python **0.3.0** and both npm packages at **0.1.2** are local versions pending publication, handled separately by the main task; **PyPI publication is unverified**.
+Long-path self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, retaining ownership-hash checks and user-file protection. Source ZIPs preserve empty directories. These groups are not combined into a full-suite total and do not replace frozen EXE checks. The Python **0.3.0 wheel is built locally and passed independent frozen validation**, with **no PyPI publication**. Both npm packages at **0.1.2 remain pending publication**, awaiting user authentication after `npm login` returned **HTTP 401**.
 
 最新冻结报告 `build/packaging-validation/wheel installer ygft7h_d/report.json` 为 `status: passed`：13 条外部命令成功，安装路径长 159–163 字符，40 个空目录恢复并清理；功能勾选、回退镜像、校验拒绝、命令钩子、配置项、开机自启和卸载注册表清理通过。新增或修改的用户文件保留。延迟删除通过 251 字符的 PowerShell `-File` 命令启动，退出后清理脚本和清单。wheel SHA-256：`b295f01ce52bba415ccb7e886cd3124565c219743f1d2e8a26ca47c814a901c3`，Python 模块与源码一致。
 

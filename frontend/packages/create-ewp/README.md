@@ -76,8 +76,8 @@ Run these commands inside the generated project's `frontend/`; use `npm --prefix
 打包前完成 `init`；构建自动编译前端。根 `startup.cmd` 可打开任务菜单。
 Complete `init` before packaging; builds compile the frontend automatically. Root `startup.cmd` opens the task menu.
 
-生成器创建项目根 `ewp.pack.json`；onefile / onedir、Tk 分步骤安装与卸载说明见 [打包指南 / Packaging](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/packaging.md)。配套 Python 0.3.0 待发布，最新 wheel 重建与端到端验收待最终证据。
-The generator creates root `ewp.pack.json`; see the packaging guide for onefile / onedir and the Tk installation/uninstall wizard. Python 0.3.0 is pending publication; the latest wheel rebuild and end-to-end checks await final evidence.
+生成器创建项目根 `ewp.pack.json`；onefile / onedir、Tk 分步骤安装与卸载说明见 [打包指南 / Packaging](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/packaging.md)。配套 Python **0.3.0 wheel 已在本地构建并通过独立冻结向导 E2E**（`ygft7h_d`），**PyPI 未发布**；报告与 wheel 哈希见 [验收记录 / Validation](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes)。
+The generator creates root `ewp.pack.json`; see the packaging guide for onefile / onedir and the Tk installation/uninstall wizard. The Python **0.3.0 wheel is built locally and passed independent frozen wizard E2E validation** (`ygft7h_d`); **it has not been published to PyPI**. See the validation record for reports and the wheel hash.
 
 ## 全局 CLI 与文档 / Global CLI and docs
 
@@ -101,10 +101,11 @@ Create a self-contained Easy Windows Pack app / 创建独立桌面项目。
 Node >=22.12.0, Python >=3.10; Windows desktop requires WebView2.
 
 ESM; interactive prompts use `@clack/prompts`. Both local npm packages are
-**0.1.2, pending publication**; `@latest` follows published registry versions.
+**0.1.2, pending publication**, awaiting user authentication after `npm login`
+returned **HTTP 401**; `@latest` follows published registry versions.
 The historical 0.1.1 release passed `@latest` creation and Vue TS installation,
 checks and frontend-build smoke tests on 2026-10-09. See the validation record below.
-基于 @clack/prompts 的 ESM 生成器。两包本地版本为 0.1.2 待发布，@latest 跟随已发布版本；0.1.1 的发布与 2026-10-09 registry 冒烟保留为历史证据，详见文末验收记录。
+基于 @clack/prompts 的 ESM 生成器。两包本地版本为 0.1.2 待发布，npm login 返回 HTTP 401，等待用户认证；@latest 跟随已发布版本。0.1.1 的发布与 2026-10-09 registry 冒烟保留为历史证据，详见文末验收记录。
 
 Run `npm create ewp@latest` without global installation. In the source 0.1.2 flow, the
 first prompt selects human language (`zh-CN` / `en`), then project name,
