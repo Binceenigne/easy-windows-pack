@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/src/assets/ewp-color.svg" width="96" alt="Easy Windows Pack" />
+<img src="frontend/src/assets/ewp-color.svg" width="127" alt="Easy Windows Pack" />
 
 # easy-windows-pack
 
