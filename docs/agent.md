@@ -26,7 +26,7 @@ scripts/prepare-npm.mjs 从 frontend、backend/base/ewpcore 和 scripts 单源�
 
 app 按项目根 ewp.pack.json 构建 onefile / onedir，installer 构建应用及安装包；--config、--mode、--installer 可用于相应构建任务。npm run build -- --mode onedir 等显式打包参数转到配置构建并输出 output/apps；无打包参数的 legacy build/exe 仍输出 output/exe。新生成项目提供默认 ewp.pack.json，省略配置文件的 Python 构建使用内置默认值，不写文件。安装配置与实际 CLI 参数以 packaging.md 及解析器为准。
 
-两个 npm 包当前为 0.1.2 待发布，npm login 返回 HTTP 401，等待用户认证；runtime 对 creator 及生成项目对 runtime 的依赖均为 ^0.1.2，包含六模板新版 SVG welcome。0.1.1 的发布与 registry 冒烟作为历史证据保留在 [验收记录](npm-validation.md)，不代表 0.1.2 已发布或通过 registry 验收。发布、推送与提交按用户授权和当前任务范围执行，已获授权不重复确认。可用 npm install -g easywindowspack@latest 安装全局 CLI，或 npm create ewp@latest 创建项目；@latest 跟随 registry 已发布版本。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
+截至 2026-10-12，两个 npm 包 0.1.2 已公开可用：npm view 的版本与 SHA-1 均与发布归档一致，npm create ewp@latest 实际使用 0.1.2。全新 Vue TS 项目（en、codex,claude）的 registry install、help、check（3 passed）、typecheck、frontend:build 全部成功，安装树确认 runtime / creator 均为 0.1.2；路径、命令与 hash 见 [验收记录](npm-validation.md)。dist-tags.latest 的独立查询待主 agent 补充。runtime 对 creator 及生成项目对 runtime 的依赖均为 ^0.1.2，包含六模板新版 SVG welcome；0.1.1 registry 冒烟仅为历史证据。发布、推送与提交按用户授权和当前任务范围执行，已获授权不重复确认。可用 npm install -g easywindowspack@latest 安装全局 CLI，或 npm create ewp@latest 创建项目；@0.1.2 可固定已验证版本。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
 
 本入口不是大型检查表，不要求全仓扫描或多轮自检。用户要求与宿主有效规则优先；详细默认约定由主 Skill 单点维护。
 <!-- easy-dev:end -->

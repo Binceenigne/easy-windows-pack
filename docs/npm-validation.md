@@ -2,6 +2,60 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-12 0.1.2 发布状态 / Publication status
+
+`create-ewp@0.1.2` 与 `easywindowspack@0.1.2` **已公开可用**：账号 `binceengine` 重新 web login 后，两个正式 `npm publish` 均成功。两包版本与 `dist.shasum` 查询均成功，SHA-1 与发布归档一致，全新 Vue TS 项目的 registry 冒烟通过，详见下节。
+
+Both `create-ewp@0.1.2` and `easywindowspack@0.1.2` **are publicly available**. After `binceengine` logged in again via web login, both official `npm publish` commands succeeded. Version and `dist.shasum` queries match the release archives, and the fresh Vue TS registry smoke test passed as detailed below.
+
+| 包 / Package | 发布 tarball SHA-1 / Published tarball SHA-1 | Registry 状态 / Status |
+| --- | --- | --- |
+| `create-ewp@0.1.2` | `7a7bc7560fb4ad754dc0e0e7d3e8386ffb210113` | npm view 版本 0.1.2 / hash 匹配，已安装 / Version 0.1.2 and matching hash via npm view; installed |
+| `easywindowspack@0.1.2` | `70766e3325fe9924ebdce55819a55b58fd6d9366` | npm view 版本 0.1.2 / hash 匹配，已安装 / Version 0.1.2 and matching hash via npm view; installed |
+
+上述 SHA-1 已与现有 `output/npm/create-ewp-0.1.2.tgz`、`output/npm/easywindowspack-0.1.2.tgz` 实测匹配。两包 `dist-tags.latest` 独立查询均返回 `0.1.2`。从官方 registry 全局安装两包后，在用户目录执行 `ewp --version` 返回 `0.1.2`，`ewp -h --lang en` 正常。Python **0.3.0 wheel 本地构建、PyPI 未发布**的状态不变。
+
+Both hashes match the existing release tarballs, and independent `dist-tags.latest` queries returned `0.1.2` for both packages. After global installation from the official registry, `ewp --version` returned `0.1.2` and English help worked outside a project. Python **0.3.0 remains a local wheel, unpublished on PyPI**.
+
+本次仅更新 Git 文档源码（含包 README），不重打包或改变产物；npm 版本内 README 保留发布时快照，最新说明见 Git 文档。下列 dated 验收保留原日期与范围。
+This update changes Git documentation sources only, including package READMEs, without repacking or changing artifacts. npm version READMEs retain the publication snapshot; Git docs carry the latest guidance. Dated checks below retain their original dates and scope.
+
+## 2026-10-12 0.1.2 registry 冒烟 / Registry smoke test
+
+以下记录主任务提供的实际 registry 验收结果；本次文档收尾另行核对了本地归档 SHA-1、项目锁文件中的 registry 来源及安装树，未重跑创建或构建。Registry 为 `https://registry.npmjs.org/`，两包版本 / hash 查询命令如下，结果均为 **0.1.2**，`dist.shasum` 与 [上节发布归档表](#2026-10-12-012-发布状态--publication-status) 一致。
+
+The following records actual registry checks supplied by the main task. This documentation pass separately checked the local archive SHA-1 hashes, registry origins in the project lockfile and the installed dependency tree; it did not rerun creation or builds. Both queries below returned **0.1.2**, with `dist.shasum` matching the [release archive table above](#2026-10-12-012-发布状态--publication-status).
+
+```powershell
+npm view create-ewp@0.1.2 version dist.shasum --prefer-online --registry=https://registry.npmjs.org/ --fetch-retries=0 --fetch-timeout=15000
+npm view easywindowspack@0.1.2 version dist.shasum --prefer-online --registry=https://registry.npmjs.org/ --fetch-retries=0 --fetch-timeout=15000
+```
+
+全新项目目录为 `build/npm-registry-012-72939ba10bc444cbb099f71ab0c849c5`。以下命令从仓库根执行，使用英文、Vue TypeScript 和 Codex / Claude 指引；npm 层及生成器均带 `--yes`，生成后手动安装，不初始化 Python 或启动桌面。
+
+The fresh project directory is `build/npm-registry-012-72939ba10bc444cbb099f71ab0c849c5`. The command ran from the checkout root with English, Vue TypeScript and Codex / Claude guidance, using `--yes` at both npm and generator levels. Installation followed manually; Python initialization and desktop startup were skipped.
+
+```powershell
+npm create ewp@latest build/npm-registry-012-72939ba10bc444cbb099f71ab0c849c5 --yes --prefer-online --registry=https://registry.npmjs.org/ -- --lang en --template vue-ts --ai codex,claude --no-install --no-start --yes
+```
+
+创建成功，实际使用 `create-ewp@0.1.2`；随后在 `build/npm-registry-012-72939ba10bc444cbb099f71ab0c849c5/frontend` 执行以下命令，**全部成功**。
+
+Creation succeeded using `create-ewp@0.1.2`. All commands below then **passed** inside `build/npm-registry-012-72939ba10bc444cbb099f71ab0c849c5/frontend`.
+
+| 命令 / Command | 结果 / Result |
+| --- | --- |
+| `npm install --prefer-online --registry=https://registry.npmjs.org/ --no-audit --no-fund` | 成功 / Passed |
+| `npm run help` | 成功 / Passed |
+| `npm run check` | **3 passed** |
+| `npm run typecheck` | 成功 / Passed |
+| `npm run frontend:build` | 成功 / Passed |
+| `npm ls easywindowspack create-ewp --depth=2` | `easywindowspack@0.1.2 → create-ewp@0.1.2` |
+
+安装树确认 runtime / creator 均为 **0.1.2**，锁文件中两包均解析到上述官方 registry 的 0.1.2 tarball。`npm create ewp@latest` 的实际使用结果已验证；`dist-tags.latest` 的独立查询待主 agent 补充。本轮范围为该 Vue TS 项目的 registry 创建、安装、帮助、runtime 检查、类型检查与前端构建；全局 CLI、其他模板、Python 初始化与原生构建/启动沿用各自历史记录，不计入本轮。
+
+The installed runtime and creator are both **0.1.2**; the lockfile resolves both to their 0.1.2 tarballs on the official registry above. Actual use through `npm create ewp@latest` is verified; a separate `dist-tags.latest` query remains for the main agent. This run covers Vue TS registry creation, installation, help, runtime checks, type checking and frontend compilation. Global CLI, other templates, Python initialization and native build/startup retain their separate historical records.
+
 ## 2026-10-10 安装向导与安全修复阶段 / Installer wizard and safety fixes
 
 以下为各 agent 实际执行后由主任务提供的分组结果；本文档任务未重跑运行时测试。GUI 改为目录 → 可选功能 → 按功能过滤的依赖 → 可选安装后选项 → 确认 → 进度 → 完成；卸载为确认 → 进度 → 完成，沿用原安装/卸载引擎。

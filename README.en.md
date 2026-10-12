@@ -68,7 +68,7 @@ Run all subsequent npm commands in `frontend/`. `init` creates or reuses the pro
 
 Complete `init` before packaging; builds compile the frontend automatically. Use the browser to debug UI, and the desktop app to verify native windows, tray, and the Python bridge.
 
-New commands describe Python **0.3.0** / npm **0.1.2**. **The 0.3.0 wheel is built locally and passed independent frozen installer wizard E2E validation; it has not been published to PyPI**. npm **0.1.2 remains pending publication** (`npm login` returned HTTP 401; awaiting user authentication), and `@latest` follows published versions. See the [packaging guide](docs/packaging.md) for configuration and step-by-step installation/uninstall, and [validation](docs/npm-validation.md) for current passes, reports and the wheel hash.
+New commands describe Python **0.3.0** / npm **0.1.2**. **The 0.3.0 wheel is built locally and passed independent frozen installer wizard E2E validation; it has not been published to PyPI**. As of 2026-10-12, both npm packages at **0.1.2 are publicly available**: `npm view` versions and hashes match the release archives, `npm create ewp@latest` used 0.1.2, and Vue TS registry installation, help, checks (3 passed), type checking and frontend build all passed. The installed runtime and creator are both 0.1.2. A separate `dist-tags.latest` query remains for the main agent. See the [packaging guide](docs/packaging.md) for configuration and step-by-step installation/uninstall, and [validation](docs/npm-validation.md) for publication status, historical checks and the wheel hash.
 
 You can also double-click the project's root `startup.cmd` to open the task menu (requires Python).
 

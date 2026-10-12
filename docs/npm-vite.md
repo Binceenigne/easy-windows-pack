@@ -4,9 +4,9 @@
 
 ## 包与环境 / Packages and requirements
 
-`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 当前为 **0.1.2 待发布**，与 Python 分发 `easy-windows-pack` 的源码版本 **0.3.0** 分开管理，PyPI 发布未验证。本文语言、帮助/菜单及构建约定描述当前源码；历史发布、registry 冒烟与本地验收见 [验收记录](npm-validation.md)。
+`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 的 **0.1.2 已公开可用**；registry 版本 / hash 查询及全新 Vue TS 项目冒烟均通过，详见下节。Python 分发 `easy-windows-pack` 的源码版本 **0.3.0** 分开管理，PyPI 未发布。本文语言、帮助/菜单及构建约定描述当前源码；发布状态、registry 冒烟与本地验收见 [验收记录](npm-validation.md)。
 
-`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both packages are **0.1.2, pending publication**. Python `easy-windows-pack` sources are separately versioned at **0.3.0**, with PyPI publication unverified. Language, help/menu and build contracts below describe current sources. See the [validation record](npm-validation.md) for publication history, registry smoke tests and local checks.
+`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both packages at **0.1.2 are publicly available**; registry version/hash queries and a fresh Vue TS smoke test passed as detailed below. Python `easy-windows-pack` sources are separately versioned at **0.3.0**, with no PyPI publication. Language, help/menu and build contracts below describe current sources. See the [validation record](npm-validation.md) for publication status, registry smoke tests and local checks.
 
 | 包 / Package | 用途 / Purpose |
 | --- | --- |
@@ -19,15 +19,15 @@ Require Node.js **>=22.12.0**; the repository uses **Vite ^7.3.7**. Python initi
 
 ## 发布状态与创建项目 / Publication status and project creation
 
-两个包当前为 **0.1.2 待发布**，包含六模板新版 SVG welcome 与配置打包入口。0.1.1 已发布及 Vue TS registry 冒烟通过的历史证据保留在 [验收记录](npm-validation.md)，不作为 0.1.2 的发布验证结果。
+截至 **2026-10-12**，两个包 **0.1.2 已公开可用**，包含六模板新版 SVG welcome 与配置打包入口。两包 `npm view` 的版本与 SHA-1 均与发布归档一致；`npm create ewp@latest` 实际使用 0.1.2，全新英文 Vue TS + Codex / Claude 项目的 registry install、help、check（3 passed）、typecheck、frontend:build 全部成功，安装树确认 runtime / creator 均为 0.1.2。`dist-tags.latest` 的独立查询待主 agent 补充。路径、命令、哈希及 0.1.1 历史验收见 [验收记录](npm-validation.md)。
 
-Both packages are **0.1.2, pending publication**, including the six-template SVG welcome and configured packaging entries. Historical 0.1.1 publication and Vue TS registry smoke evidence remain in the [validation record](npm-validation.md), without certifying 0.1.2.
+As of **2026-10-12**, both packages at **0.1.2 are publicly available**, including the six-template SVG welcome and configured packaging entries. Both `npm view` versions and SHA-1 hashes match the release archives. `npm create ewp@latest` used 0.1.2; registry install, help, check (3 passed), typecheck and frontend:build all passed in a fresh English Vue TS project with Codex / Claude guidance. The installed runtime and creator are both 0.1.2. A separate `dist-tags.latest` query remains for the main agent. See the [validation record](npm-validation.md) for paths, commands, hashes and historical 0.1.1 checks.
 
 所有 npm manifests 与锁文件已同步为 0.1.2，runtime 对 creator 的依赖及新生成项目的 runtime 依赖均为 `^0.1.2`。历史本地 tarball 验收保留原日期与范围；执行发布按用户授权与当前任务范围决定。
 
 All npm manifests and the lockfile are aligned at 0.1.2; the runtime's creator dependency and generated apps' runtime dependency use `^0.1.2`. Historical local tarball checks retain their dates and scope. Publication follows user authorization and the current task scope.
 
-**安装与升级 / Installation and upgrades:** 新建项目可用 `npm create ewp@latest`；全局 CLI 可用 `npm install -g easywindowspack@latest`。`@latest` 跟随 registry 已发布版本；0.1.2 发布后，可用 `@0.1.2` 固定版本，已有项目在 frontend 内用 `npm install easywindowspack@^0.1.2`。依赖升级不自动改写已有 scripts、README、AI 指引或 demo；旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。`@latest` follows the published registry version; after 0.1.2 publication, use `@0.1.2` to pin it or upgrade app runtime inside frontend with `^0.1.2`. These upgrades do not rewrite existing project files; add missing task scripts using the development guide.
+**安装与升级 / Installation and upgrades:** 新建项目可用 `npm create ewp@latest`；全局 CLI 可用 `npm install -g easywindowspack@latest`。可用 `@0.1.2` 固定已验证版本，已有项目在 frontend 内用 `npm install easywindowspack@^0.1.2`。依赖升级不自动改写已有 scripts、README、AI 指引或 demo；旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。Use `@0.1.2` to pin the verified version or upgrade app runtime inside frontend with `^0.1.2`. These upgrades do not rewrite existing project files; add missing task scripts using the development guide.
 
 无需全局安装即可创建；以下为语言与模板选项示例：
 
@@ -62,9 +62,9 @@ npm --prefix frontend run prepare:npm
 node frontend/packages/create-ewp/bin/create-ewp.mjs "../My App" --lang en --template vanilla-ts --no-install --no-start
 ```
 
-本地生成不需要 registry 中的 `create-ewp`；新生成项目依赖 `easywindowspack@^0.1.2`，该版本待发布，本地安装验收可使用对应 tarball 或明确的本地依赖覆盖。本地生成/pack 不能替代 registry 安装证据。
+本地生成不需要 registry 中的 `create-ewp`；新生成项目依赖已公开可用的 `easywindowspack@^0.1.2`，可从 registry 安装。本地源码验收也可使用对应 tarball 或明确的本地依赖覆盖。本地生成/pack 与 registry 安装分别记录验收证据。
 
-Local generation needs no registry copy of `create-ewp`. New projects depend on `easywindowspack@^0.1.2`, which is pending publication; local installation checks can use the corresponding tarball or explicit dependency overrides. Local generation/packing does not replace registry installation evidence.
+Local generation needs no registry copy of `create-ewp`. New projects depend on the publicly available `easywindowspack@^0.1.2` and can install it from the registry. Local source checks may also use matching tarballs or explicit dependency overrides. Local generation/packing and registry installation retain separate validation evidence.
 
 ## 交互、模板与选项 / Prompts, templates and options
 
@@ -279,9 +279,9 @@ npm pack --workspace easywindowspack --pack-destination ../output/npm
 
 Run the pack commands above and publish commands below inside frontend; ensure root `output/npm` exists before packing. Inspect binaries, library files, exports, CSS, types, licenses, READMEs, six templates and common runtime in the tarballs. Packing is not publication and does not certify clean-environment installation or native launch. Workspace `prepack` hooks use the same preparation source. Record evidence in [npm-validation.md](npm-validation.md).
 
-0.1.2 的两个包当前待发布；0.1.1 的历史发布证据保留在 [验收记录](npm-validation.md)。发布顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli`，生成项目依赖 runtime。执行发布按用户授权与当前任务范围决定，已获授权不重复确认。以下命令供发布时参考：
+0.1.2 两包已公开可用，registry 版本 / hash 查询与 Vue TS 项目冒烟通过，见 [验收记录](npm-validation.md)。发布顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli`，生成项目依赖 runtime。已发布 tarball 不可覆盖，版本内 README 固定于发布时；最新说明见 Git 文档。本次仅更新文档源码，保留已验证 tarball。以下命令供发布流程参考：
 
-Both 0.1.2 packages are pending publication; historical 0.1.1 evidence remains in the [validation record](npm-validation.md). Publication order is **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli`, and generated apps depend on the runtime. Execution follows user authorization and current scope, without asking again for existing authorization. The following commands are release references:
+Both 0.1.2 packages are publicly available; registry version/hash queries and the Vue TS smoke test passed as recorded in the [validation record](npm-validation.md). Publication order is **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli`, and generated apps depend on the runtime. Published tarballs cannot be overwritten; their READMEs retain the publication snapshot, while Git docs carry the latest guidance. This update changes documentation sources only and retains the validated tarballs. The following commands document the release workflow:
 
 ```powershell
 npm publish -w create-ewp --access public

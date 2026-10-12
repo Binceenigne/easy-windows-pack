@@ -1,6 +1,6 @@
 # create-ewp
 
-Version 0.1.2 · Pending publication / 待发布 · MIT
+Version 0.1.2 · Published and available / 已发布可用 · MIT
 
 创建基于 Vite、Python 和 pywebview 的 Windows 桌面应用，支持 Vanilla / Vue / React 与 JavaScript / TypeScript。
 Create a Windows desktop app with Vite, Python and pywebview, using Vanilla / Vue / React with JavaScript / TypeScript.
@@ -100,12 +100,14 @@ ewp create -h
 Create a self-contained Easy Windows Pack app / 创建独立桌面项目。
 Node >=22.12.0, Python >=3.10; Windows desktop requires WebView2.
 
-ESM; interactive prompts use `@clack/prompts`. Both local npm packages are
-**0.1.2, pending publication**, awaiting user authentication after `npm login`
-returned **HTTP 401**; `@latest` follows published registry versions.
-The historical 0.1.1 release passed `@latest` creation and Vue TS installation,
-checks and frontend-build smoke tests on 2026-10-09. See the validation record below.
-基于 @clack/prompts 的 ESM 生成器。两包本地版本为 0.1.2 待发布，npm login 返回 HTTP 401，等待用户认证；@latest 跟随已发布版本。0.1.1 的发布与 2026-10-09 registry 冒烟保留为历史证据，详见文末验收记录。
+ESM; interactive prompts use `@clack/prompts`. As of **2026-10-12**, both packages
+at **0.1.2 are publicly available**. Both `npm view` versions and SHA-1 hashes match
+the release archives. `npm create ewp@latest` used 0.1.2; fresh English Vue TS
+registry installation, help, check (3 passed), typecheck and frontend:build passed
+with Codex / Claude guidance. The installed runtime and creator are both 0.1.2.
+A separate `dist-tags.latest` query remains for the main agent; 0.1.1 registry
+smoke tests remain historical evidence. See the validation record below.
+基于 @clack/prompts 的 ESM 生成器。截至 2026-10-12，两包 0.1.2 已公开可用，npm view 版本 / SHA-1 与发布归档一致。npm create ewp@latest 实际使用 0.1.2，全新英文 Vue TS + Codex / Claude 项目的 registry 安装、help、check（3 passed）、typecheck、frontend:build 全部成功，安装树确认 runtime / creator 均为 0.1.2。dist-tags.latest 的独立查询待主 agent 补充；0.1.1 冒烟仅为历史证据。
 
 Run `npm create ewp@latest` without global installation. In the source 0.1.2 flow, the
 first prompt selects human language (`zh-CN` / `en`), then project name,
@@ -158,9 +160,9 @@ Installation runs `npm install` inside frontend only. Starting runs installation
 then `npm run init` and `npm run dev`; Python initialization is explicit.
 安装选项仅安装 npm 依赖；启动选项额外初始化 Python `.venv`，再启动桌面。
 
-Source-generated apps use `easywindowspack@^0.1.2` (pending publication) and
-Vite ^7.3.7, with Vue 3.5 or React 19 when selected. Historical registry smoke
-tests cover the 0.1.1 Vue TS project. Vue/React templates
+Source-generated apps use the publicly available `easywindowspack@^0.1.2` and
+Vite ^7.3.7, with Vue 3.5 or React 19 when selected. Current registry smoke
+tests cover a fresh 0.1.2 Vue TS project. Vue/React templates
 own Frame composition layers, using Teleport/portals for reactive slots/children,
 prop updates and cleanup. All six templates share `mountFrame`; browser preview
 does not provide native controls. Runtime optional peers support Vue >=3.3 and
@@ -177,16 +179,17 @@ node frontend/packages/create-ewp/bin/create-ewp.mjs "../My App" --lang en --tem
 ```
 
 Generation uses local prepared templates. Generated apps depend on
-`easywindowspack@^0.1.2`, pending publication; use matching local tarballs or
-explicit overrides for local checks. Local generation is not registry validation.
-本地生成使用 prepared 模板，生成应用依赖待发布的 runtime ^0.1.2；本地验收使用匹配的 tarball 或明确本地依赖，不能替代 registry 安装验证。
+the publicly available `easywindowspack@^0.1.2`, installable from the registry;
+matching local tarballs or explicit overrides may also be used for local source
+checks. Local generation and registry installation have separate evidence.
+本地生成使用 prepared 模板，生成应用依赖已公开可用的 runtime ^0.1.2，可从 registry 安装；本地源码验收也可用匹配的 tarball 或明确本地依赖，分别记录本地与 registry 证据。
 
 Use `npm create ewp@latest` for new apps;
 upgrade the global CLI with `npm install -g easywindowspack@latest`, or the app runtime
-with `npm install easywindowspack@^0.1.2` inside frontend after 0.1.2 is published. Dependency upgrades do not
+with `npm install easywindowspack@^0.1.2` inside frontend. Dependency upgrades do not
 rewrite existing scripts, READMEs, AI guidance, or demos.
-Use `@0.1.1` to pin the historical published version.
-全局安装和创建跟随 registry；0.1.2 发布后再使用 ^0.1.2，@0.1.1 可固定历史版本；旧项目任务 scripts 与指引需自行同步。
+Use `@0.1.2` to pin the verified published version.
+全局安装和创建可直接使用 registry；@0.1.2 可固定已验证版本，已有项目在 frontend 内升级 runtime 至 ^0.1.2；旧项目任务 scripts 与指引需自行同步。
 
 Inside the project's frontend directory with available dependencies; from the project root use `npm --prefix frontend` / 项目依赖可解析后，在 frontend 内执行；从项目根执行时使用 `npm --prefix frontend`：
 
@@ -278,13 +281,16 @@ npm pack --workspace easywindowspack --pack-destination ../output/npm
 ```
 
 The frontend workspace is private. Source npm manifests and the lockfile are
-aligned at 0.1.2, pending publication. Historical 0.1.1 local pack checks and Vue TS
-registry smoke tests are recorded in the validation record. This documentation
-task does not pack or publish; the main task handles the new release separately.
+aligned at 0.1.2; both packages are publicly available, with registry version/hash
+queries and the fresh Vue TS smoke test passed. Current registry evidence and
+historical local pack checks are recorded in the validation record. This documentation update
+retains the existing validated tarballs without repacking or publishing.
 Publish `create-ewp` before `easywindowspack`.
 Packing does not prove registry installation or native execution.
-两包本地版本为 0.1.2 待发布；0.1.1 历史本地 pack 与 Vue TS registry 冒烟见验收记录。本文档任务不打包或发布，由主任务另行处理新版；发布顺序为 create-ewp → easywindowspack。
+两包 0.1.2 已公开可用，registry 版本 / hash 查询与全新 Vue TS 项目冒烟通过；当前 registry 证据与历史本地 pack 见验收记录。本次保留已验证 tarball，不重打包或发布；发布顺序为 create-ewp → easywindowspack。
 
 Repository documentation: [bilingual guide](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-vite.md),
 [validation record](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md).
 These are repository docs, not files shipped alongside this package README.
+npm 0.1.2 的 README 随已发布 tarball 固定；最新说明见上述 Git 文档。
+The npm 0.1.2 README retains its publication snapshot; see the Git docs above for current guidance.

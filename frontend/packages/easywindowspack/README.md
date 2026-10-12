@@ -1,6 +1,6 @@
 # easywindowspack
 
-Version 0.1.2 · Pending publication / 待发布 · MIT
+Version 0.1.2 · Published and available / 已发布可用 · MIT
 
 为 easy-windows-pack 应用提供共享窗口外壳、桌面组件和 `ewp` 开发 CLI，连接 Vite 前端与 Python / pywebview 桌面。
 Shared window frames, desktop components and the `ewp` development CLI for easy-windows-pack apps, connecting Vite frontends with Python / pywebview desktops.
@@ -85,8 +85,8 @@ ewp create -h
 
 `ewp` 无参数也显示帮助；在项目根用 `ewp menu` 打开菜单，或用 `ewp dev` / `ewp build` 执行任务。
 `ewp` with no arguments also shows help; at the project root, use `ewp menu` for the menu or `ewp dev` / `ewp build` to run tasks.
-0.1.2 发布后，已有项目可在 `frontend/` 内用 `npm install easywindowspack@^0.1.2` 更新依赖；项目文件需自行维护。
-After 0.1.2 is published, upgrade an existing project's dependency with `npm install easywindowspack@^0.1.2` inside `frontend/`; maintain its project files separately.
+已有项目可在 `frontend/` 内用 `npm install easywindowspack@^0.1.2` 更新到已公开可用的依赖；项目文件需自行维护。
+Upgrade an existing project's dependency to the publicly available version with `npm install easywindowspack@^0.1.2` inside `frontend/`; maintain its project files separately.
 
 ## 文档 / Documentation
 
@@ -102,21 +102,23 @@ WebView2. The CLI uses the consuming project's `scripts/dev.py` and
 
 ## Availability and creation / 发布状态与创建
 
-Both local npm packages are **0.1.2, pending publication**, awaiting user
-authentication after `npm login` returned **HTTP 401**; `@latest` follows
-published registry versions. The historical 0.1.1 release passed `@latest`
-creation and Vue TS installation, checks and frontend-build smoke tests on
-2026-10-09. See the validation record linked below.
+As of **2026-10-12**, both packages at **0.1.2 are publicly available**.
+Both `npm view` versions and SHA-1 hashes match the release archives.
+`npm create ewp@latest` used 0.1.2; fresh English Vue TS registry installation,
+help, check (3 passed), typecheck and frontend:build passed with Codex / Claude
+guidance. The installed runtime and creator are both 0.1.2. A separate
+`dist-tags.latest` query remains for the main agent; 0.1.1 registry smoke tests
+remain historical evidence. See the validation record linked below.
 
-两包本地版本为 0.1.2 待发布，npm login 返回 HTTP 401，等待用户认证；@latest 跟随已发布版本。0.1.1 的发布与 2026-10-09 registry 冒烟保留为历史证据，详见文末验收记录。
+截至 2026-10-12，两包 0.1.2 已公开可用，npm view 版本 / SHA-1 与发布归档一致。npm create ewp@latest 实际使用 0.1.2，全新英文 Vue TS + Codex / Claude 项目的 registry 安装、help、check（3 passed）、typecheck、frontend:build 全部成功，安装树确认 runtime / creator 均为 0.1.2。dist-tags.latest 的独立查询待主 agent 补充；0.1.1 冒烟仅为历史证据。
 
 Upgrade the global CLI with `npm install -g easywindowspack@latest`.
-After 0.1.2 is published, update the app runtime with
+Update the app runtime with
 `npm install easywindowspack@^0.1.2` inside frontend.
-Use `npm create ewp@latest` for new apps; `@0.1.1` pins the historical published
+Use `npm create ewp@latest` for new apps; `@0.1.2` pins the verified published
 version. Dependency upgrades do not rewrite
 existing scripts, READMEs, AI guidance, or demos.
-全局安装和创建跟随 registry；0.1.2 发布后再使用 ^0.1.2，@0.1.1 可固定历史版本；旧项目 scripts 与指引需自行同步。
+全局安装和创建可直接使用 registry；@0.1.2 可固定已验证版本，已有项目在 frontend 内升级 runtime 至 ^0.1.2；旧项目 scripts 与指引需自行同步。
 
 ```powershell
 npm install -g easywindowspack@latest
@@ -137,9 +139,10 @@ route through `docs/.easy-dev/skills/easy-dev/SKILL.md` to shared guidance at
 Non-interactive/`--yes` defaults: `ewp-app`, `vanilla`, no AI, no installation,
 no startup. Language follows the priority below, falling back to `zh-CN`.
 Other development tasks run within a project. Source npm manifests and the
-lockfile are aligned at 0.1.2, pending publication. This documentation task
-does not pack or publish; published 0.1.1 tarballs remain historical artifacts.
-0.1.2 源码第一项为人类语言，JS/TS 是后续选项；AI 仅生成所选工具目录，各工具读取共用指引。源码 npm manifests 与锁文件已同步为 0.1.2 待发布；本文档任务不打包或发布，已发 0.1.1 tarball 保留历史状态。
+lockfile are aligned at 0.1.2; both packages are publicly available, with registry
+version/hash queries and the fresh Vue TS smoke test passed. This documentation update retains
+the existing validated tarballs without repacking or publishing.
+0.1.2 源码第一项为人类语言，JS/TS 是后续选项；AI 仅生成所选工具目录，各工具读取共用指引。源码 npm manifests 与锁文件已同步为 0.1.2，两包已公开可用，registry 版本 / hash 查询与全新 Vue TS 项目冒烟通过；本次保留已验证 tarball，不重打包或发布。
 
 ## Project language / 项目语言
 
@@ -298,3 +301,5 @@ Pack tarballs do not establish publication, registry installation or native laun
 success. See the repository [bilingual npm/Vite guide](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-vite.md)
 and [current validation record](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md).
 These are repository docs, not assets shipped in the npm package.
+npm 0.1.2 的 README 随已发布 tarball 固定；最新说明见上述 Git 文档。
+The npm 0.1.2 README retains its publication snapshot; see the Git docs above for current guidance.
