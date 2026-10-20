@@ -68,7 +68,7 @@ npm run dev
 
 打包前先完成 `init`；构建会自动编译前端。浏览器适合调试界面，原生窗口、托盘和 Python 桥接需在桌面验证。
 
-当前 npm 源码面向 **0.1.3，尚未发布，待发布验证**；`@latest` 的公开版本以 npm registry 为准。Python **0.3.0** 尚未发布到 PyPI。配置与安装说明见 [打包指南](docs/packaging.md)，发布状态与历史证据见 [验收记录](docs/npm-validation.md)。
+两个 npm 包 **0.1.3 已正式公开可用**，`@latest` 均指向 0.1.3，registry 安装与构建验收通过。Python **0.3.0** 尚未发布到 PyPI。配置与安装说明见 [打包指南](docs/packaging.md)，详细结果见 [验收记录](docs/npm-validation.md)。
 
 也可双击项目根的 `startup.cmd` 打开任务菜单（需要 Python）。
 

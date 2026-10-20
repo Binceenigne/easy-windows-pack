@@ -17,7 +17,10 @@ The wizard colors headings, questions, option labels, actual execution stages an
 | Node creator/runtime 回归 / Regression | **145 passed / 0 failed / 5 conditional skips**；日志 `output/npm-0.1.3-tests.log`。跳过需要 Python 或六模板集成环境的原有条件测试；本次未重跑 Python/冻结安装器 / Existing environment-gated Python and six-template tests were skipped; native packaging was not rerun. |
 | 真实 tarball 独立安装 / Physical archive installation | **passed**；`build/npm-0.1.3-validation/tarball-orVksi/report.json`。双语欢迎屏/完整帮助/ANSI/无项目 create、生成 AI Skill、全新 Vanilla 项目 check（3 passed）和前端构建 / Bilingual output, creator delegation, AI guidance, runtime checks and Vite build. |
 | 最终归档对照 / Final archive comparison | **passed**；`build/npm-0.1.3-validation/final-archive-rh1TlE/report.json`。README 精简重打包后，其他 46/16 个文件与已安装验收包内容一致（识别 npm shebang 换行规范化）/ Repacked README matches source; remaining runtime files match the installed and tested archives, accounting for npm shebang normalization. |
-| 发布 / Publication | 待 npm 重新认证与正式发布；当前 registry latest 为 0.1.2 / Awaiting renewed npm authentication and publication; registry latest is currently 0.1.2. |
+| 发布 / Publication | **两包 0.1.3 已公开可用**；账号 binceengine 通过 npm CLI 重新授权后依次发布成功，版本与 SHA-1 查询匹配下表，两包 `dist-tags.latest` 均为 **0.1.3** / Both packages are public; official publication succeeded after renewed CLI authorization, registry versions and hashes match below, and both latest tags are 0.1.3. |
+| Registry 独立安装 / Independent registry installation | **passed**；`build/npm-0.1.3-validation/registry-HLTGwM/report.json`。两包实际安装为 0.1.3，锁文件来源均为官方 registry；双语 welcome/help、强制 ANSI、无项目 create 与共用 Skill 检查、全新 Vanilla 的 check（3 passed）和 Vite 构建全部通过 / Installed versions and official origins verified; bilingual output, ANSI, creator delegation, shared Skill, runtime checks and build passed. |
+| 官方 latest 创建 / Official latest creation | `npm create ewp@latest` 生成英文 Vue TS + Codex/Claude 项目 `build/npm-registry-013-8a50b3462a7f4873bcd485deb635f677`；registry 安装、check（**3 passed**）、typecheck、frontend:build 均成功，安装树 `easywindowspack@0.1.3 → create-ewp@0.1.3` / Fresh latest-generated Vue TS app passed registry install, checks, typecheck and build with both packages at 0.1.3. |
+| 本机全局 CLI / Global CLI | 官方 registry 全局升级两包至 0.1.3，在用户目录执行 `ewp --version`、英文欢迎屏和 `ewp -h --lang en` 均成功 / Both global packages upgraded from the official registry; version, welcome and full help work outside projects. |
 
 本机首次安装后 Rollup 原生模块短暂报 `ERR_DLOPEN_FAILED`（Windows 文件被其他进程占用）；复用同一安装项目后构建通过。进程回归超时已保留合理上限，最终运行无超时。未修改系统安全设置或原生依赖实现。
 
@@ -27,6 +30,10 @@ The first new installation hit a transient Windows file lock on Rollup's native 
 | --- | --- | --- |
 | `create-ewp-0.1.3.tgz` (88,823 bytes) | `444e29072af6f079ee5d7bd3f2d4f3cb60516ed4` | `60a884ade6bf949fb5fcc57767ea8c8a2e2cd27e22196bce803318bbfef155d7` |
 | `easywindowspack-0.1.3.tgz` (28,591 bytes) | `3b0b81011442940f4be66ffa585ceae15af9d223` | `552bf8fd1880b705666b34194689a84bf2821a57c7abff9dfa4d7747ebb6fcb1` |
+
+发布直接使用上述已验证归档，未重新打包或覆盖版本。认证过期时的失败尝试未发布版本；恢复官方 CLI 授权后两个 `npm publish` 返回成功，并经独立 registry 查询及安装确认。另从 registry 下载两份正式 tarball，逐字节与本地归档相同，SHA-1 / SHA-256 均匹配上表。包 README 保留发布快照；本次收尾只更新 Git 中的发布状态与验收文档。
+
+Publication used these exact validated archives without repacking or overwriting a version. Earlier attempts with expired credentials did not publish; both official publish commands succeeded after renewed CLI authorization and were independently confirmed by registry queries and installation. Both official tarballs were also downloaded and match the local archives byte for byte, with SHA-1 and SHA-256 matching the table. Package READMEs retain their publication snapshots; this follow-up updates Git publication status and validation docs only.
 
 Python 仍为 **0.3.0 本地 wheel、PyPI 未发布**。以下 0.1.2 及更早验收保留原日期与范围。
 Python remains **0.3.0 as a local wheel, unpublished on PyPI**. Older checks below retain their original dates and scope.

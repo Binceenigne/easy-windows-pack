@@ -68,7 +68,7 @@ Run all subsequent npm commands in `frontend/`. `init` creates or reuses the pro
 
 Complete `init` before packaging; builds compile the frontend automatically. Use the browser to debug UI, and the desktop app to verify native windows, tray, and the Python bridge.
 
-Current npm sources target **0.1.3, not yet published; publication validation is pending**. The public `@latest` version is determined by the npm registry. Python **0.3.0** has not been published to PyPI. See the [packaging guide](docs/packaging.md) for configuration and installation, and [validation](docs/npm-validation.md) for publication status and historical evidence.
+Both npm packages are **publicly available at 0.1.3**, with `@latest` pointing to 0.1.3 for each. Registry installation and build validation passed. Python **0.3.0** has not been published to PyPI. See the [packaging guide](docs/packaging.md) for configuration and installation, and [validation](docs/npm-validation.md) for detailed results.
 
 You can also double-click the project's root `startup.cmd` to open the task menu (requires Python).
 

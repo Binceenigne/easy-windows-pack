@@ -28,7 +28,7 @@ scripts/prepare-npm.mjs 从 frontend、backend/base/ewpcore 和 scripts 单源�
 
 app 按项目根 ewp.pack.json 构建 onefile / onedir，installer 构建应用及安装包；--config、--mode、--installer 可用于相应构建任务。npm run build -- --mode onedir 等显式打包参数转到配置构建并输出 output/apps；无打包参数的 legacy build/exe 仍输出 output/exe。新生成项目提供默认 ewp.pack.json，省略配置文件的 Python 构建使用内置默认值，不写文件。安装配置与实际 CLI 参数以 packaging.md 及解析器为准。
 
-截至 2026-10-20，两个 npm 包当前源码面向 0.1.3，尚未发布，待发布验证；0.1.2 为历史已发布版本，详情保留在 [验收记录](npm-validation.md)。发布前需同步 manifests、锁文件及 runtime 对 creator、生成项目对 runtime 的 ^0.1.3 依赖目标；顺序为 create-ewp → easywindowspack，发布后核对版本、dist-tags.latest、归档 hash 和干净项目安装/检查，再由主 agent 更新最终 release 记录。发布、推送与提交按用户授权和当前任务范围执行，已获授权不重复确认。npm install -g easywindowspack@latest / npm create ewp@latest 使用 registry 当前公开版本，发布完成前不代表 0.1.3；@0.1.2 可固定历史已验证版本。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
+截至 2026-10-20，create-ewp 与 easywindowspack 的 0.1.3 已正式公开发布；两包版本与 dist-tags.latest 均为 0.1.3，registry tarball 逐字节匹配最终归档，SHA-1 / SHA-256 已确认。manifests、锁文件及两处 ^0.1.3 依赖已对齐。本轮 Node 145 passed / 5 conditional skips；独立 registry 安装、双语欢迎屏/帮助/创建/Skill、Vanilla 检查和构建、latest 生成 Vue TS 的检查/类型检查/构建均通过；全局 CLI 已升级。详细证据见 [验收记录](npm-validation.md)。发布、推送与提交按用户授权和当前任务范围执行，已获授权不重复确认。npm install -g easywindowspack@latest / npm create ewp@latest 当前使用公开的 0.1.3，也可用 @0.1.3 固定版本。真实实现及最新专题文档优先于旧 Skill 分片中的版本、构建语义与发布假设；历史验收不作为当前测试通过证据。
 
 本入口不是大型检查表，不要求全仓扫描或多轮自检。用户要求与宿主有效规则优先；详细默认约定由主 Skill 单点维护。
 <!-- easy-dev:end -->

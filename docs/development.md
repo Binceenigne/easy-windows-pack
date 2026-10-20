@@ -4,9 +4,9 @@
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前源码面向 **0.1.3，尚未发布，待发布验证**；0.1.2 是历史已发布版本，证据见 [验收记录](npm-validation.md)。本文创建、欢迎屏、语言、帮助/菜单及完整构建约定描述当前源码。创建与发布流程见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 的 **0.1.3 已正式公开可用**；registry 版本、`dist-tags.latest=0.1.3` 与最终归档哈希已确认，详细证据、registry 冒烟进展与历史验收见 [验收记录](npm-validation.md)。本文创建、欢迎屏、语言、帮助/菜单及完整构建约定描述 0.1.3 的产品行为。创建与发布流程见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Current sources for both ESM packages target **0.1.3, not yet published; publication validation is pending**. Version 0.1.2 is the historical published release; evidence remains in the [validation record](npm-validation.md). Creation, welcome, language, help/menu and full-build contracts here describe current sources. See the [npm guide](npm-vite.md) for creation and release workflow.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages, `easywindowspack` and `create-ewp`, are **publicly available at 0.1.3**. Registry versions, `dist-tags.latest=0.1.3` and final archive hashes are confirmed; see the [validation record](npm-validation.md) for detailed evidence, registry smoke progress and historical checks. Creation, welcome, language, help/menu and full-build contracts here describe 0.1.3 behavior. See the [npm guide](npm-vite.md) for creation and release workflow.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 
