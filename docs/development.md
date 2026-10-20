@@ -167,6 +167,18 @@ The Tk installer shows directory, optional features, feature-filtered prerequisi
 
 Both `build/` and `output/` are generated directories, not source or documentation locations. Full builds run sequentially and stop on failure. EXE and full builds require Windows. Progress reflects completed stages: one of four stages is 25%, not a time estimate or simulated download/compiler progress. Child output streams to the terminal; errors and Ctrl+C record completed stages without claiming success.
 
+支持 VT 的交互终端中，阶段进度固定在当前输出视口底部两行：阶段说明在上，蓝色 `━ / ┄` 条和一位小数百分比在下；日志在上方区域继续滚动。按已完成阶段计算，`52.4%` 只是格式示例，不模拟任务内部进度。窗口缩放时重新定位；完成、失败或 Ctrl+C 后释放固定区域并恢复控制台模式。用户手动滚动历史缓冲区时，视口行为仍由终端管理。
+
+In an interactive VT terminal, two rows are reserved at the bottom of the live output viewport: stage information above a blue `━ / ┄` bar and a one-decimal percentage. Logs scroll in the upper region. Percentages still reflect completed stages; `52.4%` illustrates formatting, not simulated internal progress. Resizing repositions the footer; completion, errors and Ctrl+C restore the scrolling region and console mode. Scrolling into terminal history remains controlled by the terminal.
+
+管道、重定向、`TERM=dumb`、不支持 VT 或过小的终端自动使用原有逐行文本；日志文件不写入固定栏控制码。`NO_COLOR` 或 `FORCE_COLOR=0` 关闭蓝色但保留支持终端中的固定位置；`EWP_PROGRESS=plain` 关闭固定栏。子任务共享外层栏，不重复接管终端；长驻 dev/browser/preview 沿用原输出。
+
+Pipes, redirection, `TERM=dumb`, unavailable VT support and very small terminals fall back to ordinary line output. Log files contain no footer control sequences. `NO_COLOR` or `FORCE_COLOR=0` disables blue without disabling positioning on supported terminals; `EWP_PROGRESS=plain` disables the pinned footer. Nested tasks share the outer footer, and long-running dev/browser/preview output is unchanged.
+
+本次验证：终端专用测试 **17 passed**、开发任务回归 **55 passed**；真实 Windows ConPTY 与 xterm 屏幕验收 **5/5 状态通过**，覆盖 100 行子进程输出、80×24 → 100×30 缩放、ANSI 分块、未换行日志衔接、阶段切换与退出后全屏滚动恢复。另用 `createProject()` 新建 Vanilla 应用，核对生成脚本与源码逐字节一致，并以该脚本完成真实 Vite 编译和同组终端验收。报告 `build/terminal-progress-validation/report.json`、`generated-report.json`；真实画面记录为 `output/designs/terminal-progress-evidence.html`。以上验证不代表历史已发布 0.1.3 tarball 自动包含本次改动。
+
+Validation for this change: **17 terminal tests** and **55 development-task tests passed**. Real Windows ConPTY/xterm validation passed **5/5 screen states**, covering 100 child-output lines, resizing from 80×24 to 100×30, split ANSI, unfinished log lines, stage changes and full-viewport scrolling after completion. A fresh Vanilla app from `createProject()` was also checked: its generated script matches the source byte for byte and completed actual Vite compilation and the same terminal checks. Reports are `build/terminal-progress-validation/report.json` and `generated-report.json`; recorded screens are in `output/designs/terminal-progress-evidence.html`. Previously published 0.1.3 tarballs do not automatically include these changes.
+
 初始化、wheel、exe、bundle、完整构建会打印日志位置。独立 `test`、browser、demo 和 info 主要输出到终端；完整构建中的测试输出包含在日志中。资源分别检查：框架 wheel 保留 `easy_windows_pack` 核心及 `share/easy-windows-pack/frontend/` 源组件/桥接/契约；生成应用 wheel 根据自身 metadata 携带编译页面/assets；EXE 只携带 `output/frontend/` 编译前端；source bundle 保留源码和 docs，不夹带 `.venv`、缓存或历史产物。单源 prepare 与 npm pack 见 [npm 指南](npm-vite.md)。
 
 Initialization and packaging tasks print a log path; standalone test, browser, demo and info mainly use the terminal. Inspect distributions separately: framework wheels contain core plus source components/bridges/contracts; generated app wheels include compiled assets according to their metadata; EXEs carry only compiled `output/frontend/` as frontend resources; source bundles retain sources and docs, excluding environments, caches and old outputs. See the [npm guide](npm-vite.md) for preparation and packing.

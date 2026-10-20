@@ -54,6 +54,8 @@ Run all subsequent npm commands in `frontend/`. `init` creates or reuses the pro
 
 `dev` opens the desktop window and hot updates frontend changes; press Ctrl+C to stop.
 
+Source now includes a blue two-row footer for Python init/build stage progress, planned for newly created apps in npm **0.1.4** (not yet published); see the [development guide](docs/development.md) for terminal support, fallbacks and controls.
+
 ## Common commands
 
 | Command | Purpose |

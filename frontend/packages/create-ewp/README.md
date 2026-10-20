@@ -1,6 +1,6 @@
 # create-ewp
 
-Version 0.1.3 · MIT
+Version 0.1.4 · MIT
 
 用 Vite、Python 与 pywebview 创建 Windows 桌面应用，提供 Vanilla / Vue / React × JavaScript / TypeScript 六套模板。
 Create Windows desktop apps with Vite, Python and pywebview, using six Vanilla / Vue / React × JavaScript / TypeScript templates.
@@ -34,11 +34,14 @@ npm run dev
 `init` 创建或复用项目根 `.venv`、安装依赖并编译前端，无需手动激活；`dev` 启动桌面 HMR，Ctrl+C 停止。
 `init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; `dev` starts desktop HMR, stopped with Ctrl+C.
 
+0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动；已有项目仅升级 npm 依赖不会改写该脚本（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)）。
+New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above; npm dependency upgrades do not rewrite this script in existing apps (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)).
+
 `--install` 仅安装 npm 依赖；`--start` 依次安装、初始化 Python 并启动桌面，不能与 `--no-install` 同用。
 `--install` installs npm dependencies only; `--start` installs, initializes Python and launches desktop, and cannot be combined with `--no-install`.
 
-`@latest` 的实际版本以 `npm view create-ewp version`、`npm view easywindowspack version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md)为准。
-For actual `@latest` versions, use these npm queries and the linked validation record.
+公开版本以 `npm view create-ewp version`、`npm view easywindowspack version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md)为准。
+Confirm published versions with these npm queries and the linked validation record.
 
 ## 模板与语言 / Templates and language
 
@@ -51,8 +54,8 @@ For actual `@latest` versions, use these npm queries and the linked validation r
 六模板均含 SVG 品牌 welcome、计数器、Windows / macOS 窗口外观选择与系统浅深色；TS 模板另有 `typecheck`。
 All six include an SVG-branded welcome, counter, Windows / macOS window themes and system light/dark appearance; TS templates also provide `typecheck`.
 
-生成应用版本从 **0.1.0** 开始，独立于框架 npm **0.1.3**；应用依赖为 `easywindowspack@^0.1.3`。
-Generated apps start at **0.1.0**, independently of framework npm **0.1.3**, and depend on `easywindowspack@^0.1.3`.
+生成应用版本从 **0.1.0** 开始，独立于本轮框架 npm **0.1.4**；应用依赖目标为 `easywindowspack@^0.1.4`。
+Generated apps start at **0.1.0**, independently of framework npm **0.1.4**; the app dependency target is `easywindowspack@^0.1.4`.
 
 `--yes` / 非交互默认：`ewp-app`、`vanilla`、无 AI、不安装、不启动；`--dir` 可指定含空格的目标路径。
 `--yes` / non-interactive defaults: `ewp-app`, `vanilla`, no AI, no installation or startup; `--dir` accepts paths with spaces.
@@ -111,8 +114,8 @@ ewp -h
 欢迎、帮助和创建无需已有项目；开发、构建与菜单在项目内运行。
 Welcome, help and creation need no existing project; development, builds and the menu run inside one.
 
-欢迎屏与向导共享 `create-ewp/terminal`，runtime 依赖 `create-ewp@^0.1.3`；向导标题版本读取 creator manifest。标题、问题、选项、执行与结果反馈着色；仅计实际执行阶段：创建 1 步、含安装 2 步、安装并启动 4 步。
-Welcome and wizard share `create-ewp/terminal`; runtime depends on `create-ewp@^0.1.3`, and wizard title version comes from the creator manifest. Titles, questions, choices, execution and results use color; only executed stages count: create 1, with installation 2, with installation and startup 4.
+欢迎屏与向导共享 `create-ewp/terminal`，runtime 的依赖目标为 `create-ewp@^0.1.4`；向导标题版本读取 creator manifest。标题、问题、选项、执行与结果反馈着色；仅计实际执行阶段：创建 1 步、含安装 2 步、安装并启动 4 步。
+Welcome and wizard share `create-ewp/terminal`; the runtime dependency target is `create-ewp@^0.1.4`, and wizard title version comes from the creator manifest. Titles, questions, choices, execution and results use color; only executed stages count: create 1, with installation 2, with installation and startup 4.
 颜色优先级：设置 `NO_COLOR`（含空值）最高，关闭颜色；否则 `FORCE_COLOR=0` 关闭，其他已设置值（含空值）开启；默认仅 TTY 且 `TERM` 非 `dumb` 开启，管道为纯文案。仅作用于自有输出。
 Color priority: set `NO_COLOR` (even empty) disables first; otherwise `FORCE_COLOR=0` disables and any other set value (even empty) enables. By default, only a TTY with `TERM` other than `dumb` enables color; pipes use plain text. Applies to first-party output only.
 

@@ -1,6 +1,6 @@
 # easywindowspack
 
-Version 0.1.3 · MIT
+Version 0.1.4 · MIT
 
 共享窗口外壳、桌面组件和 `ewp` CLI，连接 Vite 前端与 Python / pywebview 桌面，支持 Windows / macOS 窗口外观。
 Shared window frames, desktop components and the `ewp` CLI connect Vite frontends with Python / pywebview desktops, with Windows / macOS window themes.
@@ -27,11 +27,11 @@ npm run dev
 
 `init` 创建或复用根 `.venv`、安装依赖并编译前端，无需手动激活；`dev` 提供桌面 HMR，Ctrl+C 停止。
 `init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; `dev` provides desktop HMR, stopped with Ctrl+C.
-已有应用在 `frontend/` 用 `npm install easywindowspack@latest` 安装或升级；依赖升级不改写脚本、README、AI 指引或 demo。
-In an existing app, install or upgrade with `npm install easywindowspack@latest` inside `frontend/`; dependency upgrades do not rewrite scripts, README, AI guidance or demos.
+0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)）；已有应用在 `frontend/` 用 `npm install easywindowspack@latest` 升级不会改写该脚本、README、AI 指引或 demo。
+New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)); upgrading with `npm install easywindowspack@latest` inside an existing app's `frontend/` does not rewrite this script, README, AI guidance or demos.
 
-`@latest` 的实际版本以 `npm view easywindowspack version`、`npm view create-ewp version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md)为准。
-For actual `@latest` versions, use these npm queries and the linked validation record.
+公开版本以 `npm view easywindowspack version`、`npm view create-ewp version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md)为准。
+Confirm published versions with these npm queries and the linked validation record.
 
 ## 六模板、语言与 AI / Templates, language and AI
 
@@ -41,8 +41,8 @@ For actual `@latest` versions, use these npm queries and the linked validation r
 | Vue | `vue` | `vue-ts` |
 | React | `react` | `react-ts` |
 
-模板含 SVG welcome、计数器、窗口外观选择和系统浅深色。生成应用 **0.1.0** 与框架 npm **0.1.3** 独立，应用依赖 `easywindowspack@^0.1.3`。
-Templates include an SVG welcome, counter, window themes and system light/dark appearance. Generated app version **0.1.0** is independent of framework npm **0.1.3**; apps depend on `easywindowspack@^0.1.3`.
+模板含 SVG welcome、计数器、窗口外观选择和系统浅深色。生成应用 **0.1.0** 与本轮框架 npm **0.1.4** 独立，应用依赖目标为 `easywindowspack@^0.1.4`。
+Templates include an SVG welcome, counter, window themes and system light/dark appearance. Generated app version **0.1.0** is independent of framework npm **0.1.4**; the app dependency target is `easywindowspack@^0.1.4`.
 
 `--lang zh-CN` / `--lang en` 跳过语言提示并保存到 `frontend/package.json` 的 `ewp.language`；CLI 优先级：`--lang` → `EWP_LANG` → 保存值 → `zh-CN`。
 `--lang zh-CN` / `--lang en` skips the language prompt and saves `ewp.language` in `frontend/package.json`; CLI priority: `--lang` → `EWP_LANG` → saved value → `zh-CN`.
@@ -120,8 +120,8 @@ ewp -h
 `ewp -h` / `ewp help` / `ewp --help` 提供完整教程，`ewp create -h` 显示创建帮助；欢迎、帮助和创建无需已有项目，其余任务在项目内运行。
 `ewp -h` / `ewp help` / `ewp --help` provides the full guide; `ewp create -h` shows creation help. Welcome, help and creation need no existing project; other tasks run inside one.
 
-runtime 依赖 `create-ewp@^0.1.3`，`ewp create` 转调用 `create-ewp/cli`；欢迎与向导共享 `create-ewp/terminal`。向导标题读取 creator manifest，标题、问题、选项、执行与结果反馈着色，仅计实际阶段：创建 1 步、含安装 2 步、安装并启动 4 步。
-Runtime depends on `create-ewp@^0.1.3`; `ewp create` delegates to `create-ewp/cli`, and welcome and wizard share `create-ewp/terminal`. The wizard title reads the creator manifest; titles, questions, choices, execution and results use color, counting actual stages only: create 1, with installation 2, with installation and startup 4.
+runtime 的依赖目标为 `create-ewp@^0.1.4`，`ewp create` 转调用 `create-ewp/cli`；欢迎与向导共享 `create-ewp/terminal`。向导标题读取 creator manifest，标题、问题、选项、执行与结果反馈着色，仅计实际阶段：创建 1 步、含安装 2 步、安装并启动 4 步。
+The runtime dependency target is `create-ewp@^0.1.4`; `ewp create` delegates to `create-ewp/cli`, and welcome and wizard share `create-ewp/terminal`. The wizard title reads the creator manifest; titles, questions, choices, execution and results use color, counting actual stages only: create 1, with installation 2, with installation and startup 4.
 颜色优先级：设置 `NO_COLOR`（含空值）最高，关闭；否则 `FORCE_COLOR=0` 关闭，其他已设置值（含空值）开启；默认仅 TTY 且 `TERM` 非 `dumb` 开启，管道为纯文案，仅影响自有输出。
 Color priority: set `NO_COLOR` (even empty) disables first; otherwise `FORCE_COLOR=0` disables and any other set value (even empty) enables. By default, only a TTY with `TERM` other than `dumb` enables color; pipes use plain text. First-party output only.
 

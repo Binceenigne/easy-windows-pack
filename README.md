@@ -54,6 +54,8 @@ npm run dev
 
 `dev` 打开桌面窗口，修改前端即可热更新；按 Ctrl+C 停止。
 
+源码已实现 Python init/build 的底部固定两行蓝色阶段进度，拟随 npm **0.1.4** 提供给新建项目（尚未发布）；终端支持、回退与开关见 [开发手册](docs/development.md)。
+
 ## 常用命令
 
 | 命令 | 用途 |

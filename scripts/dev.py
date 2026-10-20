@@ -19,6 +19,7 @@ import subprocess
 import sys
 import threading
 from typing import Callable, Sequence, TextIO
+import unicodedata
 import webbrowser
 
 
@@ -43,6 +44,245 @@ LABELS = {
     "installer": ("构建安装包", "Build installer"),
 }
 LANGUAGE: ContextVar[str | None] = ContextVar("ewp_dev_language", default=None)
+ACTIVE_PROGRESS: ContextVar["TerminalProgress | None"] = ContextVar("ewp_terminal_progress", default=None)
+
+
+class TerminalProgress:
+    """Reserve the last two viewport rows while logs scroll in the upper region."""
+
+    def __init__(self, stream: TextIO | None = None):
+        self.stream = stream if stream is not None else sys.stdout
+        self.parent: TerminalProgress | None = ACTIVE_PROGRESS.get()
+        self.active = False
+        self.done = self.total = 0
+        self.label = ""
+        self.size: tuple[int, int] | None = None
+        self._restore_console: Callable[[], None] = lambda: None
+        self._cursor_position: Callable[[], tuple[int, int] | None] = lambda: None
+        self._output_tail = ""
+
+    def _size(self) -> tuple[int, int] | None:
+        try:
+            size = os.get_terminal_size(self.stream.fileno())
+            return size.columns, size.lines
+        except (OSError, ValueError, AttributeError):
+            return None
+
+    def _enable_vt(self) -> bool:
+        if os.name != "nt":
+            return bool(os.environ.get("TERM"))
+        # Windows consoles do not necessarily start with VT processing enabled.
+        try:
+            import ctypes
+            from ctypes import wintypes
+            import msvcrt
+
+            class Coord(ctypes.Structure):
+                _fields_ = [("x", wintypes.SHORT), ("y", wintypes.SHORT)]
+
+            class Rect(ctypes.Structure):
+                _fields_ = [("left", wintypes.SHORT), ("top", wintypes.SHORT),
+                            ("right", wintypes.SHORT), ("bottom", wintypes.SHORT)]
+
+            class ScreenInfo(ctypes.Structure):
+                _fields_ = [("size", Coord), ("cursor", Coord), ("attributes", wintypes.WORD),
+                            ("window", Rect), ("maximum", Coord)]
+
+            console = ctypes.WinDLL("kernel32", use_last_error=True)
+            console.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+            console.GetConsoleMode.restype = wintypes.BOOL
+            console.SetConsoleMode.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+            console.SetConsoleMode.restype = wintypes.BOOL
+            console.GetConsoleScreenBufferInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(ScreenInfo)]
+            console.GetConsoleScreenBufferInfo.restype = wintypes.BOOL
+            handle = msvcrt.get_osfhandle(self.stream.fileno())
+            mode = wintypes.DWORD()
+            if not console.GetConsoleMode(handle, ctypes.byref(mode)):
+                return False
+            original = mode.value
+            if not console.SetConsoleMode(handle, original | 0x0004):
+                return False
+
+            def cursor_position() -> tuple[int, int] | None:
+                info = ScreenInfo()
+                if not console.GetConsoleScreenBufferInfo(handle, ctypes.byref(info)):
+                    return None
+                return info.cursor.x - info.window.left + 1, info.cursor.y - info.window.top + 1
+
+            self._cursor_position = cursor_position
+            self._restore_console = lambda: console.SetConsoleMode(handle, original)
+            return True
+        except (OSError, ValueError, AttributeError):
+            return False
+
+    def __enter__(self):
+        size = self._size()
+        if (not self.stream.isatty() or os.environ.get("TERM") == "dumb"
+                or os.environ.get("EWP_PROGRESS") == "plain"
+                or os.environ.get("EWP_PROGRESS_ACTIVE") == "1"
+                or ACTIVE_PROGRESS.get() is not None
+                or size is None or size[0] < 20 or size[1] < 5):
+            return self
+        if not self._enable_vt():
+            return self
+        self.size = size
+        self.active = True
+        # Make room if the existing cursor was already near the bottom.
+        # No alternate screen: existing output and scrollback remain available.
+        try:
+            self.stream.write(f"\n\n\x1b[2A\r\x1b7\x1b[1;{size[1] - 2}r\x1b8")
+            self.stream.flush()
+        except BaseException:
+            self._cleanup()
+            raise
+        return self
+
+    @staticmethod
+    def _fit(value: str, columns: int) -> str:
+        value = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", value)
+        result = ""
+        used = 0
+        for char in value:
+            if unicodedata.category(char).startswith("C"):
+                continue
+            width = 0 if unicodedata.combining(char) else 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+            if used + width > columns:
+                break
+            result += char
+            used += width
+        return result
+
+    def _bar(self, columns: int) -> str:
+        width = max(1, min(44, columns - 13))
+        percent = self.done * 100 / self.total if self.total else 0.0
+        filled = round(width * percent / 100)
+        glyphs = "━┄"
+        try:
+            glyphs.encode(self.stream.encoding or "utf-8")
+        except UnicodeEncodeError:
+            glyphs = "#-"
+        bar = glyphs[0] * filled + glyphs[1] * (width - filled)
+        return f"  [{bar}]  {percent:5.1f}%"
+
+    def refresh(self) -> None:
+        if not self.active:
+            return
+        size = self._size()
+        if size is None or size[0] < 20 or size[1] < 5:
+            self._cleanup()
+            return
+        resized = size != self.size
+        previous = self.size
+        self.size = size
+        columns, rows = size
+        # Save/restore never leaves the log cursor in the status area.
+        prefix = ""
+        cursor = self._cursor_position()
+        if not resized and cursor is not None and cursor[1] > rows - 2:
+            # Windows cooked input can echo a newline beyond VT scroll margins.
+            # Bring logging back inside its region before painting the footer.
+            prefix = f"\x1b[{rows - 2};1H\n"
+        prefix += "\x1b7"
+        if resized:
+            if previous is not None:
+                for old_row in (previous[1] - 1, previous[1]):
+                    if old_row <= rows:
+                        prefix += f"\x1b[{old_row};1H\x1b[2K"
+            prefix += f"\x1b[r\x1b[1;{rows - 2}r"
+        color = ("NO_COLOR" not in os.environ and os.environ.get("FORCE_COLOR") != "0")
+        blue, reset = ("\x1b[94m", "\x1b[0m") if color else ("", "")
+        label = self._fit(f"  {self.done}/{self.total} {self.label}", columns - 1)
+        self.stream.write(prefix + f"\x1b[{rows - 1};1H\x1b[2K{label}"
+                          + f"\x1b[{rows};1H\x1b[2K{blue}{self._bar(columns)}{reset}\x1b8")
+        if resized:
+            # Preserve unfinished log lines across a resize; only clamp a cursor
+            # that is now outside the resized logging area.
+            if cursor is not None:
+                self.stream.write(f"\x1b[{min(cursor[1], rows - 2)};{min(cursor[0], columns - 1)}H")
+        self.stream.flush()
+
+    def update(self, done: int, total: int, label: str) -> None:
+        self.done, self.total, self.label = done, total, label
+        self.refresh()
+
+    def write(self, value: str) -> None:
+        value, self._output_tail = self._complete_output(self._output_tail + value)
+        self.refresh()
+        self.stream.write(value)
+        self.stream.flush()
+
+    @staticmethod
+    def _complete_output(value: str) -> tuple[str, str]:
+        """Never interleave footer escapes into a child's partial VT sequence."""
+        index = 0
+        while index < len(value):
+            if value[index] != "\x1b":
+                index += 1
+                continue
+            start = index
+            index += 1
+            if index == len(value):
+                return value[:start], value[start:]
+            kind = value[index]
+            index += 1
+            if kind == "[":
+                while index < len(value) and not "@" <= value[index] <= "~":
+                    index += 1
+                if index == len(value):
+                    return value[:start], value[start:]
+                index += 1
+            elif kind in "]PX^_":
+                while index < len(value):
+                    if value[index] == "\x07" and kind == "]":
+                        index += 1
+                        break
+                    if value[index:index + 2] == "\x1b\\":
+                        index += 2
+                        break
+                    index += 1
+                else:
+                    return value[:start], value[start:]
+            elif " " <= kind <= "/":
+                while index < len(value) and " " <= value[index] <= "/":
+                    index += 1
+                if index == len(value):
+                    return value[:start], value[start:]
+                index += 1
+        return value, ""
+
+    def _cleanup(self) -> None:
+        try:
+            if self.active and self.size is not None:
+                rows = self.size[1]
+                self.stream.write(f"\x1b7\x1b[{rows - 1};1H\x1b[2K\x1b[{rows};1H\x1b[2K\x1b[r\x1b8")
+                self.stream.flush()
+        finally:
+            self.active = False
+            self._restore_console()
+            self._restore_console = lambda: None
+
+    def __exit__(self, error_type, error, traceback):
+        was_active = self.active
+        self._cleanup()
+        if was_active and error_type is None and self.total:
+            print(f"{self._bar(self.size[0] if self.size else 80)}  {self.done}/{self.total}",
+                  file=self.stream, flush=True)
+
+
+def active_terminal() -> TerminalProgress | None:
+    terminal = ACTIVE_PROGRESS.get()
+    while terminal is not None and not terminal.active:
+        terminal = terminal.parent
+    return terminal
+
+
+def terminal_write(value: str) -> None:
+    progress = active_terminal()
+    if progress is not None:
+        progress.write(value)
+    else:
+        sys.stdout.write(value)
+        sys.stdout.flush()
 
 
 def project_language(root: Path, override: str | None = None) -> str:
@@ -134,7 +374,7 @@ class DevError(RuntimeError):
 
 
 def emit(message: str, log: TextIO | None = None) -> None:
-    print(message, flush=True)
+    terminal_write(message + "\n")
     if log is not None:
         log.write(message + "\n")
         log.flush()
@@ -147,6 +387,8 @@ def child_environment(root: Path = ROOT) -> dict[str, str]:
     env.pop("PYTHONPATH", None)
     env.update(PYTHONUTF8="1", PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
     env["EWP_LANG"] = LANGUAGE.get() or project_language(root)
+    if active_terminal() is not None:
+        env["EWP_PROGRESS_ACTIVE"] = "1"
     return env
 
 
@@ -185,16 +427,21 @@ def run_command(
 ) -> None:
     """Run argv, explicitly quoting Windows batch files; tee output for logs."""
     emit(text("执行：", "Run: ", root) + subprocess.list2cmdline(list(command)), log)
+    progress = active_terminal()
+    captured = log is not None or (progress is not None and progress.active)
+    environment = env.copy() if env is not None else child_environment(root)
+    if progress is not None and progress.active:
+        environment["EWP_PROGRESS_ACTIVE"] = "1"
     process = subprocess.Popen(
-        process_command(command), cwd=root, env=env if env is not None else child_environment(root),
-        stdout=subprocess.PIPE if log is not None else None,
-        stderr=subprocess.STDOUT if log is not None else None,
+        process_command(command), cwd=root, env=environment,
+        stdout=subprocess.PIPE if captured else None,
+        stderr=subprocess.STDOUT if captured else None,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
         start_new_session=os.name != "nt",
     )
     reader = None
     try:
-        if log is not None:
+        if captured:
             assert process.stdout is not None
             output: queue.Queue[bytes | OSError | None] = queue.Queue()
 
@@ -215,26 +462,30 @@ def run_command(
                 try:
                     chunk = output.get(timeout=0.1)
                 except queue.Empty:
+                    if progress is not None:
+                        progress.refresh()
                     continue
                 if chunk is None:
                     break
                 if isinstance(chunk, OSError):
                     raise chunk
                 decoded = decoder.decode(chunk)
-                sys.stdout.write(decoded)
-                sys.stdout.flush()
-                log.write(decoded)
-                log.flush()
+                terminal_write(decoded)
+                if log is not None:
+                    log.write(decoded)
+                    log.flush()
             tail = decoder.decode(b"", final=True)
-            sys.stdout.write(tail)
-            sys.stdout.flush()
-            log.write(tail)
-            log.flush()
+            terminal_write(tail)
+            if log is not None:
+                log.write(tail)
+                log.flush()
         while True:
             try:
                 code = process.wait(timeout=0.1)
                 break
             except subprocess.TimeoutExpired:
+                if progress is not None:
+                    progress.refresh()
                 continue
     except BaseException:
         stop_process(process)
@@ -313,7 +564,16 @@ def reenter(root: Path, argv: Sequence[str]) -> bool:
 
 def progress(done: int, total: int, name: str, log: TextIO | None) -> None:
     filled = done * 20 // total
-    emit(f"[{'#' * filled}{'-' * (20 - filled)}] {done}/{total} {done * 100 // total}% {name}", log)
+    record = f"[{'#' * filled}{'-' * (20 - filled)}] {done}/{total} {done * 100 // total}% {name}"
+    terminal = ACTIVE_PROGRESS.get()
+    if terminal is not None and terminal.active:
+        terminal.update(done, total, name)
+        if terminal.active:
+            if log is not None:
+                log.write(record + "\n")
+                log.flush()
+            return
+    emit(record, log)
 
 
 Stage = tuple[str, Callable[[TextIO | None], None]]
@@ -326,7 +586,8 @@ def run_stages(root: Path, name: str, stages: Sequence[Stage], *, logged: bool =
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / f"{name}-{datetime.now():%Y%m%d-%H%M%S-%f}-{os.getpid()}.log"
         emit(text(f"日志：{log_path}", f"Log: {log_path}", root))
-    with (log_path.open("w", encoding="utf-8") if log_path else nullcontext(None)) as log:
+    with (log_path.open("w", encoding="utf-8") if log_path else nullcontext(None)) as log, TerminalProgress() as terminal:
+        token = ACTIVE_PROGRESS.set(terminal)
         done = 0
         try:
             for label, action in stages:
@@ -338,6 +599,8 @@ def run_stages(root: Path, name: str, stages: Sequence[Stage], *, logged: bool =
             emit(text(f"失败或中断（{done}/{len(stages)}）：{error}",
                       f"Failed or interrupted ({done}/{len(stages)}): {error}", root), log)
             raise
+        finally:
+            ACTIVE_PROGRESS.reset(token)
 
 
 def initialize(root: Path) -> None:

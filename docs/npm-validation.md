@@ -2,6 +2,30 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-20 0.1.4 底部固定进度栏 / Pinned terminal progress
+
+源码和两包版本为 **0.1.4**；新生成应用的 `scripts/dev.py` 在支持 VT 的交互终端底部固定阶段说明与蓝色 `━ / ┄` 进度条，上方日志独立滚动。百分比只反映已完成阶段；窗口缩放、失败、Ctrl+C 与结束后恢复滚动区和 Windows 控制台模式。管道、不支持 VT、过小窗口或 `EWP_PROGRESS=plain` 使用逐行文本，`NO_COLOR`/`FORCE_COLOR=0` 关闭颜色。嵌套阶段共享外层栏；完整第三方输出保留在日志，固定栏定位码不进入日志。细则见 [开发手册](development.md#构建进度与日志--builds-progress-and-logs)。
+
+Sources and both packages use **0.1.4**. New apps receive a `scripts/dev.py` that pins stage information and a blue `━ / ┄` bar beneath independently scrolling logs in supported VT terminals. Percentages reflect completed stages only. Resize, failure, interruption and completion preserve or restore the logging region and Windows console mode. Pipes, unsupported/small terminals and `EWP_PROGRESS=plain` use line output; `NO_COLOR`/`FORCE_COLOR=0` removes color. Nested stages share the footer; complete third-party output is logged without footer cursor controls.
+
+| 验证 / Check | 实际结果 / Result |
+| --- | --- |
+| 进度专用测试 / Progress tests | **17 passed**；`output/terminal-progress-tests.log` |
+| 开发任务回归 / Development tasks | **55 passed**；`output/terminal-progress-dev-tests.log` |
+| Node creator/runtime 回归 / Regression | **145 passed / 0 failed / 5 conditional skips**；`output/npm-0.1.4-tests.log`；本次不重跑 Python 打包和冻结安装器 / Native packaging and frozen installers were not rerun. |
+| 源码与生成模板 / Source and generated template | `prepare:npm` 后脚本逐字节相同；全新源码生成应用完成真实 Vite 构建 / Scripts match byte for byte after preparation; fresh source-generated app built with Vite. |
+| 真实发布归档 / Real release archives | **passed**；`build/terminal-progress-validation/releases/tarball-o4mHnF/report.json`。独立物理安装两包 0.1.4、welcome/help、安装后的 `ewp create`、生成脚本逐字节对照、runtime check（3 passed）及实际 Vite 构建全部成功 / Both installed packages, CLI, creator delegation, generated script, runtime checks and actual compilation passed. |
+| 实际 Windows 终端 / Real Windows terminal | **5/5 screen states passed**：100 行日志在栏上方滚动，底栏前景色为 bright blue，80×24 → 100×30 缩放、ANSI 跨块、未换行日志衔接、50% 阶段更新、结束后全屏滚动恢复 / All five ConPTY/xterm states passed. `build/terminal-progress-validation/report.json`；可查看 `output/designs/terminal-progress-evidence.html`。 |
+| npm 发布 / Publication | 待正式发布和官方 registry 安装核验 / Pending publication and official registry installation verification. |
+
+| 归档 / Archive | SHA-1 | SHA-256 |
+| --- | --- | --- |
+| `create-ewp-0.1.4.tgz` (92,030 bytes) | `d0f48aac300aa7be7be2c355de44f778fb14c4e3` | `b360c93e92f2d48aa76af07e941e4b40397a8d9e8af77aa0584f930ac1a980ff` |
+| `easywindowspack-0.1.4.tgz` (28,855 bytes) | `885255f92f6c8b6a9181e8c03aa1dfb33511ef57` | `22a50792d4148eb1f4480c4bc2b3a7da1f828feaa97c193911471182d03786f7` |
+
+已有应用的 `scripts/dev.py` 归应用所有，npm 依赖升级不会自动覆盖；新应用从本版 creator 获取更新。Python 版本仍为 0.3.0，未发布 PyPI。
+Existing apps own their development scripts; npm dependency upgrades do not overwrite them. New apps receive the updated script from this creator version. Python remains 0.3.0 without PyPI publication.
+
 ## 2026-10-20 0.1.3 欢迎屏与创建配色 / Branded welcome and creation colors
 
 源码和两个 npm 包版本统一为 **0.1.3**。无参数 `ewp`（含仅 `--lang`）展示已选定的 `#` 字符紧凑构筑核：紫色顶面、浅蓝左面、深蓝右面和中心留白；四个常用命令与 `ewp -h` 完整教程提示保持精简。`help` / `-h` / `--help` 继续输出完整帮助，均无需项目。

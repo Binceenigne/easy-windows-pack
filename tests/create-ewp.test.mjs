@@ -171,7 +171,7 @@ test('six templates × two languages × all AI combinations generate consistent 
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
-      assert.equal(pkg.dependencies.easywindowspack, '^0.1.3');
+      assert.equal(pkg.dependencies.easywindowspack, '^0.1.4');
       assert.deepEqual(pkg.ewp, { language });
       assert.equal(pkg.scripts.ewp, 'ewp');
       for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'app', 'installer', 'bundle', 'test', 'check', 'full-build']) {

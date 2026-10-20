@@ -4,9 +4,9 @@
 
 ## 包与环境 / Packages and requirements
 
-`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 的 **0.1.3 已正式公开可用**，两包的 `dist-tags.latest` 均为 `0.1.3`。Python 分发 `easy-windows-pack` 的源码版本 **0.3.0** 分开管理，PyPI 未发布。本文欢迎屏、语言、帮助/菜单及构建约定描述 0.1.3 的产品行为；发布证据、registry 冒烟进展与历史验收见 [验收记录](npm-validation.md)。
+`frontend/` 是 `private: true` 的 npm workspace，不作为 npm 包发布；package.json、package-lock.json、vite.config.mjs 和 npm 依赖均放在 frontend，两个包位于 frontend/packages。`create-ewp` 与 `easywindowspack` 的 **0.1.3 已正式公开可用**，两包的 `dist-tags.latest` 均为 `0.1.3`；**0.1.4 正在准备，尚未发布**。Python 分发 `easy-windows-pack` 的源码版本 **0.3.0** 分开管理，PyPI 未发布。本文保留 0.1.3 的欢迎屏、语言、帮助/菜单及构建约定，新增 Python 固定进度栏描述源码与 0.1.4 的目标行为；发布证据与历史验收见 [验收记录](npm-validation.md)。
 
-`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both `create-ewp` and `easywindowspack` are **publicly available at 0.1.3**, with `dist-tags.latest` set to `0.1.3` for each. Python `easy-windows-pack` sources are separately versioned at **0.3.0**, with no PyPI publication. Welcome, language, help/menu and build contracts below describe 0.1.3 behavior. See the [validation record](npm-validation.md) for publication evidence, registry smoke progress and historical checks.
+`frontend/` is the private npm workspace and is not published. Its package.json, package-lock.json, vite.config.mjs and dependencies live there; packages live under frontend/packages. Both `create-ewp` and `easywindowspack` are **publicly available at 0.1.3**, with `dist-tags.latest` set to `0.1.3` for each; **0.1.4 is in preparation, not yet published**. Python `easy-windows-pack` sources are separately versioned at **0.3.0**, with no PyPI publication. Welcome, language, help/menu and build contracts retain 0.1.3 behavior; the new Python progress footer describes source behavior targeted for 0.1.4. See the [validation record](npm-validation.md) for publication evidence and historical checks.
 
 | 包 / Package | 用途 / Purpose |
 | --- | --- |
@@ -23,13 +23,13 @@ Require Node.js **>=22.12.0**; the repository uses **Vite ^7.3.7**. Python initi
 
 As of **2026-10-20**, `create-ewp@0.1.3` and `easywindowspack@0.1.3` were successfully published in that order after reauthorization through the official CLI; **0.1.3 is publicly available**. Registry queries confirm both versions and `dist-tags.latest` are `0.1.3`, with SHA-1 / SHA-256 matching the final archives. This release includes the ASCII welcome screen with the brand's core symbol, colored creation prompts, stage counts based on actual execution, and shared AI skill layout and interaction guidance. See the [validation record](npm-validation.md) for detailed evidence and registry smoke progress; the main agent will update subsequent runtime installation, check, TypeScript typecheck and frontend build results as they are completed. Publication and smoke checks for 0.1.2 remain historical records.
 
-包 manifests 与锁文件已对齐到 `0.1.3`；runtime 对 creator 的依赖和新生成项目的 runtime 依赖均已对齐为 `^0.1.3`。历史 tarball 验收保留原日期与范围。执行发布按用户授权与当前任务范围决定。
+本轮待发布目标为两包 manifests 与锁文件 `0.1.4`，runtime 对 creator 的依赖与新生成项目的 runtime 依赖均为 `^0.1.4`，发布前须同步；这不表示 registry 已更新。0.1.3 发布时的版本、归档与验收保留原日期和范围。执行发布按用户授权与当前任务范围决定。
 
-Package manifests and the lockfile are aligned to `0.1.3`; both the runtime's creator dependency and generated apps' runtime dependency are aligned to `^0.1.3`. Historical tarball checks retain their dates and scope. Publication follows user authorization and the current task scope.
+The pending release targets `0.1.4` for both package manifests and the lockfile, and `^0.1.4` for the runtime's creator dependency and generated apps' runtime dependency; synchronize these before publication. These targets do not indicate a registry update. Versions, archives and checks from the 0.1.3 release retain their dates and scope. Publication follows user authorization and the current task scope.
 
-**安装与升级 / Installation and upgrades:** 新建项目可用 `npm create ewp@latest`；全局 CLI 可用 `npm install -g easywindowspack@latest`。当前两包的 `@latest` 均为 `0.1.3`，也可用 `@0.1.3` 固定版本。已有项目可在 frontend 内用 `npm install easywindowspack@latest` 或 `npm install easywindowspack@0.1.3` 升级。依赖升级不自动改写已有 scripts、README、AI 指引或 demo；旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。
+**安装与升级 / Installation and upgrades:** 新建项目可用 `npm create ewp@latest`；全局 CLI 可用 `npm install -g easywindowspack@latest`。当前两包的 `@latest` 均为 `0.1.3`，也可用 `@0.1.3` 固定版本。已有项目可在 frontend 内用 `npm install easywindowspack@latest` 或 `npm install easywindowspack@0.1.3` 升级。依赖升级不自动改写项目内的 `scripts/dev.py`、README、AI 指引或 demo；新建项目的开发脚本随 creator 更新，0.1.4 发布后新建项目才会从该版本获得新版进度栏。旧项目按 [任务映射](development.md#菜单与命令--menu-and-commands) 补所需入口。
 
-Create with `npm create ewp@latest`, or install the global CLI with `npm install -g easywindowspack@latest`. Both `@latest` tags currently resolve to `0.1.3`; use `@0.1.3` to pin the version. Upgrade an existing app inside frontend with `npm install easywindowspack@latest` or `npm install easywindowspack@0.1.3`. Dependency upgrades do not rewrite scripts, README, AI guidance or demo files; use the [task mapping](development.md#菜单与命令--menu-and-commands) to add needed entries to older projects.
+Create with `npm create ewp@latest`, or install the global CLI with `npm install -g easywindowspack@latest`. Both `@latest` tags currently resolve to `0.1.3`; use `@0.1.3` to pin the version. Upgrade an existing app inside frontend with `npm install easywindowspack@latest` or `npm install easywindowspack@0.1.3`. Dependency upgrades do not rewrite the project's `scripts/dev.py`, README, AI guidance or demo files. New apps receive development scripts from their creator version; apps created with 0.1.4 after publication will receive its updated progress footer. Use the [task mapping](development.md#菜单与命令--menu-and-commands) to add needed entries to older projects.
 
 无需全局安装即可创建；以下为语言与模板选项示例：
 
@@ -64,9 +64,9 @@ npm --prefix frontend run prepare:npm
 node frontend/packages/create-ewp/bin/create-ewp.mjs "../My App" --lang en --template vanilla-ts --no-install --no-start
 ```
 
-本地生成不需要 registry 中的 `create-ewp`，源码验证可使用匹配的本地依赖或已准备的 tarball；生成项目的 runtime 依赖已对齐为 `easywindowspack@^0.1.3`。本地生成/pack 与 registry 安装分别在 [验收记录](npm-validation.md) 中记录实际结果，保留各自日期与范围。
+本地生成不需要 registry 中的 `create-ewp`；0.1.4 的生成项目 runtime 依赖目标为 `easywindowspack@^0.1.4`，发布前源码验证使用匹配的本地依赖或已准备的 tarball。本地生成/pack 与 registry 安装分别在 [验收记录](npm-validation.md) 中记录实际结果，保留各自日期与范围。
 
-Local generation needs no registry copy of `create-ewp`; source validation can use matching local dependencies or prepared tarballs. Generated projects' runtime dependency is aligned to `easywindowspack@^0.1.3`. Record actual local generation/packing and registry installation results separately in the [validation record](npm-validation.md), retaining each check's date and scope.
+Local generation needs no registry copy of `create-ewp`. Generated apps from 0.1.4 target `easywindowspack@^0.1.4`; before publication, source validation uses matching local dependencies or prepared tarballs. Record actual local generation/packing and registry installation results separately in the [validation record](npm-validation.md), retaining each check's date and scope.
 
 ## 交互、模板与选项 / Prompts, templates and options
 
@@ -113,6 +113,16 @@ Color follows this priority for first-party terminal output; third-party logs re
 执行步骤只显示实际开始的阶段，跳过的安装或启动不占编号。仅创建输出 `[1/1]`；创建加 npm 安装为 `[1/2]` 到 `[2/2]`；安装并启动为创建、npm 安装、Python 初始化、桌面启动共 4 步。成功后才显示对应完成反馈，失败不宣称后续阶段已完成。
 
 Numbered steps show only stages actually started; skipped installation or startup stages take no numbers. Creation alone prints `[1/1]`; creation plus npm installation uses `[1/2]` through `[2/2]`; installation and startup uses four stages: creation, npm installation, Python initialization and desktop startup. Completion feedback follows successful execution; failure does not claim later stages completed.
+
+### Python 初始化与构建进度 / Python initialization and build progress
+
+源码已实现、拟随 **0.1.4** 提供的新建应用 `scripts/dev.py`，在支持 VT 的 TTY 中将 Python init/build 进度固定在终端底部两行：上行为阶段说明，下行为蓝色 `━` / `┄` 条及一位小数百分比，日志在上方滚动。百分比按已完成阶段计算（stage-based），不是耗时估计或任务内部进度；resize 重新定位，完成、失败或 Ctrl+C 恢复滚动区域和控制台模式。
+
+The updated `scripts/dev.py`, implemented in source and planned for new apps in **0.1.4**, pins Python init/build progress to two bottom rows in a VT-capable TTY: stage information above a blue `━` / `┄` bar and a one-decimal percentage, with logs scrolling above. Progress is stage-based, calculated from completed stages rather than elapsed time or work within a stage; resize repositions the footer, and completion, failure or Ctrl+C restores the scrolling region and console mode.
+
+管道/重定向、`TERM=dumb`、不支持 VT 或终端太小时回退到 plain 逐行输出；`NO_COLOR` 只关闭颜色，`EWP_PROGRESS=plain` 关闭固定栏。已有项目仅升级 npm 依赖不会替换项目内的 `scripts/dev.py`；新建项目随 creator 获取新版脚本，历史已发布 0.1.3 不自动包含此改动。细节与源码验证见 [开发手册](development.md)。
+
+Pipes/redirection, `TERM=dumb`, unavailable VT support or a terminal that is too small fall back to plain line output. `NO_COLOR` disables color only; `EWP_PROGRESS=plain` disables the pinned footer. npm dependency upgrades do not replace `scripts/dev.py` in existing apps; new apps receive the script from their creator version, and the previously published 0.1.3 does not automatically include this change. See the [development guide](development.md) for details and source validation.
 
 ## 项目语言与输出 / Project language and output
 
@@ -304,9 +314,9 @@ npm pack --workspace easywindowspack --pack-destination ../output/npm
 
 Run the pack commands above and publish commands below inside frontend; ensure root `output/npm` exists before packing. Inspect binaries, library files, exports, CSS, types, licenses, READMEs, six templates and common runtime in the tarballs. Packing is not publication and does not certify clean-environment installation or native launch. Workspace `prepack` hooks use the same preparation source. Record evidence in [npm-validation.md](npm-validation.md).
 
-**0.1.3 已正式公开发布**，顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli` 与共享 `create-ewp/terminal`，生成项目依赖 runtime。manifests、锁文件及两处 `^0.1.3` 依赖已完成对齐；registry 两包版本、`dist-tags.latest=0.1.3` 和归档 SHA-1 / SHA-256 已确认。独立 registry 安装、双语欢迎屏/完整帮助/创建、共用 Skill、Vanilla 项目检查和构建，以及 latest 生成 Vue TS 项目的检查/类型检查/构建均通过，详见 [验收记录](npm-validation.md)。已发布 tarball 与包 README 保留发布时快照；最新说明见 Git 文档。以下命令供后续版本发布流程参考：
+**0.1.3 已正式公开发布**，顺序为 **create-ewp → easywindowspack**：runtime CLI 依赖 `create-ewp/cli` 与共享 `create-ewp/terminal`，生成项目依赖 runtime。0.1.3 发布时的 manifests、锁文件及两处 `^0.1.3` 依赖已完成对齐；当时的 registry 两包版本、`dist-tags.latest=0.1.3` 和归档 SHA-1 / SHA-256 已确认。独立 registry 安装、双语欢迎屏/完整帮助/创建、共用 Skill、Vanilla 项目检查和构建，以及 latest 生成 Vue TS 项目的检查/类型检查/构建均通过，详见 [验收记录](npm-validation.md)。已发布 tarball 与包 README 保留发布时快照；最新说明见 Git 文档。以下命令供后续版本发布流程参考：
 
-**0.1.3 is publicly released**, in the order **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli` and shared `create-ewp/terminal`, while generated apps depend on the runtime. Manifests, the lockfile and both `^0.1.3` dependencies are aligned. Both registry versions, `dist-tags.latest=0.1.3` and archive SHA-1 / SHA-256 are confirmed. Independent registry installation, bilingual welcome/help/creation, shared Skill checks, Vanilla checks/build and the latest-generated Vue TS project's checks/typecheck/build all passed; see [validation](npm-validation.md). Published tarballs and package READMEs retain their release snapshots; Git docs carry current guidance. The following commands document the publishing workflow for future versions:
+**0.1.3 is publicly released**, in the order **create-ewp → easywindowspack**: the runtime CLI depends on `create-ewp/cli` and shared `create-ewp/terminal`, while generated apps depend on the runtime. For that release, manifests, the lockfile and both `^0.1.3` dependencies were aligned. Both registry versions, `dist-tags.latest=0.1.3` and archive SHA-1 / SHA-256 were confirmed at that time. Independent registry installation, bilingual welcome/help/creation, shared Skill checks, Vanilla checks/build and the latest-generated Vue TS project's checks/typecheck/build all passed; see [validation](npm-validation.md). Published tarballs and package READMEs retain their release snapshots; Git docs carry current guidance. The following commands document the publishing workflow for future versions:
 
 ```powershell
 npm publish -w create-ewp --access public

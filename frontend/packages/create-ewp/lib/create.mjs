@@ -150,7 +150,7 @@ export function projectManifest(name, template, language = 'zh-CN') {
   if (!TEMPLATES.includes(template)) throw creatorError('unknownTemplate', { template, templates: TEMPLATES.join(', ') }, language);
   const framework = template.replace(/-ts$/, '');
   const typescript = template.endsWith('-ts');
-  const dependencies = { easywindowspack: '^0.1.3' };
+  const dependencies = { easywindowspack: '^0.1.4' };
   const devDependencies = { vite: '^7.3.7' };
   if (framework === 'vue') {
     dependencies.vue = '^3.5.0';
