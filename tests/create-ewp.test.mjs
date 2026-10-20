@@ -7,6 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AI_TOOLS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeLanguage, normalizePackageName, projectFiles, projectManifest, templatesDirectory, TEMPLATES, validateTarget } from '../frontend/packages/create-ewp/lib/create.mjs';
 import { HELP, helpText, main, npmCommand, parseArgs, quoteDirectory, runNpm } from '../frontend/packages/create-ewp/lib/cli.mjs';
+import { stripVTControlCharacters } from 'node:util';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const packageDirectory = join(repository, 'frontend/packages/create-ewp');
@@ -146,6 +147,22 @@ test('package names normalize independently of directories and cannot inject sou
 
 test('six templates × two languages × all AI combinations generate consistent resources and valid links', async t => {
   const { root, templatesDir } = preparedTemplates(t);
+  const designRequirements = [
+    [/共享网格与对齐线/, /shared grid and alignment guides/],
+    [/横平竖直/, /rows horizontal and columns vertical/],
+    [/组件边缘和文字基线对齐/, /align component edges and text baselines/],
+    [/同类控件统一间距与尺寸/, /spacing and sizes consistent for comparable controls/],
+    [/层级和留白/, /hierarchy and whitespace/],
+    [/克制配色/, /restrained palette/],
+    [/优雅且符合人类直觉/, /interactions graceful and intuitive/],
+    [/操作顺序自然/, /action sequences natural/],
+    [/反馈及时/, /feedback timely/],
+    [/加载、成功和失败状态清晰/, /loading, success and failure states clear/],
+    [/键盘焦点可见且顺序合理/, /keyboard focus visible and ordered logically/],
+    [/返回和取消路径明确/, /clear back and cancel paths/],
+    [/关闭弹窗后恢复焦点/, /restore focus after closing dialogs/],
+    [/避免突兀的布局跳动和无助于理解的装饰性动效/, /avoid abrupt layout shifts and decorative motion that does not aid understanding/]
+  ];
   for (const template of TEMPLATES) for (const language of LANGUAGES) for (let mask = 0; mask < 8; mask++) {
     await t.test(`${template} ${language} AI=${mask}`, () => {
       const ai = AI_TOOLS.filter((_, index) => mask & (1 << index));
@@ -154,7 +171,7 @@ test('six templates × two languages × all AI combinations generate consistent 
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
-      assert.equal(pkg.dependencies.easywindowspack, '^0.1.2');
+      assert.equal(pkg.dependencies.easywindowspack, '^0.1.3');
       assert.deepEqual(pkg.ewp, { language });
       assert.equal(pkg.scripts.ewp, 'ewp');
       for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'app', 'installer', 'bundle', 'test', 'check', 'full-build']) {
@@ -230,6 +247,7 @@ test('six templates × two languages × all AI combinations generate consistent 
         assert.ok(result.files.includes(path), path);
         assert.ok(read(path).trimEnd().split('\n').length < 15, path);
         assert.doesNotMatch(read(path), /backend\/base|ewpcore|PyInstaller|scripts\/dev\.py|full-build/);
+        for (const requirement of designRequirements) assert.doesNotMatch(read(path), requirement[language === 'en' ? 1 : 0], path);
       }
       if (!ai.length) assert.deepEqual(readdirSync(join(result.directory, 'docs')).sort(), ['design.md', 'index.md']);
       for (const path of result.files.filter(path => path.endsWith('.md') && /AGENTS|CLAUDE|copilot|docs\//.test(path))) {
@@ -245,11 +263,15 @@ test('six templates × two languages × all AI combinations generate consistent 
         assert.match(guidance, /frontend\/src\//);
         assert.match(guidance, /backend\/src\/demo.py/);
         assert.equal(guidance.includes('npm run typecheck'), template.endsWith('-ts'));
-        for (const content of [guidance, read(skill)]) {
+        for (const [path, content] of [['docs/.easy-dev/agent.md', guidance], [skill, read(skill)]]) {
           assert.match(content, /\]\([^)]*index\.md\)/);
           assert.match(content, /\]\([^)]*design\.md\)/);
           assert.doesNotMatch(content, /backend\/base|ewpcore|prepare-npm|npm publish/);
           assert.ok(content.trimEnd().split('\n').length < 15);
+          for (const requirement of designRequirements) assert.match(content, requirement[language === 'en' ? 1 : 0], path);
+        }
+        for (const path of [...paths, 'docs/.agents/skills/easy-dev/SKILL.md', 'docs/.claude/skills/easy-dev/SKILL.md'].filter(path => result.files.includes(path))) {
+          for (const requirement of designRequirements) assert.doesNotMatch(read(path), requirement[language === 'en' ? 1 : 0], path);
         }
       }
       if (template.startsWith('vue')) {
@@ -490,6 +512,43 @@ test('cancellation at the language prompt and every subsequent prompt leaves no 
     assert.equal(existsSync(join(root, 'ewp-app')), false);
     assert.match(prompts.events.at(-1), language === 'en' ? /Cancelled; no project/ : /操作已取消，未创建项目/);
   }
+});
+
+test('colored creation prompts preserve values and report actual stages in execution order', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const language of LANGUAGES) {
+    const prompts = promptFixture([language, `Color ${language}`, 'vue', 'ts', ['claude'], true, true]);
+    const events = [];
+    assert.equal(await main([], {
+      cwd: root, templatesDir, interactive: true, prompts, env: { FORCE_COLOR: '1' }, output: { isTTY: false },
+      log: value => events.push(value), run: async args => events.push('RUN:' + args.join(' '))
+    }), 0);
+    assert.match(prompts.seen[0].message, /\x1b\[/);
+    assert.equal(stripVTControlCharacters(prompts.seen[0].message), '语言 / Language');
+    assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['vanilla', 'vue', 'react']);
+    assert.ok(prompts.seen[2].options.every(option => /\x1b\[/.test(option.label)));
+    const plain = events.map(stripVTControlCharacters);
+    assert.deepEqual(plain.filter(value => /^\[\d/.test(value)).map(value => value.slice(0, 5)), ['[1/4]', '[2/4]', '[3/4]', '[4/4]']);
+    assert.ok(plain.findIndex(value => value.startsWith('[2/4]')) < plain.indexOf('RUN:install'));
+    assert.ok(plain.indexOf('RUN:install') < plain.findIndex(value => value.startsWith('[3/4]')));
+    assert.ok(plain.indexOf('RUN:run init') < plain.findIndex(value => value.startsWith('[4/4]')));
+    assert.equal(plain.at(-1), 'RUN:run dev');
+    assert.equal(/[^\x00-\x7f]/.test(plain.join('\n')), language === 'zh-CN');
+  }
+});
+
+test('NO_COLOR keeps prompts plain and failed installs never report completion or start Python', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  const prompts = promptFixture(['vanilla', 'js', [], true, true]);
+  const events = [];
+  await assert.rejects(main(['Plain', '--lang=en'], {
+    cwd: root, templatesDir, interactive: true, prompts,
+    env: { FORCE_COLOR: '1', NO_COLOR: '1' }, output: { isTTY: true },
+    log: value => events.push(value), run: async () => { throw new Error('install fixture failed'); }
+  }), /install fixture failed/);
+  assert.doesNotMatch(events.join('\n') + JSON.stringify(prompts.seen), /\x1b|\\u001b/);
+  assert.doesNotMatch(events.join('\n'), /dependencies installed|\[3\/4\]|Python environment ready/);
+  assert.ok(existsSync(join(root, 'Plain/frontend/package.json')));
 });
 
 test('interactive errors and project-name validation use the selected language', async t => {

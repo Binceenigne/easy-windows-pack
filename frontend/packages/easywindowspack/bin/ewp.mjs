@@ -6,6 +6,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { createInterface } from 'node:readline/promises';
 import { VERSION, helpText, languageArgs, text, withLanguage } from '../language.mjs';
+import { compactBanner, createColors } from 'create-ewp/terminal';
 
 export const HELP = helpText();
 const ALIASES = { browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app', 'full-build': 'build:all' };
@@ -18,8 +19,9 @@ export function parseArgs(argv = [], context = {}) {
 
 function parseCommand(args, language) {
   while (args[0] === '--') args.shift();
-  const requested = args.shift() ?? 'help';
+  const requested = args.shift() ?? 'welcome';
   const command = ALIASES[requested] ?? requested;
+  if (command === 'welcome' && !args.length) return { command: 'welcome' };
   if (command === 'create') return { command, args, language };
   if (['help', '--help', '-h'].includes(command) || args.includes('--help') || args.includes('-h')) return { command: 'help' };
   if (['version', '--version', '-v', '-V'].includes(command)) return { command: 'version' };
@@ -400,26 +402,40 @@ async function menuChoice(prompt) {
   } finally { input.close(); }
 }
 
-export async function runMenu(root, language, { choose = menuChoice, execute = executeTask, log = console.log } = {}) {
+export async function runMenu(root, language, { choose = menuChoice, execute = executeTask, log = console.log, colors = createColors() } = {}) {
   return withLanguage(language, async () => {
     for (;;) {
-      log(text('\nEasy Windows Pack — 开发菜单', '\nEasy Windows Pack — Development menu'));
-      MENU_TASKS.forEach((task, index) => log(`${index + 1}. ${text(task.zh, task.en)} — ewp ${task.command}${task.args ? ` ${task.args.join(' ')}` : ''} / npm run ${task.command}${task.args ? ` -- ${task.args.join(' ')}` : ''}`));
-      log(text('0. 退出', '0. Exit'));
-      const answer = await choose(text('请选择任务：', 'Choose a task: '));
+      log(colors.title(text('\nEasy Windows Pack — 开发菜单', '\nEasy Windows Pack — Development menu')));
+      MENU_TASKS.forEach((task, index) => log(`${colors.left(`${index + 1}.`)} ${text(task.zh, task.en)} — ${colors.command(`ewp ${task.command}${task.args ? ` ${task.args.join(' ')}` : ''}`)} / ${colors.dim(`npm run ${task.command}${task.args ? ` -- ${task.args.join(' ')}` : ''}`)}`));
+      log(colors.dim(text('0. 退出', '0. Exit')));
+      const answer = await choose(colors.left(text('请选择任务：', 'Choose a task: ')));
       if (answer === null) return 130;
       const choice = answer.trim();
       if (choice === '0') return 0;
       const task = /^\d+$/.test(choice) ? MENU_TASKS[Number(choice) - 1] : undefined;
-      if (!task) { log(text('无效选择，请输入菜单编号。', 'Invalid choice; enter a menu number.')); continue; }
+      if (!task) { log(colors.warning(text('无效选择，请输入菜单编号。', 'Invalid choice; enter a menu number.'))); continue; }
       try {
         const options = parseArgs([task.command, ...(task.args ?? []), '--lang', language]);
         const code = await execute(root, { ...options, language });
         if (code === 130) return 130;
-        if (code) log(text(`任务失败，退出码：${code}`, `Task failed with exit code ${code}.`));
-      } catch (error) { log(`ewp: ${error.message}`); }
+        if (code) log(colors.error(text(`任务失败，退出码：${code}`, `Task failed with exit code ${code}.`)));
+      } catch (error) { log(colors.error(`ewp: ${error.message}`)); }
     }
   });
+}
+
+export function welcomeText(language = 'zh-CN', colors = createColors()) {
+  return withLanguage(language, () => [
+    '', compactBanner(VERSION, colors), '',
+    `  ${colors.command('ewp create'.padEnd(17))}${text('创建新项目', 'Create a project')}`,
+    `  ${colors.dim(text('项目内运行', 'Inside a project'))}`,
+    ...[
+      ['ewp dev', text('启动桌面开发', 'Start desktop dev')],
+      ['ewp build', text('构建 Windows EXE', 'Build Windows EXE')],
+      ['ewp menu', text('打开项目菜单', 'Open project menu')]
+    ].map(([command, label]) => `  ${colors.command(command.padEnd(17))}${label}`),
+    '', `  ${text('输入 ', 'Run ')}${colors.command('ewp -h')}${text(' 查看完整教程', ' for the full guide')}`, ''
+  ].join('\n'));
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -428,6 +444,7 @@ export async function main(argv = process.argv.slice(2)) {
     const [major, minor] = process.versions.node.split('.').map(Number);
     if (major < 22 || (major === 22 && minor < 12)) throw new Error(text('easywindowspack 需要 Node >=22.12。', 'easywindowspack requires Node >=22.12.'));
     const options = parseArgs(argv);
+    if (options.command === 'welcome') { console.log(welcomeText(language)); return 0; }
     if (options.command === 'create') {
       const { main: create } = await import('create-ewp/cli');
       return create([...options.args, ...(explicit ? ['--lang', language] : [])]);
@@ -470,7 +487,7 @@ export function isDirectExecution(entry = process.argv[1], moduleUrl = import.me
 
 if (isDirectExecution()) {
   main().then(code => { process.exitCode = code; }, error => {
-    console.error(`ewp: ${error.message}`);
+    console.error(createColors({ stream: process.stderr }).error(`ewp: ${error.message}`));
     process.exitCode = Number.isInteger(error.exitCode) && error.exitCode > 0 ? error.exitCode : 1;
   });
 }

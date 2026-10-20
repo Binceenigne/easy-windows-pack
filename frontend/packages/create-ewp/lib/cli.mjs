@@ -2,6 +2,9 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { AI_TOOLS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeLanguage, TEMPLATES, validateTarget } from './create.mjs';
+import { createColors } from './terminal.mjs';
+
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 export function helpText(language = 'zh-CN') {
   return normalizeLanguage(language) === 'en' ? `create-ewp — Create a desktop project
@@ -194,13 +197,15 @@ export async function runNpm(args, directory, { language = 'zh-CN', env = proces
 /** Injectable prompts/process execution let tests verify behavior without a TTY. */
 export async function main(argv = process.argv.slice(2), {
   cwd = process.cwd(), interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY),
-  prompts, run = runNpm, log = console.log, templatesDir, env = process.env
+  prompts, run = runNpm, log = console.log, templatesDir, env = process.env, output = process.stdout
 } = {}) {
   const options = parseArgs(argv, { env, cwd });
   const [major, minor] = process.versions.node.split('.').map(Number);
   if (major < 22 || (major === 22 && minor < 12)) throw creatorError('nodeVersion', {}, options.language);
   if (options.help) { log(helpText(options.language)); return 0; }
   const text = (zh, en) => options.language === 'en' ? en : zh;
+  const colors = createColors({ env, stream: output });
+  const question = (zh, en) => colors.left(text(zh, en));
   const ask = interactive && !options.yes;
   let p;
   const cancellation = Symbol('cancelled');
@@ -212,58 +217,69 @@ export async function main(argv = process.argv.slice(2), {
   try {
     if (ask) {
       p = prompts ?? await import('@clack/prompts');
-      p.intro('Easy Windows Pack');
+      p.intro(`${colors.title('Easy Windows Pack')} ${colors.dim(`v${VERSION}`)}`);
       if (!argv.some(arg => arg === '--lang' || arg.startsWith('--lang='))) {
         options.language = normalizeLanguage(await answer(p.select({
-          message: '语言 / Language', initialValue: options.language,
-          options: LANGUAGES.map(value => ({ value, label: value === 'en' ? 'English' : '简体中文' }))
+          message: colors.left('语言 / Language'), initialValue: options.language,
+          options: LANGUAGES.map(value => ({ value, label: colors.command(value === 'en' ? 'English' : '简体中文') }))
         })), options.language);
       }
       if (!options.name && !options.directory) {
         options.name = await answer(p.text({
-          message: text('项目名称', 'Project name'), placeholder: 'ewp-app', defaultValue: 'ewp-app',
+          message: question('项目名称', 'Project name'), placeholder: 'ewp-app', defaultValue: 'ewp-app',
           validate(value) { try { validateTarget(value || 'ewp-app', cwd, options.language); } catch (error) { return error.message; } }
         }));
       }
       if (!options.template) {
         const framework = await answer(p.select({
-          message: text('选择框架', 'Select a framework'), initialValue: 'vanilla',
-          options: [{ value: 'vanilla', label: 'Vanilla' }, { value: 'vue', label: 'Vue' }, { value: 'react', label: 'React' }]
+          message: question('选择框架', 'Select a framework'), initialValue: 'vanilla',
+          options: [{ value: 'vanilla', label: colors.top('Vanilla') }, { value: 'vue', label: colors.success('Vue') }, { value: 'react', label: colors.command('React') }]
         }));
         const programmingLanguage = await answer(p.select({
-          message: text('选择编程语言', 'Select a programming language'), initialValue: 'js',
-          options: [{ value: 'js', label: 'JavaScript' }, { value: 'ts', label: 'TypeScript' }]
+          message: question('选择编程语言', 'Select a programming language'), initialValue: 'js',
+          options: [{ value: 'js', label: colors.warning('JavaScript') }, { value: 'ts', label: colors.left('TypeScript') }]
         }));
         options.template = framework + (programmingLanguage === 'ts' ? '-ts' : '');
       }
       if (options.ai === undefined) options.ai = await answer(p.multiselect({
-        message: text('可选 AI 指引（空格多选，回车跳过）', 'Optional AI guidance (Space to select, Enter to skip)'),
+        message: question('可选 AI 指引（空格多选，回车跳过）', 'Optional AI guidance (Space to select, Enter to skip)'),
         required: false, initialValues: [],
-        options: AI_TOOLS.map(value => ({ value, label: { codex: 'Codex (AGENTS.md)', claude: 'Claude (CLAUDE.md)', copilot: 'Copilot (.github/copilot-instructions.md)' }[value] }))
+        options: AI_TOOLS.map(value => ({ value, label: colors.command({ codex: 'Codex (AGENTS.md)', claude: 'Claude (CLAUDE.md)', copilot: 'Copilot (.github/copilot-instructions.md)' }[value]) }))
       }));
-      if (options.install === undefined) options.install = await answer(p.confirm({ message: text('安装 npm 依赖？', 'Install npm dependencies?'), initialValue: false }));
-      if (options.start === undefined) options.start = await answer(p.confirm({ message: text('初始化 Python 并启动桌面？', 'Initialize Python and start desktop?'), initialValue: false }));
+      if (options.install === undefined) options.install = await answer(p.confirm({ message: question('安装 npm 依赖？', 'Install npm dependencies?'), initialValue: false }));
+      if (options.start === undefined) options.start = await answer(p.confirm({ message: question('初始化 Python 并启动桌面？', 'Initialize Python and start desktop?'), initialValue: false }));
     }
     const directory = options.directory ?? options.name ?? 'ewp-app';
     const install = options.install ?? Boolean(options.start);
     if (options.start && !install) throw creatorError('startNeedsInstall', {}, options.language);
+    const total = 1 + Number(install) + (options.start ? 2 : 0);
+    let current = 0;
+    const step = (zh, en) => log(`${colors.top(`[${++current}/${total}]`)} ${colors.left(text(zh, en))}`);
+    step('创建项目文件', 'Create project files');
     const result = createProject({ directory, name: options.name ? basename(options.name) : undefined, template: options.template ?? 'vanilla', ai: options.ai ?? [], language: options.language, cwd, templatesDir });
-    log(`${text('项目已创建：', 'Project created: ')}${result.directory} (${result.template})`);
+    log(`${colors.success(text('项目已创建：', 'Project created: '))}${colors.command(result.directory)} ${colors.dim(`(${result.template})`)}`);
     const frontend = join(result.directory, 'frontend');
     const runOptions = { language: options.language, env: { ...env, EWP_LANG: options.language } };
-    if (install) await run(['install'], frontend, runOptions);
+    if (install) {
+      step('安装 npm 依赖', 'Install npm dependencies');
+      await run(['install'], frontend, runOptions);
+      log(colors.success(text('npm 依赖已安装。', 'npm dependencies installed.')));
+    }
     const commands = [`cd ${quoteDirectory(frontend)}`];
     if (!install) commands.push('npm install');
     commands.push('npm run init', 'npm run dev');
-    log(`${text('桌面开发：', 'Desktop development:')}\n  ${commands.join('\n  ')}\n${text('浏览器预览：', 'Browser preview: ')}npm run frontend:dev\n${text('命令帮助：', 'Command help: ')}npm run help`);
-    if (ask) p.outro(options.start ? text('正在启动桌面', 'Starting desktop') : text('准备完成', 'Ready'));
+    log(`${colors.title(text('桌面开发：', 'Desktop development:'))}\n  ${commands.map(colors.command).join('\n  ')}\n${colors.dim(text('浏览器预览：', 'Browser preview: '))}${colors.command('npm run frontend:dev')}\n${colors.dim(text('命令帮助：', 'Command help: '))}${colors.command('npm run help')}`);
+    if (ask) p.outro(colors.success(options.start ? text('正在启动桌面', 'Starting desktop') : text('准备完成', 'Ready')));
     if (options.start) {
+      step('初始化 Python 环境', 'Initialize Python environment');
       await run(['run', 'init'], frontend, runOptions);
+      log(colors.success(text('Python 环境已就绪。', 'Python environment ready.')));
+      step('启动桌面开发', 'Start desktop development');
       await run(['run', 'dev'], frontend, runOptions);
     }
     return 0;
   } catch (error) {
-    if (error === cancellation) { p.cancel(text('操作已取消，未创建项目。', 'Cancelled; no project was created.')); return 130; }
+    if (error === cancellation) { p.cancel(colors.warning(text('操作已取消，未创建项目。', 'Cancelled; no project was created.'))); return 130; }
     throw localizeError(error, options.language);
   }
 }

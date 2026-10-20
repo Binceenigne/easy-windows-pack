@@ -42,7 +42,7 @@ export function helpText(language = 'zh-CN') {
   return withLanguage(language, () => text(
 `easywindowspack ${VERSION} (Node >=22.12)
 用法：ewp [命令] [参数]
-全局帮助无需项目：ewp / ewp help / ewp -h / ewp --help
+欢迎屏无需项目：ewp；完整帮助：ewp help / ewp -h / ewp --help
   create [项目名称] [参数]   创建项目；ewp create -h 查看创建帮助
   --version, -v, -V         显示版本
 
@@ -77,7 +77,7 @@ Ctrl+C 关闭 Vite 与桌面进程树。
 `,
 `easywindowspack ${VERSION} (Node >=22.12)
 Usage: ewp [command] [options]
-Global help needs no project: ewp / ewp help / ewp -h / ewp --help
+Welcome needs no project: ewp; full help: ewp help / ewp -h / ewp --help
   create [project-name] [options]  Create a project; ewp create -h for creation help
   --version, -v, -V         Show version
 

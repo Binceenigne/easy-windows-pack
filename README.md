@@ -68,7 +68,7 @@ npm run dev
 
 打包前先完成 `init`；构建会自动编译前端。浏览器适合调试界面，原生窗口、托盘和 Python 桥接需在桌面验证。
 
-新增构建命令对应 Python **0.3.0** / npm **0.1.2**。**0.3.0 wheel 已在本地构建并通过独立冻结安装向导 E2E，PyPI 未发布**。截至 2026-10-12，两包 npm **0.1.2 已公开可用**：`npm view` 的版本与 hash 均与发布归档一致，`npm create ewp@latest` 实际使用 0.1.2，Vue TS 项目的 registry 安装、帮助、检查（3 passed）、类型检查与前端构建全部通过，runtime / creator 安装树均为 0.1.2。`dist-tags.latest` 的独立查询待主 agent 补充。配置与分步骤安装/卸载说明见 [打包指南](docs/packaging.md)，发布状态、历史验收与 wheel 哈希见 [验收记录](docs/npm-validation.md)。
+当前 npm 源码面向 **0.1.3，尚未发布，待发布验证**；`@latest` 的公开版本以 npm registry 为准。Python **0.3.0** 尚未发布到 PyPI。配置与安装说明见 [打包指南](docs/packaging.md)，发布状态与历史证据见 [验收记录](docs/npm-validation.md)。
 
 也可双击项目根的 `startup.cmd` 打开任务菜单（需要 Python）。
 
@@ -92,7 +92,7 @@ my-app/
 
 用 `npm install -g easywindowspack@latest` 安装全局 CLI，再用 `ewp create` 创建项目。
 项目的 `npm run` 脚本封装 `ewp` CLI，使用项目依赖的版本，无需全局安装。
-运行 `ewp -h` 查看完整帮助。
+0.1.3 中，`ewp` 无参数（或仅带 `--lang en`）显示紧凑构筑核品牌 ASCII 欢迎屏及 `ewp create` / `dev` / `build` / `menu` 四条常用命令；`ewp -h` / `help` / `--help` 查看完整教程。欢迎屏和帮助均无需已有项目。
 
 </details>
 

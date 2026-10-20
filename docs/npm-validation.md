@@ -2,6 +2,35 @@
 
 [文档导航 / Documentation](README.md) · [完整指南 / Guide](npm-vite.md)
 
+## 2026-10-20 0.1.3 欢迎屏与创建配色 / Branded welcome and creation colors
+
+源码和两个 npm 包版本统一为 **0.1.3**。无参数 `ewp`（含仅 `--lang`）展示已选定的 `#` 字符紧凑构筑核：紫色顶面、浅蓝左面、深蓝右面和中心留白；四个常用命令与 `ewp -h` 完整教程提示保持精简。`help` / `-h` / `--help` 继续输出完整帮助，均无需项目。
+
+Sources and both npm packages use **0.1.3**. Bare `ewp`, including language-only invocations, shows the selected compact `#` core logo with purple, light-blue and blue faces, central whitespace, four common commands and the full-guide hint. Explicit help flags still show full help without requiring a project.
+
+创建向导的标题、问题、选项、实际执行阶段及成功/取消/错误状态有颜色。`NO_COLOR` 优先，`FORCE_COLOR=0` 禁用，其他显式 `FORCE_COLOR` 值启用；默认只在非 dumb 的 TTY 启用，管道保持纯文本。`create-ewp/terminal` 复用品牌与配色；不翻译或重写 npm/pip/Vite 第三方输出。共用中英文 Skill 与仓库主 Skill 增加网格、横平竖直、边缘/基线对齐、统一间距/尺寸、层级留白、克制配色及直觉交互要求。
+
+The wizard colors headings, questions, option labels, actual execution stages and outcome states. `NO_COLOR` wins; `FORCE_COLOR=0` disables colors and other explicit values enable them. Automatic colors require a non-dumb TTY; pipes stay plain. `create-ewp/terminal` shares the palette and mark. Third-party output is unchanged. Both generated Skill languages and the checkout Skill now specify grid/edge/baseline alignment, consistent spacing and sizes, hierarchy, whitespace, restrained color and intuitive interactions.
+
+| 验证 / Check | 实际结果 / Actual result |
+| --- | --- |
+| Node creator/runtime 回归 / Regression | **145 passed / 0 failed / 5 conditional skips**；日志 `output/npm-0.1.3-tests.log`。跳过需要 Python 或六模板集成环境的原有条件测试；本次未重跑 Python/冻结安装器 / Existing environment-gated Python and six-template tests were skipped; native packaging was not rerun. |
+| 真实 tarball 独立安装 / Physical archive installation | **passed**；`build/npm-0.1.3-validation/tarball-orVksi/report.json`。双语欢迎屏/完整帮助/ANSI/无项目 create、生成 AI Skill、全新 Vanilla 项目 check（3 passed）和前端构建 / Bilingual output, creator delegation, AI guidance, runtime checks and Vite build. |
+| 最终归档对照 / Final archive comparison | **passed**；`build/npm-0.1.3-validation/final-archive-rh1TlE/report.json`。README 精简重打包后，其他 46/16 个文件与已安装验收包内容一致（识别 npm shebang 换行规范化）/ Repacked README matches source; remaining runtime files match the installed and tested archives, accounting for npm shebang normalization. |
+| 发布 / Publication | 待 npm 重新认证与正式发布；当前 registry latest 为 0.1.2 / Awaiting renewed npm authentication and publication; registry latest is currently 0.1.2. |
+
+本机首次安装后 Rollup 原生模块短暂报 `ERR_DLOPEN_FAILED`（Windows 文件被其他进程占用）；复用同一安装项目后构建通过。进程回归超时已保留合理上限，最终运行无超时。未修改系统安全设置或原生依赖实现。
+
+The first new installation hit a transient Windows file lock on Rollup's native module (`ERR_DLOPEN_FAILED`); the same installed project later built successfully. Process tests retain bounded timeouts and the final run had no timeout. No system security settings or native module implementations were changed.
+
+| 归档 / Archive | SHA-1 | SHA-256 |
+| --- | --- | --- |
+| `create-ewp-0.1.3.tgz` (88,823 bytes) | `444e29072af6f079ee5d7bd3f2d4f3cb60516ed4` | `60a884ade6bf949fb5fcc57767ea8c8a2e2cd27e22196bce803318bbfef155d7` |
+| `easywindowspack-0.1.3.tgz` (28,591 bytes) | `3b0b81011442940f4be66ffa585ceae15af9d223` | `552bf8fd1880b705666b34194689a84bf2821a57c7abff9dfa4d7747ebb6fcb1` |
+
+Python 仍为 **0.3.0 本地 wheel、PyPI 未发布**。以下 0.1.2 及更早验收保留原日期与范围。
+Python remains **0.3.0 as a local wheel, unpublished on PyPI**. Older checks below retain their original dates and scope.
+
 ## 2026-10-12 0.1.2 发布状态 / Publication status
 
 `create-ewp@0.1.2` 与 `easywindowspack@0.1.2` **已公开可用**：账号 `binceengine` 重新 web login 后，两个正式 `npm publish` 均成功。两包版本与 `dist.shasum` 查询均成功，SHA-1 与发布归档一致，全新 Vue TS 项目的 registry 冒烟通过，详见下节。

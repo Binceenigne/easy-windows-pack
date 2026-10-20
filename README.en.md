@@ -68,7 +68,7 @@ Run all subsequent npm commands in `frontend/`. `init` creates or reuses the pro
 
 Complete `init` before packaging; builds compile the frontend automatically. Use the browser to debug UI, and the desktop app to verify native windows, tray, and the Python bridge.
 
-New commands describe Python **0.3.0** / npm **0.1.2**. **The 0.3.0 wheel is built locally and passed independent frozen installer wizard E2E validation; it has not been published to PyPI**. As of 2026-10-12, both npm packages at **0.1.2 are publicly available**: `npm view` versions and hashes match the release archives, `npm create ewp@latest` used 0.1.2, and Vue TS registry installation, help, checks (3 passed), type checking and frontend build all passed. The installed runtime and creator are both 0.1.2. A separate `dist-tags.latest` query remains for the main agent. See the [packaging guide](docs/packaging.md) for configuration and step-by-step installation/uninstall, and [validation](docs/npm-validation.md) for publication status, historical checks and the wheel hash.
+Current npm sources target **0.1.3, not yet published; publication validation is pending**. The public `@latest` version is determined by the npm registry. Python **0.3.0** has not been published to PyPI. See the [packaging guide](docs/packaging.md) for configuration and installation, and [validation](docs/npm-validation.md) for publication status and historical evidence.
 
 You can also double-click the project's root `startup.cmd` to open the task menu (requires Python).
 
@@ -92,7 +92,7 @@ Installation and builds generate `node_modules`, `.venv`, and `*.egg-info` / `*.
 
 Install the global CLI with `npm install -g easywindowspack@latest`, then create a project with `ewp create`.
 Project `npm run` scripts wrap the `ewp` CLI and use the project's dependency version; no global installation is required.
-Run `ewp -h` for the full help.
+In 0.1.3, `ewp` with no arguments (or only `--lang en`) displays a compact ASCII welcome screen with the brand's core symbol and four common commands: `ewp create` / `dev` / `build` / `menu`. Use `ewp -h` / `help` / `--help` for the full guide. Both the welcome screen and help work without a project.
 
 </details>
 

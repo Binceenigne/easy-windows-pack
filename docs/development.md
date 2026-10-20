@@ -4,9 +4,9 @@
 
 ## 入口与环境 / Entry point and environment
 
-首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前为 **0.1.2 待发布**，`npm login` 返回 **HTTP 401**，等待用户认证；0.1.1 发布与 registry 冒烟的历史证据见 [验收记录](npm-validation.md)。本文语言、帮助/菜单及完整构建约定描述 0.1.2。创建与本地 tarball 用法见 [npm 指南](npm-vite.md)。
+首选 npm / Vite 工作流：Node >=22.12.0、Vite ^7.3.7；桌面、Python 测试与打包还需 Python >=3.10，Windows 桌面需 WebView2。frontend 是 private npm workspace，配置、锁文件、依赖及 packages 均在其中。两个 ESM 包 `easywindowspack` / `create-ewp` 当前源码面向 **0.1.3，尚未发布，待发布验证**；0.1.2 是历史已发布版本，证据见 [验收记录](npm-validation.md)。本文创建、欢迎屏、语言、帮助/菜单及完整构建约定描述当前源码。创建与发布流程见 [npm 指南](npm-vite.md)。
 
-Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Both ESM packages are now **0.1.2, pending publication**, awaiting user authentication after `npm login` returned **HTTP 401**; historical 0.1.1 publication and registry smoke evidence remain in the [validation record](npm-validation.md). Language, help/menu, and full-build contracts here describe 0.1.2. See the [npm guide](npm-vite.md) for creation and local tarballs.
+Prefer the npm / Vite workflow: Node >=22.12.0 and Vite ^7.3.7. Desktop, Python tests and packaging also need Python >=3.10; Windows desktop needs WebView2. The private npm workspace, configuration, lockfile, dependencies and packages live under frontend. Current sources for both ESM packages target **0.1.3, not yet published; publication validation is pending**. Version 0.1.2 is the historical published release; evidence remains in the [validation record](npm-validation.md). Creation, welcome, language, help/menu and full-build contracts here describe current sources. See the [npm guide](npm-vite.md) for creation and release workflow.
 
 本手册命令示例均从项目根执行，npm 显式加 `--prefix frontend`；若已进入 frontend，可省略该参数。Python `.venv` 和 `output/` 仍属于项目根。
 
@@ -35,9 +35,9 @@ The only root launcher, `startup.cmd`, delegates through [scripts/startup.cmd](.
 
 ## 项目语言 / Project language
 
-0.1.2 创建流程第一步选择人类语言 `zh-CN` / `en`，后续再选 JavaScript / TypeScript；创建时保存到 `frontend/package.json` 的 `ewp.language`。命令输出的语言优先级为 **显式 `--lang` → `EWP_LANG` → 保存值 → `zh-CN`**。已有项目运行时的 `--lang` / 环境变量只临时覆盖，不改配置；README、AI 指引与 demo 在创建时选语言，临时切换 CLI 不重写这些文件。
+0.1.3 创建流程第一步选择人类语言 `zh-CN` / `en`，后续再选 JavaScript / TypeScript；创建时保存到 `frontend/package.json` 的 `ewp.language`。CLI 欢迎屏、帮助、菜单和任务输出的语言优先级为 **显式 `--lang` → `EWP_LANG` → 项目保存值 → `zh-CN`**。已有项目运行时的 `--lang` / 环境变量只临时覆盖，不改配置；README、AI 指引与 demo 在创建时选语言，临时切换 CLI 不重写这些文件。
 
-The first 0.1.2 creation prompt selects human language, `zh-CN` / `en`; JavaScript / TypeScript is a later choice. Creation saves it as `ewp.language` in `frontend/package.json`. Command output resolves **explicit `--lang` → `EWP_LANG` → saved value → `zh-CN`**. Runtime overrides are temporary and leave configuration intact. README, AI guidance, and demo text use the creation language; CLI overrides do not rewrite those files.
+The first 0.1.3 creation prompt selects human language, `zh-CN` / `en`; JavaScript / TypeScript is a later choice. Creation saves it as `ewp.language` in `frontend/package.json`. The CLI welcome screen, help, menus, and task output use the language priority **explicit `--lang` → `EWP_LANG` → saved project value → `zh-CN`**. Runtime overrides are temporary and leave configuration intact. README, AI guidance, and demo text use the creation language; CLI overrides do not rewrite those files.
 
 ```powershell
 npm --prefix frontend run help -- --lang en
@@ -49,11 +49,19 @@ npm --prefix frontend run ewp -- info --lang zh-CN
 
 After language selection, first-party help, menus, and task messages use one selected language. npm's `Ok to proceed?` prompt and npm / pip / Vite output are not translated. Generator `--yes` does not control npm's confirmation; non-interactive language follows the priority above, defaulting to `zh-CN` when unset.
 
+创建向导标题从 creator manifest 读取版本，标题、问题、框架 / 语言 / AI 选项、执行阶段及成功 / 取消 / 错误反馈使用颜色。步骤只计实际执行阶段：仅创建 1 步，创建并安装 2 步，安装并启动 4 步（创建 → npm 安装 → Python 初始化 → 桌面启动）。runtime 欢迎屏与向导复用 `create-ewp/terminal`：设置 `NO_COLOR` 优先关闭；否则 `FORCE_COLOR=0` 关闭，其他已设置值开启；均未设置时仅 TTY 且 `TERM` 不为 `dumb` 自动开启，管道默认关闭。完整约定见 [终端外观与执行阶段](npm-vite.md#终端外观与执行阶段--terminal-appearance-and-execution-stages)。
+
+The wizard title reads the creator manifest version. Colors cover its title, questions, framework / language / AI choices, stages and success / cancellation / error feedback. Steps count only actual execution: one for creation, two with installation, four with startup (creation → npm installation → Python initialization → desktop startup). The runtime welcome screen and wizard share `create-ewp/terminal`: setting `NO_COLOR` disables color first; otherwise `FORCE_COLOR=0` disables it and any other set value enables it. With neither set, only a TTY with `TERM` other than `dumb` enables color; pipes default to plain text. See [terminal appearance and execution stages](npm-vite.md#终端外观与执行阶段--terminal-appearance-and-execution-stages).
+
+可选 AI 的共用指引与 Skill 已加入网格横平竖直、边缘 / 基线对齐、统一间距尺寸、层级留白和克制配色；交互要求优雅直觉、自然顺序与及时反馈，键盘焦点可见且顺序合理，返回 / 取消路径明确，关闭弹窗后恢复焦点。仅生成所选工具资源，布局与路由见 [AI 资源布局](npm-vite.md#ai-资源布局--ai-resource-layout)。
+
+Optional shared AI guidance and skill now cover horizontal rows and vertical columns, aligned edges / baselines, consistent spacing and sizes, hierarchy, whitespace and a restrained palette. Interaction guidance calls for graceful and intuitive behavior, natural order, timely feedback, visible and logical keyboard focus, clear back / cancel paths and restored focus after dialogs close. Only selected tools receive resources; see [AI resource layout](npm-vite.md#ai-资源布局--ai-resource-layout).
+
 ## 菜单与命令 / Menu and commands
 
-根 `.\startup.cmd` 无参数进入菜单，输入编号执行任务，`0` 退出。全局安装后 `ewp` 无参数、`ewp -h` / `ewp --help` 输出帮助，无需已有项目；菜单需显式 `ewp menu`。菜单与直接任务共用实现；可选参数直接传命令。
+根 `.\startup.cmd` 无参数进入菜单，输入编号执行任务，`0` 退出。0.1.3 全局安装后，`ewp` 无参数或仅带 `--lang` 显示紧凑构筑核品牌 ASCII 欢迎屏，列出 `ewp create`、`ewp dev`、`ewp build`、`ewp menu`；版本动态读取 runtime manifest。`ewp -h` / `ewp help` / `ewp --help` 输出完整教程，均无需已有项目；菜单需显式 `ewp menu`。菜单与直接任务共用实现；可选参数直接传命令。
 
-Root `.\startup.cmd` without arguments opens the numbered menu; `0` exits. With global installation, `ewp` without arguments, `ewp -h`, or `ewp --help` shows help without a project. Use `ewp menu` to open the menu. Menu and direct tasks share the implementation; pass optional flags directly.
+Root `.\startup.cmd` without arguments opens the numbered menu; `0` exits. With global 0.1.3, `ewp` without arguments or with only `--lang` shows a compact ASCII welcome screen with the brand's core symbol and `ewp create`, `ewp dev`, `ewp build`, `ewp menu`; the version is read dynamically from the runtime manifest. `ewp -h` / `ewp help` / `ewp --help` shows the full guide. Welcome and help work without a project; use `ewp menu` to open the menu. Menu and direct tasks share the implementation; pass optional flags directly.
 
 frontend 内可运行 `npm run help` / `info` / `menu` 和 `npm run ewp -- <task> [options]`。全局安装后项目根可直接 `ewp <task>`；未全局安装则从根 `npm --prefix frontend run ewp -- <task>`。以下每个菜单任务均支持这三个入口，`startup.cmd` 列为 PowerShell 根目录写法。
 
@@ -61,7 +69,8 @@ Inside frontend, run `npm run help` / `info` / `menu` or `npm run ewp -- <task> 
 
 | 全局 CLI / Global CLI | 根启动脚本 / Root launcher | 行为 / Behavior |
 | --- | --- | --- |
-| `ewp help` / `ewp -h` / `ewp --help` | `.\startup.cmd help` / `.\startup.cmd -h` | 查看帮助 / Show help |
+| `ewp` / `ewp --lang en` | 不适用 / N/A | 显示紧凑欢迎屏，无需项目 / Compact welcome; no project required |
+| `ewp help` / `ewp -h` / `ewp --help` | `.\startup.cmd help` / `.\startup.cmd -h` | 查看完整教程 / Show full guide |
 | `ewp menu` | `.\startup.cmd menu` 或无参数 / or no arguments | 交互菜单 / Interactive menu |
 | `ewp init` | `.\startup.cmd init` | 创建/复用 `.venv`，安装依赖并编译前端 / Initialize dependencies and compile frontend |
 | `ewp dev [--web]` | `.\startup.cmd dev [--web]` | 桌面 HMR；--web 仅浏览器 / Desktop HMR; --web for browser only |
@@ -162,9 +171,9 @@ Both `build/` and `output/` are generated directories, not source or documentati
 
 Initialization and packaging tasks print a log path; standalone test, browser, demo and info mainly use the terminal. Inspect distributions separately: framework wheels contain core plus source components/bridges/contracts; generated app wheels include compiled assets according to their metadata; EXEs carry only compiled `output/frontend/` as frontend resources; source bundles retain sources and docs, excluding environments, caches and old outputs. See the [npm guide](npm-vite.md) for preparation and packing.
 
-源码 ZIP 同时保留配置引用的安全 source 及空目录，解压后可重新构建。长路径卸载自删除使用短 `-File` 临时 PowerShell 脚本和 JSON 清单，校验拥有哈希并保留用户文件。当前 Python 全测 **245 passed**、Node **145 passed / 1 skipped**、六模板 pack **8/8 passed**（`m01nHq`）；0.3.0 wheel 的独立冻结向导 E2E **passed**（`ygft7h_d`），覆盖 159–163 字符安装路径、40 个空目录及用户文件保留。报告与 wheel SHA-256 见 [本轮验收](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes)。
+源码 ZIP 同时保留配置引用的安全 source 及空目录，解压后可重新构建。长路径卸载自删除使用短 `-File` 临时 PowerShell 脚本和 JSON 清单，校验拥有哈希并保留用户文件。**2026-10-10 历史验收**：Python 全测 **245 passed**、Node **145 passed / 1 skipped**、六模板 pack **8/8 passed**（`m01nHq`）；0.3.0 wheel 的独立冻结向导 E2E **passed**（`ygft7h_d`），覆盖 159–163 字符安装路径、40 个空目录及用户文件保留。这些不代表 npm 0.1.3 的本轮结果；报告与 wheel SHA-256 见 [历史验收](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes)。
 
-Source ZIPs also preserve safe config-referenced sources and empty directories for rebuilding after extraction. Long-path uninstall self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, verifies ownership hashes and preserves user files. Current checks: Python **245 passed**, Node **145 passed / 1 skipped**, and six-template pack integration **8/8 passed** (`m01nHq`). Independent frozen wizard E2E validation of the 0.3.0 wheel **passed** (`ygft7h_d`), covering 159–163-character install paths, 40 empty directories and user-file preservation. See [current validation](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes) for reports and the wheel SHA-256.
+Source ZIPs also preserve safe config-referenced sources and empty directories for rebuilding after extraction. Long-path uninstall self-deletion uses a temporary PowerShell script with a short `-File` invocation and JSON manifest, verifies ownership hashes and preserves user files. **Historical checks from 2026-10-10:** Python **245 passed**, Node **145 passed / 1 skipped**, and six-template pack integration **8/8 passed** (`m01nHq`). Independent frozen wizard E2E validation of the 0.3.0 wheel **passed** (`ygft7h_d`), covering 159–163-character install paths, 40 empty directories and user-file preservation. These are not current npm 0.1.3 results; see [historical validation](npm-validation.md#2026-10-10-安装向导与安全修复阶段--installer-wizard-and-safety-fixes) for reports and the wheel SHA-256.
 
 ## 兼容命令 / Compatible commands
 

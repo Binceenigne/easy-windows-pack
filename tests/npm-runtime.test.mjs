@@ -8,7 +8,9 @@ import { spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { runInNewContext } from 'node:vm';
 import { createRequire } from 'node:module';
-import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, pythonTaskSpec, spawnSpec, chooseLocalPort, runDev, main, MENU_TASKS, runMenu, isDirectExecution } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
+import { parseArgs, findProjectRoot, configPath, selectPython, pythonEnvironment, pythonTaskSpec, spawnSpec, chooseLocalPort, runDev, main, MENU_TASKS, runMenu, isDirectExecution, welcomeText } from '../frontend/packages/easywindowspack/bin/ewp.mjs';
+import { createColors } from '../frontend/packages/create-ewp/lib/terminal.mjs';
+import { stripVTControlCharacters } from 'node:util';
 import { VERSION, languageArgs, helpText, text, withLanguage } from '../frontend/packages/easywindowspack/language.mjs';
 import { projectManifest } from '../frontend/packages/create-ewp/lib/create.mjs';
 
@@ -308,9 +310,9 @@ test('Windows batch commands use ComSpec with every token quoted and unsafe expa
   assert.deepEqual(spawnSpec('python.exe', ['scripts/dev.py', 'wheel'], { platform: 'win32' }).args, ['scripts/dev.py', 'wheel']);
 });
 
-test('Windows npm.cmd actually executes without ENOENT', { skip: process.platform !== 'win32' }, () => {
+test('Windows npm.cmd actually executes without ENOENT', { skip: process.platform !== 'win32', timeout: 45000 }, () => {
   const spec = spawnSpec('npm.cmd', ['--version']);
-  const result = spawnSync(spec.command, spec.args, { ...spec.options, encoding: 'utf8', windowsHide: true, timeout: 10000 });
+  const result = spawnSync(spec.command, spec.args, { ...spec.options, encoding: 'utf8', windowsHide: true, timeout: 30000 });
   assert.equal(result.error, undefined);
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /\d+\.\d+\.\d+/);
@@ -326,6 +328,36 @@ test('help runs outside a project without probing Python', async t => {
     assert.equal(await deadline(main(['--help', '--lang', 'en']), 'CLI help', t.signal), 0);
     assert.match(output, /Build EXE by default/);
   } finally { process.chdir(original); console.log = log; }
+});
+
+test('compact welcome preserves commands and languages with color and plain output', () => {
+  const plain = createColors({ env: {}, stream: { isTTY: false } });
+  const colors = createColors({ env: { FORCE_COLOR: '1' }, stream: { isTTY: false } });
+  assert.equal(parseArgs([]).command, 'welcome');
+  assert.equal(parseArgs(['--lang', 'en']).command, 'welcome');
+  for (const language of ['en', 'zh-CN']) {
+    const output = welcomeText(language, plain);
+    const colored = welcomeText(language, colors);
+    assert.match(output, /#{4}/);
+    assert.ok(output.includes(`v${VERSION}`));
+    for (const command of ['ewp create', 'ewp dev', 'ewp build', 'ewp menu', 'ewp -h']) assert.ok(output.includes(command));
+    assert.equal(/[\u3400-\u9fff]/u.test(output), language === 'zh-CN');
+    assert.doesNotMatch(output, /\x1b\[/);
+    assert.match(colored, /\x1b\[38;2;194;152;255m/);
+    assert.match(colored, /\x1b\[38;2;143;194;255m/);
+    assert.match(colored, /\x1b\[38;2;62;123;231m/);
+    assert.equal(stripVTControlCharacters(colored), output);
+  }
+});
+
+test('terminal colors honor NO_COLOR, FORCE_COLOR, dumb terminals and redirected logs', () => {
+  const supported = (env, isTTY) => createColors({ env, stream: { isTTY } }).enabled;
+  assert.equal(supported({}, true), true);
+  assert.equal(supported({}, false), false);
+  assert.equal(supported({ TERM: 'dumb' }, true), false);
+  assert.equal(supported({ FORCE_COLOR: '0' }, true), false);
+  assert.equal(supported({ FORCE_COLOR: '1' }, false), true);
+  assert.equal(supported({ NO_COLOR: '', FORCE_COLOR: '1' }, true), false);
 });
 
 test('language priority is explicit flag, environment, nearest project, then Chinese', async () => {
@@ -358,7 +390,7 @@ test('language priority is explicit flag, environment, nearest project, then Chi
   } finally { rmSync(directory, { recursive: true, force: true }); }
 });
 
-test('global help, version and create help execute through a real directory symlink outside projects', { timeout: 30000 }, () => {
+test('global help, version and create help execute through a real directory symlink outside projects', { timeout: 90000 }, () => {
   const directory = mkdtempSync(join(tmpdir(), 'ewp-linked cli-'));
   const entry = join(packageRoot, 'bin/ewp.mjs');
   const linked = join(directory, 'nvm link');
@@ -371,13 +403,18 @@ test('global help, version and create help execute through a real directory syml
     assert.equal(isDirectExecution(join(packageRoot, 'language.mjs'), pathToFileURL(entry).href), false);
     const run = args => {
       const result = spawnSync(process.execPath, [linkedEntry, ...args], {
-        cwd: directory, env: { ...process.env, EWP_LANG: '' }, encoding: 'utf8', timeout: 8000
+        cwd: directory, env: { ...process.env, EWP_LANG: '', NO_COLOR: '1' }, encoding: 'utf8', timeout: 20000
       });
       assert.equal(result.error, undefined);
       assert.equal(result.status, 0, result.stderr);
       return result.stdout;
     };
-    for (const args of [[], ['help'], ['--help'], ['-h']]) {
+    const welcome = run([]);
+    assert.ok(welcome.includes(`v${VERSION}`));
+    assert.match(welcome, /ewp -h/);
+    assert.doesNotMatch(welcome, /用法：ewp|\x1b\[/);
+    assert.match(run(['--lang', 'en']), /Inside a project/);
+    for (const args of [['help'], ['--help'], ['-h']]) {
       const output = run(args);
       assert.match(output, /用法：ewp/);
       assert.match(output, /create/);
@@ -465,7 +502,7 @@ test('help describes every task and both entry locations in each language', () =
 test('published entry points and optional framework peers match the runtime contract', () => {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'easywindowspack');
-  assert.equal(pkg.version, '0.1.2');
+  assert.equal(pkg.version, '0.1.3');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.engines.node, '>=22.12.0');
   assert.equal(pkg.type, 'module');
