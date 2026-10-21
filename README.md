@@ -4,26 +4,27 @@
 
 # easy-windows-pack
 
-用 Web 技术写界面，用 Python 连接桌面能力，打包成 Windows 应用。
+用 Web 技术写界面，选择 Python、Go、Rust 或 C++ 连接桌面能力。
 
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
 [![easywindowspack](https://img.shields.io/npm/v/easywindowspack?label=easywindowspack)](https://www.npmjs.com/package/easywindowspack)
 [![create-ewp](https://img.shields.io/npm/v/create-ewp?label=create-ewp)](https://www.npmjs.com/package/create-ewp)
 
-**中文** · [English](README.en.md) · [文档](docs/README.md)
+**中文** · [English](README.en.md) · [应用指引](docs/agent.md)
 
 </div>
 
 `easy-windows-pack` 基于 Vite、Python 和 pywebview，让熟悉 Web 开发的你快速构建 Windows 桌面应用。
 
 - **熟悉的前端**：Vanilla、Vue、React，均支持 JavaScript / TypeScript。
-- **桌面能力**：窗口控件、拖拽、缩放、托盘和 Python API 桥接。
+- **可选后端**：Python / pywebview、Go / webview_go、Rust / Wry、C++ / webview。
+- **桌面能力**：窗口控件、系统拖拽与缩放、工作区最大化；Python 另提供托盘适配器。
 - **开发到打包**：Vite 热更新、Windows EXE 和 Python wheel。
 
 ## 环境要求
 
 - [Node.js](https://nodejs.org/) **>=22.12**，附带 npm。
-- Python **>=3.10**，用于桌面开发与打包；安装时建议启用 `py` launcher。
+- 所选后端的工具链：Python **>=3.10**；Go **>=1.22** 与 CGO C++ 编译器；Rust / Cargo 与 MSVC；或 CMake **>=3.24** 与 C++17 编译器。
 - Windows 与 [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)。
 
 窗口支持 Windows / macOS 外观主题；EXE 打包面向 Windows。
@@ -36,9 +37,9 @@
 npm create ewp@latest
 ```
 
-向导第一步选择**简体中文 / English**，然后选择项目名、Vanilla / Vue / React、JavaScript / TypeScript，以及是否安装依赖和启动桌面。
+向导选择语言、项目名、前端框架、JS / TS、后端及是否安装和启动。新增的四后端选择与 Aurora 欢迎页已在本地 0.1.4 实现，尚未发布；公开的 `@latest` 仍为 0.1.3。
 
-向导还可为 Codex、Claude、Copilot 生成 [AI 开发指引](docs/npm-vite.md#ai-资源布局--ai-resource-layout)，默认不选。
+向导还可为 Codex、Claude、Copilot 生成 [AI 开发指引](docs/agent.md)，默认不选。新项目 docs 只含最小的 index/design；选择 AI 后才增加对应 Skill 和引导，不复制框架维护资料。
 
 也可用下面的完整示例创建 **Vue + TypeScript** 项目，跳过向导，再手动安装与启动（目标目录需为空）：
 
@@ -50,11 +51,11 @@ npm run init
 npm run dev
 ```
 
-后续 npm 命令均在 `frontend/` 执行。`init` 创建或复用项目的 `.venv`，安装依赖并编译前端，无需手动激活 Python 环境。
+后续 npm 命令均在 `frontend/` 执行。`init` 初始化所选后端并编译前端；Python 使用项目 `.venv`，原生后端使用各自编译器。
 
 `dev` 打开桌面窗口，修改前端即可热更新；按 Ctrl+C 停止。
 
-源码已实现 Python init/build 的底部固定两行蓝色阶段进度，拟随 npm **0.1.4** 提供给新建项目（尚未发布）；终端支持、回退与开关见 [开发手册](docs/development.md)。
+源码已实现 Python init/build 的底部固定两行蓝色阶段进度，拟随 npm **0.1.4** 提供给新建项目（尚未发布）；终端支持、回退与开关见 [开发手册](.maintainer/development.md)。
 
 ## 常用命令
 
@@ -70,9 +71,9 @@ npm run dev
 
 打包前先完成 `init`；构建会自动编译前端。浏览器适合调试界面，原生窗口、托盘和 Python 桥接需在桌面验证。
 
-两个 npm 包 **0.1.3 已正式公开可用**，`@latest` 均指向 0.1.3，registry 安装与构建验收通过。Python **0.3.0** 尚未发布到 PyPI。配置与安装说明见 [打包指南](docs/packaging.md)，详细结果见 [验收记录](docs/npm-validation.md)。
+两个 npm 包 **0.1.3 已正式公开可用**，`@latest` 均指向 0.1.3，registry 安装与构建验收通过。Python **0.3.0** 尚未发布到 PyPI。配置与安装说明见 [打包指南](.maintainer/packaging.md)，历史结果见 [验收记录](.maintainer/npm-validation.md)。
 
-也可双击项目根的 `startup.cmd` 打开任务菜单（需要 Python）。
+也可双击项目根的 `startup.cmd` 打开任务菜单。Go、Rust、C++ 的启动与构建不需要 Python；原生后端以目录分发，安装器额外需要 NSIS 3。wheel 和现有高级 Python 安装配置仅适用于 Python。
 
 ## 项目结构
 
@@ -81,7 +82,7 @@ npm run dev
 ```text
 my-app/
 ├─ frontend/      # Web 界面，业务代码在 src/
-├─ backend/       # Python 宿主，业务 API 在 src/demo.py
+├─ backend/       # 所选后端的宿主与业务 API
 ├─ scripts/       # 开发与打包工具
 ├─ startup.cmd    # Windows 任务菜单
 └─ output/        # 构建后生成的资源、安装包与日志
@@ -100,10 +101,8 @@ my-app/
 
 ## 深入了解
 
-- [文档导航](docs/README.md)：所有专题的入口。
-- [npm / Vite 指南](docs/npm-vite.md)：模板、CLI、公共 API、已有应用集成与发布流程。
-- [开发手册](docs/development.md)：源码开发、测试、构建与故障排查；贡献前从这里开始。
-- [架构](docs/architecture.md) · [窗口外观](docs/window-styles.md) · [桌面扩展 API](docs/desktop-integrations.md)。
+- [应用开发指引](docs/agent.md)：面向框架使用者的 Skill 与精简摘要。
+- [框架维护资料](.maintainer/README.md)：源码开发、架构、API、打包与历史验收，仅保留在框架仓库。
 
 ## 许可证
 

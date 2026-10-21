@@ -17,6 +17,7 @@
     "frontend": "npm run prepare:npm && node packages/easywindowspack/bin/ewp.mjs frontend",
     "demo": "node packages/easywindowspack/bin/ewp.mjs demo",
     "wheel": "node packages/easywindowspack/bin/ewp.mjs wheel",
+    "backend:build": "node packages/easywindowspack/bin/ewp.mjs backend:build",
     "exe": "node packages/easywindowspack/bin/ewp.mjs exe",
     "build": "node packages/easywindowspack/bin/ewp.mjs build",
     "build:all": "node packages/easywindowspack/bin/ewp.mjs build:all",

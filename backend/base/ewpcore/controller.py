@@ -34,6 +34,8 @@ class WindowController:
         self.visible = True
         self.always_on_top = self.config.always_on_top
         self._closing = False
+        self._work_area_constraint: win32.WorkAreaConstraint | None = None
+        self._initial_show_handled = False
         self._lock = threading.RLock()
         self._listeners_lock = threading.RLock()
         self._js_condition = threading.Condition()
@@ -53,6 +55,8 @@ class WindowController:
         self.window = window
         events = getattr(window, "events", None)
         bindings = {
+            "before_show": self._on_before_show,
+            "shown": self._on_shown,
             "loaded": self._on_loaded,
             "minimized": self._on_minimized,
             "maximized": self._on_maximized,
@@ -65,9 +69,6 @@ class WindowController:
             event = getattr(events, event_name, None) if events else None
             if event is not None:
                 event += callback
-        if self.config.maximize_on_start:
-            self.maximized = True
-            self._call_window("maximize")
         self._sync_state()
 
     def get_state(self) -> dict[str, Any]:
@@ -268,6 +269,17 @@ class WindowController:
         self._closing = True
         self._stop_js_dispatcher()
         self._notify_state()
+
+    def _on_before_show(self, *_args: Any) -> None:
+        if self.config.frameless and self._work_area_constraint is None:
+            self._work_area_constraint = win32.install_work_area_constraint(self.window, resizable=self.config.resizable)
+
+    def _on_shown(self, *_args: Any) -> None:
+        self._on_before_show()
+        if not self._initial_show_handled:
+            self._initial_show_handled = True
+            if self.config.maximize_on_start and not self._is_zoomed():
+                self.window_action("maximize")
 
     def _on_loaded(self, *_args: Any) -> None:
         self._sync_state()

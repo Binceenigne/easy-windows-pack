@@ -235,19 +235,17 @@ async function interact(page, expect, title, template) {
   const frame = page.locator('[data-ewp-window-frame]');
   await expect(frame).toHaveCount(1);
   await expect(frame.locator('[data-ewp-title]')).toHaveText(title);
-  await expect(frame.locator('h1')).toHaveText('Your next desktop app.');
+  const heading = `EWP + ${template.startsWith('vue') ? 'Vue' : template.startsWith('react') ? 'React' : 'Vanilla'}`;
+  await expect(frame.locator('h1')).toHaveText(heading);
   const editFile = template.startsWith('vue') ? 'App.vue' : template.startsWith('react')
     ? `App.${template.endsWith('-ts') ? 'tsx' : 'jsx'}` : `main.${template.endsWith('-ts') ? 'ts' : 'js'}`;
-  const hint = `Edit frontend/src/${editFile} and save to try HMR.`;
+  const hint = `Edit frontend/src/${editFile} and save to see your changes.`;
   await expect(frame.locator('.hint')).toHaveText(hint);
   const images = frame.locator('[data-ewp-content] img');
-  await expect(images).toHaveCount(2);
+  await expect(images).toHaveCount(3);
   const loadedImages = async colorScheme => {
-    await page.emulateMedia({ colorScheme });
-    const expectedBrand = colorScheme === 'dark'
-      ? new URL(await frame.locator('picture source').getAttribute('srcset'), page.url()).href
-      : await images.first().evaluate(image => image.src);
-    await expect.poll(() => images.first().evaluate(image => image.currentSrc)).toBe(expectedBrand);
+    if (await frame.locator('.theme-toggle').getAttribute('aria-pressed') !== String(colorScheme === 'dark')) await frame.locator('.theme-toggle').click();
+    await expect(page.locator('html')).toHaveAttribute('data-welcome-theme', colorScheme);
     await expect.poll(() => images.evaluateAll(elements => elements.every(image =>
       image.complete && image.naturalWidth > 0 && image.naturalHeight > 0)),
     { message: `${template}: rendered SVG images must load in ${colorScheme} mode` }).toBe(true);
@@ -257,19 +255,15 @@ async function interact(page, expect, title, template) {
   };
   const lightImages = await loadedImages('light');
   const darkImages = await loadedImages('dark');
-  assert.notEqual(lightImages[0].src, darkImages[0].src, 'Dark mode must select the monochrome brand asset');
-  assert.equal(lightImages[1].src, darkImages[1].src, 'The color hero asset must remain the same');
-  assert.equal(new Set([...lightImages, ...darkImages].map(image => image.src)).size, 3, 'All three SVG assets must render');
+  assert.notEqual(lightImages[2].src, darkImages[2].src, 'Dark mode must select the monochrome footer asset');
+  assert.equal(lightImages[0].src, darkImages[0].src, 'The color hero asset must remain the same');
+  assert.equal(new Set([...lightImages, ...darkImages].map(image => image.src)).size, 4, 'Three brand assets and partner SVG must render');
   await loadedImages('light');
-  const counter = frame.locator('[data-ewp-content] .counter');
-  await expect(counter).toHaveText('Count: 0');
-  await counter.click(); await counter.click();
-  await expect(counter).toHaveText('Count: 2');
-  const select = frame.locator('[data-ewp-content] select');
+  await expect(frame.locator('.counter')).toHaveCount(0);
   for (const style of ['windows', 'macos', 'windows']) {
-    await select.selectOption(style);
+    await frame.locator('.frame-switch button').filter({ hasText: style === 'macos' ? 'macOS' : 'Windows' }).click();
     await expect(frame).toHaveAttribute('data-window-style', style);
-    await expect(counter).toHaveText('Count: 2');
+    await expect(frame.locator('.theme-toggle')).toHaveAttribute('aria-pressed', 'false');
     const css = await frame.locator('.ewp-titlebar').evaluate(element => getComputedStyle(element).height);
     assert.equal(css, style === 'windows' ? '33px' : '40px', `Real ${style} titlebar CSS`);
   }
@@ -282,7 +276,7 @@ async function interact(page, expect, title, template) {
     }
   }
   assert.deepEqual(await page.evaluate(start => window.__packActions.slice(start), start), ['minimize', 'maximize', 'maximize', 'close'], 'Exactly one stub API call per click');
-  return { heading: 'Your next desktop app.', hint, lightImages, darkImages };
+  return { heading, hint, lightImages, darkImages };
 }
 
 // Consumer-only probes exercise the generated composition layers, not replacement
@@ -319,13 +313,14 @@ function unmount() { root?.unmount(); root = undefined; }
 mount(); ${controls}`);
   } else {
     // Keep all original Vanilla business handlers, and expose explicit disposal.
-    writeFileSync(entry, originalEntry.replace('frame.update({ windowStyle:', 'currentFrame.update({ windowStyle:') + `
+    writeFileSync(entry, originalEntry.replaceAll('frame.update({ windowStyle:', 'currentFrame.update({ windowStyle:') + `
 let currentFrame = frame;
 let live = true;
 function unmount() { currentFrame.dispose(); live = false; }
 function mount() {
   if (live) return;
-  count = 0; counter.textContent = 'Count: 0'; style.value = 'macos';
+  dark = false; renderTheme();
+  content.querySelectorAll('[data-window-style]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.windowStyle === 'macos')));
   currentFrame = mountFrame('#app', { title: document.title, windowStyle: 'macos', content });
   live = true;
 }
@@ -462,29 +457,29 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
               servers.add(dev); await dev.listen();
               consumer = await newPage();
               await consumer.page.goto(dev.resolvedUrls.local[0]);
-              await expect(consumer.page.locator('.counter')).toHaveText('Count: 0');
+              await expect(consumer.page.locator('.description')).toHaveText('Bring your ideas to the desktop.');
               await dev.waitForRequestsIdle();
               const token = await consumer.page.evaluate(() => window.__packDocument);
               let navigations = 0;
               const navigation = frame => { if (frame === consumer.page.mainFrame()) navigations++; };
               consumer.page.on('framenavigated', navigation);
-              await consumer.page.locator('.counter').click();
-              await expect(consumer.page.locator('.counter')).toHaveText('Count: 1');
-              assert.ok(appSource.includes('Your next desktop app.'), 'HMR fixture marker absent');
-              writeFileSync(appPath, appSource.replace('Your next desktop app.', 'Pack integration HMR updated.'));
-              await expect(consumer.page.locator('h1')).toHaveText('Pack integration HMR updated.');
+              await consumer.page.locator('.frame-switch button').filter({ hasText: 'Windows' }).click();
+              await expect(consumer.page.locator('[data-ewp-window-frame]')).toHaveAttribute('data-window-style', 'windows');
+              assert.ok(appSource.includes('Bring your ideas to the desktop.'), 'HMR fixture marker absent');
+              writeFileSync(appPath, appSource.replace('Bring your ideas to the desktop.', 'Pack integration HMR updated.'));
+              await expect(consumer.page.locator('.description')).toHaveText('Pack integration HMR updated.');
               assert.equal(await consumer.page.evaluate(() => window.__packDocument), token, 'HMR reloaded the document');
               assert.equal(navigations, 0, 'HMR caused full-page navigation');
-              record.hmrCountAfterEdit = await consumer.page.locator('.counter').textContent();
-              await expect(consumer.page.locator('.counter')).toHaveText('Count: 1');
+              record.hmrStyleAfterEdit = await consumer.page.locator('[data-ewp-window-frame]').getAttribute('data-window-style');
+              await expect(consumer.page.locator('[data-ewp-window-frame]')).toHaveAttribute('data-window-style', 'windows');
               // Separate editor writes beyond Chokidar's atomic-event coalescing
               // window. This is not a retry or a synthetic HMR watcher emit.
               await new Promise(resolveWrite => setTimeout(resolveWrite, 200));
               writeFileSync(appPath, appSource);
-              await expect(consumer.page.locator('h1')).toHaveText('Your next desktop app.');
+              await expect(consumer.page.locator('.description')).toHaveText('Bring your ideas to the desktop.');
               assert.equal(await consumer.page.evaluate(() => window.__packDocument), token, 'HMR restore reloaded the document');
               assert.equal(navigations, 0, 'HMR restore caused full-page navigation');
-              await expect(consumer.page.locator('.counter')).toHaveText('Count: 1');
+              await expect(consumer.page.locator('[data-ewp-window-frame]')).toHaveAttribute('data-window-style', 'windows');
               consumer.page.off('framenavigated', navigation);
               record.hmr = 'text update and restore; zero full reloads';
             }

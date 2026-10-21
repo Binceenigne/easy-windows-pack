@@ -574,6 +574,8 @@ class CliTests(unittest.TestCase):
                 "docs/.easy-dev/skills/easy-dev/SKILL.md",
             )
             excluded = (
+                ".maintainer/agent.md", ".maintainer/npm-validation.md",
+                "frontend/.maintainer/private.md",
                 "docs/.claude/settings.local.json", "docs/.claude/history.jsonl",
                 "docs/.agents/private.json", "docs/.easy-dev/local.json",
                 "docs/.agents/skills/easy-dev/__pycache__/cached.pyc",

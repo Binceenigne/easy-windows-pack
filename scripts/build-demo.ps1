@@ -3,6 +3,10 @@ param([string]$Python = '')
 
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
+if (-not $Python) {
+    & (Join-Path $ProjectRoot 'startup.cmd') exe
+    exit $LASTEXITCODE
+}
 if ($Python) {
     $Python = (Resolve-Path -LiteralPath $Python).Path
 }

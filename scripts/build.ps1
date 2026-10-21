@@ -12,6 +12,20 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 
+# Native projects use the same Node task routing as startup.cmd.
+$FrontendManifest = Join-Path $ProjectRoot 'frontend\package.json'
+if (Test-Path -LiteralPath $FrontendManifest) {
+    $Manifest = Get-Content -LiteralPath $FrontendManifest -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($Manifest.ewp.backend -and $Manifest.ewp.backend -ne 'python') {
+        if ($Python -or $SkipTests -or $SkipWheel -or $SkipBundle -or $OutputDir) {
+            throw 'Python-only build switches do not apply to native backends. Use startup.cmd full-build, app or bundle.'
+        }
+        if ($Command -eq 'clean') { throw 'Native build caches can be removed from build/native; clean is not a native task.' }
+        & (Join-Path $ProjectRoot 'startup.cmd') $Command
+        exit $LASTEXITCODE
+    }
+}
+
 function Resolve-PythonExecutable {
     if ($Python) {
         if (-not (Test-Path -LiteralPath $Python)) {

@@ -1,0 +1,32 @@
+[package]
+name = "ewp-host"
+version = "0.1.0"
+edition = "2021"
+publish = false
+default-run = "ewp-host"
+
+[[bin]]
+name = "ewp-host"
+path = "src/main.rs"
+
+# Keep this generated backend independent of any surrounding Cargo workspace.
+[workspace]
+
+# Initialization only needs: cargo fetch --manifest-path backend/Cargo.toml
+# Build from the generated project root:
+# cargo build --manifest-path backend/Cargo.toml --release
+# Windows requires the MSVC build tools / Windows SDK and WebView2 Runtime.
+[target.'cfg(target_os = "windows")'.dependencies]
+wry = { version = "=0.53.5", default-features = false, features = ["os-webview", "devtools", "protocol"] }
+tao = { version = "=0.34.5", default-features = false, features = ["rwh_06"] }
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.145"
+url = "=2.5.7"
+dunce = "=1.0.5"
+percent-encoding = "=2.3.2"
+webview2-com = "=0.38.2"
+
+[profile.release]
+opt-level = "s"
+lto = "thin"
+strip = true

@@ -143,7 +143,7 @@ REQUIRED_BUNDLE_SOURCES = (
 BUNDLE_EXCLUDED_PATTERNS = (
     "__pycache__", "*.py[cod]", "*.egg-info", "node_modules", ".venv",
     "output", "build", "dist", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    ".tox", ".nox", "__pypackages__",
+    ".tox", ".nox", "__pypackages__", ".maintainer",
 )
 
 
@@ -299,6 +299,10 @@ def _copy_bundle_source(project_root: Path, staging: Path, relative_name: str) -
     elif source.is_file():
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, destination)
+        if relative_name in {"AGENTS.md", "CLAUDE.md"} and ".maintainer/agent.md" in source.read_text(encoding="utf-8"):
+            # A source bundle is also an application starting point. Its AI entry
+            # must not reference repository-only maintenance material.
+            destination.write_text("# Application guidance\n\nRead [application guidance](docs/agent.md).\n", encoding="utf-8")
     else:
         raise BuildError(_text(f"源码包源文件不存在：{source}", f"Bundle source does not exist: {source}", project_root))
 

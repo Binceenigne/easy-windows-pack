@@ -3,6 +3,28 @@ setlocal DisableDelayedExpansion
 chcp 65001 >nul
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
+where node >nul 2>nul
+if errorlevel 1 goto python_fallback
+set "EWP_RUNTIME=%~dp0..\frontend\node_modules\easywindowspack\bin\ewp.mjs"
+if exist "%EWP_RUNTIME%" goto node_runtime
+set "EWP_RUNTIME=%~dp0..\frontend\packages\easywindowspack\bin\ewp.mjs"
+if exist "%EWP_RUNTIME%" goto node_runtime
+echo Run npm install inside frontend first. / 请先在 frontend 内运行 npm install。
+exit /b 1
+:node_runtime
+pushd "%~dp0.."
+if "%~1"=="" goto node_menu
+node "%EWP_RUNTIME%" %*
+set "EWP_EXIT=%errorlevel%"
+popd
+exit /b %EWP_EXIT%
+:node_menu
+node "%EWP_RUNTIME%" menu
+set "EWP_EXIT=%errorlevel%"
+popd
+exit /b %EWP_EXIT%
+:python_fallback
+if not exist "%~dp0dev.py" goto missing_node
 if exist "%~dp0..\.venv\Scripts\python.exe" goto local_python
 where py >nul 2>nul
 if not errorlevel 1 goto py_launcher
@@ -44,3 +66,6 @@ exit /b %errorlevel%
 :path_python
 python -X utf8 "%~dp0dev.py" %*
 exit /b %errorlevel%
+:missing_node
+echo Node.js 22.12 or newer is required. / 需要 Node.js 22.12 或以上版本。
+exit /b 1

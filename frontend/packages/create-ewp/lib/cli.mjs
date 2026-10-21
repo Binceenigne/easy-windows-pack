@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { AI_TOOLS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeLanguage, TEMPLATES, validateTarget } from './create.mjs';
+import { AI_TOOLS, BACKENDS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeBackend, normalizeLanguage, TEMPLATES, validateTarget } from './create.mjs';
 import { createColors } from './terminal.mjs';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 export function helpText(language = 'zh-CN') {
   return normalizeLanguage(language) === 'en' ? `create-ewp — Create a desktop project
-Node >=22.12.0; desktop: Python >=3.10, Windows + WebView2
+Node >=22.12.0; desktop: selected backend toolchain, Windows + WebView2
 
 Usage:
   npm create ewp@latest
@@ -18,20 +18,23 @@ Usage:
 Options:
   --lang <language>  zh-CN | en (priority: --lang > EWP_LANG > project > zh-CN)
   --template <name>  vanilla | vue | react | vanilla-ts | vue-ts | react-ts
+  --backend <name>   python | golang | rust | cpp (default: python)
   --dir <path>       Destination directory (may contain spaces)
   --ai <tools>       codex,claude,copilot or none (default: none)
-  --yes, -y         Skip prompts; default: vanilla, no install, no start
+  --yes, -y         Skip prompts; default: vanilla, python, no install, no start
   --no-install      Do not install dependencies
   --no-start        Do not start
   --install         Install npm dependencies only
-  --start           Install, initialize Python and start desktop
+  --start           Install, initialize the selected backend and start desktop
   --help, -h        Show help
 
 The first interactive prompt selects the language; --lang skips it.
+Backend selection follows frontend selection; --backend skips it.
+Python requires >=3.10; native backends require their compiler toolchain.
 Non-interactive defaults: project language or zh-CN, no install, no start.
 Target must be empty, including .git.
 ` : `create-ewp — 创建桌面项目
-需要 Node >=22.12.0；桌面需要 Python >=3.10、Windows 和 WebView2。
+需要 Node >=22.12.0；桌面需要所选后端工具链、Windows 和 WebView2。
 
 用法：
   npm create ewp@latest
@@ -41,16 +44,19 @@ Target must be empty, including .git.
 参数：
   --lang <语言>      zh-CN | en（优先级：--lang > EWP_LANG > 项目设置 > zh-CN）
   --template <模板>  vanilla | vue | react | vanilla-ts | vue-ts | react-ts
+  --backend <后端>   python | golang | rust | cpp（默认 python）
   --dir <路径>       项目目标目录，可包含空格
   --ai <工具>        codex,claude,copilot 或 none（默认 none）
-  --yes, -y         跳过提示，默认 vanilla、不安装、不启动
+  --yes, -y         跳过提示，默认 vanilla、python、不安装、不启动
   --no-install      不安装依赖
   --no-start        不启动
   --install         仅安装 npm 依赖
-  --start           安装依赖、初始化 Python 并启动桌面
+  --start           安装依赖、初始化所选后端并启动桌面
   --help, -h        显示帮助
 
 交互的第一个提示选择语言；显式 --lang 跳过此提示。
+前端选择完成后选择后端；显式 --backend 跳过后端提示。
+Python 需要 >=3.10；原生后端需要对应编译工具链。
 非交互默认不安装、不启动，使用项目语言或简体中文。
 目标必须为空，包含 .git 也会拒绝。
 `;
@@ -119,11 +125,11 @@ export function parseArgs(argv = [], { env = process.env, cwd = process.cwd() } 
       set(arg.endsWith('install') ? 'install' : 'start', !arg.startsWith('--no-'));
       continue;
     }
-    if (arg === '--template' || arg.startsWith('--template=') || arg === '--dir' || arg.startsWith('--dir=')) {
-      const key = arg.startsWith('--template') ? 'template' : 'directory';
+    if (arg === '--template' || arg.startsWith('--template=') || arg === '--backend' || arg.startsWith('--backend=') || arg === '--dir' || arg.startsWith('--dir=')) {
+      const key = arg.startsWith('--template') ? 'template' : arg.startsWith('--backend') ? 'backend' : 'directory';
       const value = arg.includes('=') ? arg.slice(arg.indexOf('=') + 1) : argv[++i];
-      if (!value || value.startsWith('--')) throw creatorError('missingValue', { option: arg }, language);
-      set(key, value);
+      if (!value || value.startsWith('-')) throw creatorError('missingValue', { option: arg.split('=')[0] }, language);
+      set(key, key === 'backend' ? normalizeBackend(value, language) : value);
       continue;
     }
     if (arg.startsWith('-')) throw creatorError('unknownOption', { option: arg }, language);
@@ -241,13 +247,19 @@ export async function main(argv = process.argv.slice(2), {
         }));
         options.template = framework + (programmingLanguage === 'ts' ? '-ts' : '');
       }
+      if (!options.backend) options.backend = normalizeBackend(await answer(p.select({
+        message: question('选择后端', 'Select a backend'), initialValue: 'python',
+        options: BACKENDS.map(value => ({ value, label: colors.command({ python: 'Python', golang: 'Go', rust: 'Rust', cpp: 'C++' }[value]) }))
+      })), options.language);
       if (options.ai === undefined) options.ai = await answer(p.multiselect({
         message: question('可选 AI 指引（空格多选，回车跳过）', 'Optional AI guidance (Space to select, Enter to skip)'),
         required: false, initialValues: [],
         options: AI_TOOLS.map(value => ({ value, label: colors.command({ codex: 'Codex (AGENTS.md)', claude: 'Claude (CLAUDE.md)', copilot: 'Copilot (.github/copilot-instructions.md)' }[value]) }))
       }));
       if (options.install === undefined) options.install = await answer(p.confirm({ message: question('安装 npm 依赖？', 'Install npm dependencies?'), initialValue: false }));
-      if (options.start === undefined) options.start = await answer(p.confirm({ message: question('初始化 Python 并启动桌面？', 'Initialize Python and start desktop?'), initialValue: false }));
+      if (options.start === undefined) options.start = await answer(p.confirm({ message: options.backend === 'python'
+        ? question('初始化 Python 并启动桌面？', 'Initialize Python and start desktop?')
+        : question(`初始化 ${options.backend} 后端并启动桌面？`, `Initialize ${options.backend} backend and start desktop?`), initialValue: false }));
     }
     const directory = options.directory ?? options.name ?? 'ewp-app';
     const install = options.install ?? Boolean(options.start);
@@ -256,8 +268,8 @@ export async function main(argv = process.argv.slice(2), {
     let current = 0;
     const step = (zh, en) => log(`${colors.top(`[${++current}/${total}]`)} ${colors.left(text(zh, en))}`);
     step('创建项目文件', 'Create project files');
-    const result = createProject({ directory, name: options.name ? basename(options.name) : undefined, template: options.template ?? 'vanilla', ai: options.ai ?? [], language: options.language, cwd, templatesDir });
-    log(`${colors.success(text('项目已创建：', 'Project created: '))}${colors.command(result.directory)} ${colors.dim(`(${result.template})`)}`);
+    const result = createProject({ directory, name: options.name ? basename(options.name) : undefined, template: options.template ?? 'vanilla', backend: options.backend ?? 'python', ai: options.ai ?? [], language: options.language, cwd, templatesDir });
+    log(`${colors.success(text('项目已创建：', 'Project created: '))}${colors.command(result.directory)} ${colors.dim(`(${result.template}, ${result.backend})`)}`);
     const frontend = join(result.directory, 'frontend');
     const runOptions = { language: options.language, env: { ...env, EWP_LANG: options.language } };
     if (install) {
@@ -271,9 +283,12 @@ export async function main(argv = process.argv.slice(2), {
     log(`${colors.title(text('桌面开发：', 'Desktop development:'))}\n  ${commands.map(colors.command).join('\n  ')}\n${colors.dim(text('浏览器预览：', 'Browser preview: '))}${colors.command('npm run frontend:dev')}\n${colors.dim(text('命令帮助：', 'Command help: '))}${colors.command('npm run help')}`);
     if (ask) p.outro(colors.success(options.start ? text('正在启动桌面', 'Starting desktop') : text('准备完成', 'Ready')));
     if (options.start) {
-      step('初始化 Python 环境', 'Initialize Python environment');
+      if (result.backend === 'python') step('初始化 Python 环境', 'Initialize Python environment');
+      else step(`初始化 ${result.backend} 后端`, `Initialize ${result.backend} backend`);
       await run(['run', 'init'], frontend, runOptions);
-      log(colors.success(text('Python 环境已就绪。', 'Python environment ready.')));
+      log(colors.success(result.backend === 'python'
+        ? text('Python 环境已就绪。', 'Python environment ready.')
+        : text(`${result.backend} 后端已就绪。`, `${result.backend} backend ready.`)));
       step('启动桌面开发', 'Start desktop development');
       await run(['run', 'dev'], frontend, runOptions);
     }

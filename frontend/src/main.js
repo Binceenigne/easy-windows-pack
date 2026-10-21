@@ -1,178 +1,129 @@
-import { mountFrame, setTitleBarMode } from 'easywindowspack';
+import { mountFrame } from 'easywindowspack';
 import 'easywindowspack/frame.css';
 import colorLogo from './assets/ewp-color.svg';
 import darkLogo from './assets/ewp-dark.svg';
 import monoLogo from './assets/ewp-mono.svg';
+import partnerLogo from './assets/javascript.svg';
 import './demo.css';
 
 const words = {
   'zh-CN': {
-    tagline: '把你的 Web 界面，变成桌面应用。',
-    description: '熟悉的前端开发体验，一个轻巧的原生窗口。',
-    count: '点击次数', hint: '修改', hintEnd: '，保存即可看到更新。',
-    docs: '开始使用', source: 'GitHub', playground: '试试窗口外观',
-    style: '窗口样式', mode: '标题栏', standard: '默认', minimal: '紧凑', native: '系统原生',
-    apply: '应用', components: '探索桌面组件',
-    browser: '浏览器预览 · 原生操作请在桌面应用中体验', desktop: '桌面桥接已就绪',
-    nativeHint: '系统标题栏需要桌面窗口；浏览器可预览默认或紧凑模式。',
-    restart: '切换系统标题栏需要重新创建桌面窗口。', applied: '标题栏已更新',
-    pending: '正在应用…', light: '浅色', dark: '深色', themeLabel: '切换页面主题',
-    languageLabel: 'Switch to English', error: '窗口操作失败，请重试。'
+    description: '把你的想法，带到桌面。',
+    hint: '编辑', saveHint: '，保存即见更新。', docs: '开始构建', source: 'GitHub',
+    resources: '开发资源', windowStyle: '试试窗口外观',
+    windowHint: '切换上方标题栏，感受不同的桌面风格。',
+    browser: '浏览器可预览外观 · 原生操作需桌面运行', desktop: '桌面桥接已就绪',
+    themeToggle: '切换浅色与深色主题', languageToggle: 'Switch to English',
+    error: '窗口外观未能更新，请重试。'
   },
   en: {
-    tagline: 'Your web app, on the desktop.',
-    description: 'A familiar frontend workflow. A lightweight native window.',
-    count: 'Count', hint: 'Edit', hintEnd: ' and save to see your changes.',
-    docs: 'Get started', source: 'GitHub', playground: 'Try the window frame',
-    style: 'Window style', mode: 'Title bar', standard: 'Default', minimal: 'Minimal', native: 'Native',
-    apply: 'Apply', components: 'Explore desktop components',
-    browser: 'Browser preview · Try native actions in the desktop app', desktop: 'Desktop bridge ready',
-    nativeHint: 'Native title bars need a desktop window. Preview Default or Minimal here.',
-    restart: 'Switching to a native title bar requires recreating the desktop window.',
-    applied: 'Title bar updated', pending: 'Applying…', light: 'Light', dark: 'Dark',
-    themeLabel: 'Switch page theme', languageLabel: '切换为简体中文',
-    error: 'The window action failed. Please try again.'
+    description: 'Bring your ideas to the desktop.',
+    hint: 'Edit', saveHint: ' and save to see your changes.', docs: 'Start building', source: 'GitHub',
+    resources: 'Development resources', windowStyle: 'Try the window frame',
+    windowHint: 'Switch the title bar above. Find your desktop style.',
+    browser: 'Browser previews appearance · Native actions need the desktop app', desktop: 'Desktop bridge ready',
+    themeToggle: 'Switch between light and dark themes', languageToggle: '切换为简体中文',
+    error: 'Could not update the window frame. Please try again.'
   }
 };
 
+const repo = 'https://github.com/Binceenigne/easy-windows-pack';
+const windowIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M6 6.5h1m2 0h1"/></svg>';
 const content = document.createElement('main');
-content.className = 'demo-page';
+content.className = 'app-view';
+content.dataset.stack = 'vanilla';
 content.innerHTML = `
-  <header class="demo-header">
-    <a class="demo-brand" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer">
-      <img class="demo-brand-mark" src="${darkLogo}" alt="" width="22" height="22">
-      <span>easy-windows-pack</span>
-    </a>
-    <div class="demo-tools">
-      <button id="themeToggle" class="demo-tool" type="button">
-        <svg class="demo-theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M20.7 13.2A8.7 8.7 0 0 1 10.8 3.3a8.8 8.8 0 1 0 9.9 9.9Z"/></svg>
-        <span id="themeLabel"></span>
+  <header class="welcome-header">
+    <div class="welcome-tools">
+      <button id="themeToggle" class="theme-toggle" type="button">
+        <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 14a8.4 8.4 0 0 1-10-10 8.5 8.5 0 1 0 10 10Z"/></svg>
+        <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg>
       </button>
-      <span class="demo-tool-divider" aria-hidden="true"></span>
-      <button id="languageToggle" class="demo-tool" type="button">EN</button>
+      <button id="languageToggle" class="language-toggle" type="button">EN</button>
     </div>
   </header>
-
-  <section class="demo-hero" aria-labelledby="demo-title">
-    <a class="demo-logo-link" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer" aria-label="Easy Windows Pack on GitHub">
-      <span class="demo-logo-glow" aria-hidden="true"></span>
-      <img class="demo-logo" src="${colorLogo}" alt="Easy Windows Pack" width="112" height="112">
-    </a>
-    <p class="demo-eyebrow">VITE + PYTHON</p>
-    <h1 id="demo-title">Easy Windows Pack</h1>
-    <p class="demo-tagline" data-copy="tagline"></p>
-    <p class="demo-description" data-copy="description"></p>
-    <div class="demo-counter-area">
-      <button id="counter" class="demo-counter" type="button"></button>
-      <p class="demo-edit-hint"><span data-copy="hint"></span> <code>frontend/src/main.js</code><span data-copy="hintEnd"></span></p>
+  <section class="welcome-hero" aria-labelledby="welcome-title">
+    <div class="brand-pair">
+      <a class="brand-link" href="${repo}" target="_blank" rel="noopener noreferrer" aria-label="Easy Windows Pack · GitHub"><img src="${colorLogo}" alt="EWP" width="88" height="88"></a>
+      <span class="brand-plus" aria-hidden="true">+</span>
+      <a class="brand-link partner" href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank" rel="noopener noreferrer" aria-label="JavaScript · MDN"><img src="${partnerLogo}" alt="JavaScript" width="86" height="86"></a>
     </div>
-    <nav class="demo-links" aria-label="Resources">
-      <a id="docsLink" class="demo-link demo-link-primary" href="https://github.com/Binceenigne/easy-windows-pack#readme" target="_blank" rel="noopener noreferrer"><span data-copy="docs"></span><span aria-hidden="true">↗</span></a>
-      <a class="demo-link" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer"><span data-copy="source"></span><span aria-hidden="true">↗</span></a>
+    <h1 id="welcome-title">EWP <span class="title-join">+</span> <span class="partner-name">Vanilla</span></h1>
+    <p class="description" data-copy="description"></p>
+    <nav class="welcome-links">
+      <a id="docsLink" class="welcome-button primary" href="${repo}#readme" target="_blank" rel="noopener noreferrer"><span data-copy="docs"></span><span aria-hidden="true">→</span></a>
+      <a class="welcome-button" href="${repo}" target="_blank" rel="noopener noreferrer"><span data-copy="source"></span><span aria-hidden="true">↗</span></a>
     </nav>
+    <p class="hint"><span data-copy="hint"></span> <code>frontend/src/main.js</code><span data-copy="saveHint"></span></p>
+    <section class="desktop-experience" aria-labelledby="window-style-label">
+      <div class="experience-row">
+        <span id="window-style-label" class="experience-label" data-copy="windowStyle"></span>
+        <div class="frame-switch" role="group">
+          <button class="experience-button" type="button" data-window-style="macos" aria-pressed="true">${windowIcon}macOS</button>
+          <button class="experience-button" type="button" data-window-style="windows" aria-pressed="false">${windowIcon}Windows</button>
+        </div>
+      </div>
+      <p class="experience-feedback" data-copy="windowHint"></p>
+    </section>
   </section>
-
-  <section class="demo-playground" aria-labelledby="playground-title">
-    <p id="playground-title" class="demo-playground-heading" data-copy="playground"></p>
-    <div class="demo-frame-options">
-      <label class="demo-field"><span data-copy="style"></span>
-        <select id="windowStyle"><option value="macos">macOS</option><option value="windows">Windows</option></select>
-      </label>
-      <label class="demo-field"><span data-copy="mode"></span>
-        <select id="mode"><option value="default" data-copy="standard"></option><option value="minimal" data-copy="minimal"></option><option value="native" data-copy="native"></option></select>
-      </label>
-      <button id="apply" class="demo-apply" type="button" data-copy="apply"></button>
-    </div>
-  </section>
-
-  <footer class="demo-footer">
-    <p class="demo-status"><span class="demo-status-dot" aria-hidden="true"></span><span id="status" role="status"></span></p>
-    <a class="demo-components-link" href="./src/components.html"><span data-copy="components"></span><span aria-hidden="true"> →</span></a>
-  </footer>
-`;
+  <footer class="welcome-footer">
+    <p class="preview-status"><span class="status-dot" aria-hidden="true"></span><span id="status" role="status"></span></p>
+    <a class="footer-brand" href="${repo}" target="_blank" rel="noopener noreferrer"><span class="brand-credit">Built with</span><img class="footer-logo" src="${darkLogo}" alt="" width="16" height="16"><span>easy-windows-pack</span></a>
+  </footer>`;
 
 const listeners = new AbortController();
 const query = selector => content.querySelector(selector);
-const status = query('#status');
-const counter = query('#counter');
-const applyButton = query('#apply');
-const scheme = window.matchMedia('(prefers-color-scheme: dark)');
 let language = 'zh-CN';
-let theme = scheme.matches ? 'dark' : 'light';
-let count = 0;
-let pending = false;
-let feedback = null;
+let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+let windowStyle = 'macos';
+let failed = false;
 const frame = mountFrame('#app', {
-  title: 'Easy Windows Pack', icon: darkLogo, windowStyle: 'macos', content,
-  onError: () => { feedback = 'error'; renderStatus(); }
+  title: 'Easy Windows Pack', icon: darkLogo, windowStyle, content,
+  onError: () => { failed = true; renderStatus(); }
 });
 
 function renderStatus() {
-  const desktop = Boolean(window.pywebview?.api);
-  content.dataset.desktop = String(desktop);
-  status.textContent = words[language][feedback ?? (desktop ? 'desktop' : 'browser')];
+  query('#status').textContent = words[language][failed ? 'error' : window.pywebview?.api ? 'desktop' : 'browser'];
 }
 
 function renderTheme() {
-  document.documentElement.dataset.demoTheme = theme;
-  query('.demo-brand-mark').src = theme === 'dark' ? monoLogo : darkLogo;
-  query('#themeLabel').textContent = words[language][theme === 'dark' ? 'light' : 'dark'];
-  query('#themeToggle').setAttribute('aria-label', words[language].themeLabel);
+  document.documentElement.dataset.welcomeTheme = theme;
+  const icon = theme === 'dark' ? monoLogo : darkLogo;
+  query('.footer-logo').src = icon;
+  query('#themeToggle').setAttribute('aria-label', words[language].themeToggle);
   query('#themeToggle').setAttribute('aria-pressed', String(theme === 'dark'));
-  frame.update({ icon: theme === 'dark' ? monoLogo : darkLogo });
+  frame.update({ icon });
 }
 
 function renderLanguage() {
   document.documentElement.lang = language;
   content.querySelectorAll('[data-copy]').forEach(element => { element.textContent = words[language][element.dataset.copy]; });
-  counter.textContent = `${words[language].count}: ${count}`;
-  applyButton.textContent = words[language][pending ? 'pending' : 'apply'];
+  query('.welcome-links').setAttribute('aria-label', words[language].resources);
+  query('.frame-switch').setAttribute('aria-label', words[language].windowStyle);
   query('#languageToggle').textContent = language === 'en' ? '中文' : 'EN';
-  query('#languageToggle').setAttribute('aria-label', words[language].languageLabel);
-  query('#docsLink').href = language === 'en'
-    ? 'https://github.com/Binceenigne/easy-windows-pack/blob/main/README.en.md'
-    : 'https://github.com/Binceenigne/easy-windows-pack#readme';
+  query('#languageToggle').setAttribute('aria-label', words[language].languageToggle);
+  query('#docsLink').href = language === 'en' ? `${repo}/blob/main/README.en.md` : `${repo}#readme`;
   renderTheme();
   renderStatus();
 }
 
 const on = (element, event, handler) => element.addEventListener(event, handler, { signal: listeners.signal });
-on(counter, 'click', () => { counter.textContent = `${words[language].count}: ${++count}`; });
 on(query('#themeToggle'), 'click', () => { theme = theme === 'dark' ? 'light' : 'dark'; renderTheme(); });
 on(query('#languageToggle'), 'click', () => { language = language === 'zh-CN' ? 'en' : 'zh-CN'; renderLanguage(); });
-on(query('#windowStyle'), 'change', event => { frame.update({ windowStyle: event.target.value }); });
-on(window, 'pywebviewready', () => { feedback = null; renderStatus(); });
-on(applyButton, 'click', async () => {
-  const mode = query('#mode').value;
-  if (!window.pywebview?.api) {
-    if (mode !== 'native') frame.update({ mode });
-    feedback = mode === 'native' ? 'nativeHint' : 'applied';
-    renderStatus();
-    return;
-  }
-  pending = true;
-  applyButton.disabled = true;
-  applyButton.textContent = words[language].pending;
+content.querySelectorAll('[data-window-style]').forEach(button => on(button, 'click', () => {
+  failed = false;
   try {
-    const result = await setTitleBarMode(mode);
-    if (listeners.signal.aborted) return;
-    feedback = result.restartRequired ? 'restart' : result.ok ? 'applied' : 'error';
-  } catch {
-    if (listeners.signal.aborted) return;
-    feedback = 'error';
-  } finally {
-    if (!listeners.signal.aborted) {
-      pending = false;
-      applyButton.disabled = false;
-      applyButton.textContent = words[language].apply;
-      renderStatus();
-    }
-  }
-});
+    frame.update({ windowStyle: button.dataset.windowStyle });
+    windowStyle = button.dataset.windowStyle;
+    content.querySelectorAll('[data-window-style]').forEach(option => option.setAttribute('aria-pressed', String(option.dataset.windowStyle === windowStyle)));
+  } catch { failed = true; }
+  renderStatus();
+}));
+on(window, 'pywebviewready', renderStatus);
 
 renderLanguage();
-if (import.meta.hot) import.meta.hot.dispose(() => {
+import.meta.hot?.dispose(() => {
   listeners.abort();
   frame.dispose();
-  delete document.documentElement.dataset.demoTheme;
+  delete document.documentElement.dataset.welcomeTheme;
 });

@@ -1,7 +1,7 @@
 ---
 name: easy-dev
-description: 开发或重构页面、组件、样式、服务时使用；加载唯一的 easy-dev 正文，按任务维护框架专题，业务入口或 UI 规则变化才维护应用摘要。
+description: 开发应用页面、组件、样式和服务时使用；加载共用 easy-dev 正文，保持应用摘要最小，不生成维护日志。
 ---
 # Easy Dev 入口
 
-读取 [唯一主 Skill](../../../.agents/skills/easy-dev/SKILL.md)。后续分片路径相对该主文件所在目录解析；项目根目录与文档位置遵循 [项目路由](../../../agent.md)。本目录位于 docs 下，须由根 CLAUDE.md 显式引导读取，不依赖默认 Skill 自动发现。主文件已在上下文且未变时直接使用，不再重复读取。
+读取 [唯一主 Skill](../../../.agents/skills/easy-dev/SKILL.md)。后续分片路径相对主文件解析；项目根与摘要位置遵循 [应用指引](../../../agent.md)。docs 下的 Skill 需由宿主入口显式读取，不依赖默认发现。主文件已在上下文且未变时复用，不重复读取。

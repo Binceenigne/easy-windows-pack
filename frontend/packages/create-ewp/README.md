@@ -34,13 +34,13 @@ npm run dev
 `init` 创建或复用项目根 `.venv`、安装依赖并编译前端，无需手动激活；`dev` 启动桌面 HMR，Ctrl+C 停止。
 `init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; `dev` starts desktop HMR, stopped with Ctrl+C.
 
-0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动；已有项目仅升级 npm 依赖不会改写该脚本（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)）。
-New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above; npm dependency upgrades do not rewrite this script in existing apps (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md)).
+0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动；已有项目仅升级 npm 依赖不会改写该脚本（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)）。
+New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above; npm dependency upgrades do not rewrite this script in existing apps (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)).
 
 `--install` 仅安装 npm 依赖；`--start` 依次安装、初始化 Python 并启动桌面，不能与 `--no-install` 同用。
 `--install` installs npm dependencies only; `--start` installs, initializes Python and launches desktop, and cannot be combined with `--no-install`.
 
-公开版本以 `npm view create-ewp version`、`npm view easywindowspack version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-validation.md)为准。
+公开版本以 `npm view create-ewp version`、`npm view easywindowspack version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/npm-validation.md)为准。
 Confirm published versions with these npm queries and the linked validation record.
 
 ## 模板与语言 / Templates and language
@@ -121,4 +121,4 @@ Color priority: set `NO_COLOR` (even empty) disables first; otherwise `FORCE_COL
 
 ## 深入文档 / Further reading
 
-[npm / Vite、选项、公共 runtime 导入与 AI 布局 / Options, public runtime imports and AI layout](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/npm-vite.md) · [开发任务 / Development](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/development.md) · [配置打包与安装 / Packaging](https://github.com/Binceenigne/easy-windows-pack/blob/main/docs/packaging.md)
+[npm / Vite、选项、公共 runtime 导入与 AI 布局 / Options, public runtime imports and AI layout](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/npm-vite.md) · [开发任务 / Development](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md) · [配置打包与安装 / Packaging](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/packaging.md)

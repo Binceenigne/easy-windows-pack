@@ -4,26 +4,27 @@
 
 # easy-windows-pack
 
-Build your UI with web technologies, connect desktop features with Python, and package a Windows app.
+Build your UI with web technologies and connect desktop features with Python, Go, Rust, or C++.
 
 [![CI](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml/badge.svg)](https://github.com/Binceenigne/easy-windows-pack/actions/workflows/ci.yml)
 [![easywindowspack](https://img.shields.io/npm/v/easywindowspack?label=easywindowspack)](https://www.npmjs.com/package/easywindowspack)
 [![create-ewp](https://img.shields.io/npm/v/create-ewp?label=create-ewp)](https://www.npmjs.com/package/create-ewp)
 
-[中文](README.md) · **English** · [Documentation](docs/README.md)
+[中文](README.md) · **English** · [Application guidance](docs/agent.md)
 
 </div>
 
 `easy-windows-pack` combines Vite, Python, and pywebview to help web developers build Windows desktop apps.
 
 - **Familiar frontends**: Vanilla, Vue, and React, each with JavaScript / TypeScript.
-- **Desktop features**: Window controls, dragging, resizing, system tray, and a Python API bridge.
+- **Backend choices**: Python / pywebview, Go / webview_go, Rust / Wry, or C++ / webview.
+- **Desktop features**: Window controls, native movement/resizing and work-area maximization; Python also provides tray adapters.
 - **Development and packaging**: Vite hot updates, Windows EXEs, and Python wheels.
 
 ## Requirements
 
 - [Node.js](https://nodejs.org/) **>=22.12**, including npm.
-- Python **>=3.10** for desktop development and packaging; enable the `py` launcher during installation.
+- The selected toolchain: Python **>=3.10**; Go **>=1.22** and a CGO C++ compiler; Rust / Cargo and MSVC; or CMake **>=3.24** and a C++17 compiler.
 - Windows with [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/).
 
 Windows / macOS window themes are available; EXE packaging targets Windows.
@@ -36,9 +37,9 @@ Open a terminal where you want to create your project and run:
 npm create ewp@latest
 ```
 
-The wizard first asks for **简体中文 / English**, then the project name, Vanilla / Vue / React, JavaScript / TypeScript, and whether to install dependencies and start the desktop app.
+The wizard selects language, project name, frontend, JS / TS, backend, and installation/start options. The four-backend selection and Aurora welcome are implemented locally in 0.1.4 and are not published yet; public `@latest` remains 0.1.3.
 
-The wizard can also generate [AI development guidance](docs/npm-vite.md#ai-资源布局--ai-resource-layout) for Codex, Claude, or Copilot; none are selected by default.
+The wizard can also generate [AI development guidance](docs/agent.md) for Codex, Claude, or Copilot; none are selected by default. New apps receive minimal index/design summaries; selecting AI adds only the relevant skills and guidance, not framework maintenance material.
 
 Alternatively, this complete example creates a **Vue + TypeScript** project, skips the wizard, and installs and starts it manually (the destination must be empty):
 
@@ -50,11 +51,11 @@ npm run init
 npm run dev
 ```
 
-Run all subsequent npm commands in `frontend/`. `init` creates or reuses the project's `.venv`, installs dependencies, and builds the frontend; no manual Python environment activation is needed.
+Run subsequent npm commands in `frontend/`. `init` initializes the selected backend and builds the frontend; Python uses the project's `.venv`, while native backends use their own compilers.
 
 `dev` opens the desktop window and hot updates frontend changes; press Ctrl+C to stop.
 
-Source now includes a blue two-row footer for Python init/build stage progress, planned for newly created apps in npm **0.1.4** (not yet published); see the [development guide](docs/development.md) for terminal support, fallbacks and controls.
+Source now includes a blue two-row footer for Python init/build stage progress, planned for newly created apps in npm **0.1.4** (not yet published); see the [development guide](.maintainer/development.md) for terminal support, fallbacks and controls.
 
 ## Common commands
 
@@ -70,9 +71,9 @@ Source now includes a blue two-row footer for Python init/build stage progress, 
 
 Complete `init` before packaging; builds compile the frontend automatically. Use the browser to debug UI, and the desktop app to verify native windows, tray, and the Python bridge.
 
-Both npm packages are **publicly available at 0.1.3**, with `@latest` pointing to 0.1.3 for each. Registry installation and build validation passed. Python **0.3.0** has not been published to PyPI. See the [packaging guide](docs/packaging.md) for configuration and installation, and [validation](docs/npm-validation.md) for detailed results.
+Both npm packages are **publicly available at 0.1.3**, with `@latest` pointing to 0.1.3 for each. Registry installation and build validation passed. Python **0.3.0** has not been published to PyPI. See the [packaging guide](.maintainer/packaging.md) for configuration and installation, and [validation](.maintainer/npm-validation.md) for historical results.
 
-You can also double-click the project's root `startup.cmd` to open the task menu (requires Python).
+You can also double-click the project's root `startup.cmd` to open the task menu. Go, Rust and C++ development/builds do not require Python. Native applications use directory distribution; their installers additionally require NSIS 3. Wheels and the existing advanced Python installer configuration are Python-only.
 
 ## Project layout
 
@@ -81,7 +82,7 @@ The main directories of a generated app:
 ```text
 my-app/
 ├─ frontend/      # Web UI; application code in src/
-├─ backend/       # Python host; application API in src/demo.py
+├─ backend/       # Selected host and application API
 ├─ scripts/       # Development and packaging tools
 ├─ startup.cmd    # Windows task menu
 └─ output/        # Assets, packages, and logs generated by builds
@@ -100,10 +101,8 @@ In 0.1.3, `ewp` with no arguments (or only `--lang en`) displays a compact ASCII
 
 ## Learn more
 
-- [Documentation](docs/README.md): All guides in one place.
-- [npm / Vite guide](docs/npm-vite.md): Templates, CLI, public APIs, existing app integration, and publishing.
-- [Development guide](docs/development.md): Source development, testing, builds, and troubleshooting; start here to contribute.
-- [Architecture](docs/architecture.md) · [Window themes](docs/window-styles.md) · [Desktop extension APIs](docs/desktop-integrations.md).
+- [Application guidance](docs/agent.md): Consumer-facing skills and minimal summaries.
+- [Framework maintenance](.maintainer/README.md): Source development, architecture, APIs, packaging and historical validation, kept only in the framework checkout.
 
 ## License
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { existsSync, realpathSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, realpathSync, readFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { createInterface } from 'node:readline/promises';
@@ -10,7 +10,7 @@ import { compactBanner, createColors } from 'create-ewp/terminal';
 
 export const HELP = helpText();
 const ALIASES = { browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app', 'full-build': 'build:all' };
-const PACKAGING_COMMANDS = ['app', 'installer', 'exe', 'build', 'build:all'];
+const PACKAGING_COMMANDS = ['app', 'installer', 'exe', 'build', 'build:all', 'backend:build'];
 
 export function parseArgs(argv = [], context = {}) {
   const { args, language } = languageArgs(argv, context);
@@ -25,7 +25,7 @@ function parseCommand(args, language) {
   if (command === 'create') return { command, args, language };
   if (['help', '--help', '-h'].includes(command) || args.includes('--help') || args.includes('-h')) return { command: 'help' };
   if (['version', '--version', '-v', '-V'].includes(command)) return { command: 'version' };
-  if (!['menu', 'init', 'dev', 'demo', 'app', 'installer', 'build', 'build:all', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
+  if (!['menu', 'init', 'dev', 'demo', 'app', 'installer', 'build', 'build:all', 'backend:build', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
     throw new Error(text(`未知命令：${command}。请使用 ewp help。`, `Unknown command: ${command}. Use ewp help.`));
   }
   const parsed = { command, task: command, web: command.startsWith('frontend:'), open: true, port: 0 };
@@ -73,10 +73,43 @@ function parseCommand(args, language) {
 export function findProjectRoot(start = process.cwd()) {
   let candidate = resolve(start);
   for (;;) {
-    if (existsSync(join(candidate, 'scripts', 'dev.py'))) return candidate;
+    if (existsSync(join(candidate, 'scripts/dev.py')) ||
+      (existsSync(join(candidate, 'frontend/package.json')) && existsSync(join(candidate, 'scripts/backend.mjs')))) return candidate;
     const parent = dirname(candidate);
-    if (parent === candidate) throw new Error(text('未找到项目根目录：需要 scripts/dev.py。请在已创建的项目内运行 ewp。', 'Project root not found: scripts/dev.py is required. Run ewp inside an initialized project.'));
+    if (parent === candidate) throw new Error(text('未找到项目根目录：需要 frontend/package.json 和 scripts/dev.py 或 scripts/backend.mjs。请在已创建的项目内运行 ewp。', 'Project root not found: frontend/package.json and scripts/dev.py or scripts/backend.mjs are required. Run ewp inside an initialized project.'));
     candidate = parent;
+  }
+}
+
+export function projectBackend(root) {
+  try {
+    const manifest = JSON.parse(readFileSync(join(root, 'frontend/package.json'), 'utf8').replace(/^\uFEFF/, ''));
+    const backend = manifest.ewp?.backend || 'python';
+    if (!['python', 'golang', 'rust', 'cpp'].includes(backend)) throw new Error(`Invalid ewp.backend: ${backend}`);
+    return backend;
+  } catch (error) {
+    if (error.code === 'ENOENT') return 'python';
+    throw new Error(text(`无法读取 frontend/package.json：${error.message}`, `Cannot read frontend/package.json: ${error.message}`));
+  }
+}
+
+async function backendDriver(root) {
+  const entry = join(root, 'scripts/backend.mjs');
+  if (!existsSync(entry)) throw new Error(text(
+    '缺少 scripts/backend.mjs。请运行 npm run init 或升级 easywindowspack。',
+    'scripts/backend.mjs is missing. Run npm run init or upgrade easywindowspack.'
+  ));
+  try {
+    const driver = await import(pathToFileURL(entry).href);
+    if (typeof driver.backendName !== 'function' || typeof driver.buildBackend !== 'function' || typeof driver.task !== 'function') {
+      throw new Error('backendName, buildBackend or task export is missing');
+    }
+    return driver;
+  } catch (error) {
+    throw new Error(text(
+      `无法加载 scripts/backend.mjs：${error.message}。请运行 npm run init 或升级 easywindowspack。`,
+      `Cannot load scripts/backend.mjs: ${error.message}. Run npm run init or upgrade easywindowspack.`
+    ));
   }
 }
 
@@ -275,8 +308,9 @@ export async function runDev(root, options) {
 
 async function runDevSession(root, options) {
   const desktop = !options.web;
-  const python = desktop ? selectPython(root) : null;
-  if (desktop && !existsSync(join(root, 'backend/src/demo.py'))) throw new Error(text('缺少桌面演示入口 backend/src/demo.py。浏览器开发请使用 --web。', 'Desktop demo missing: backend/src/demo.py. Use --web for browser development.'));
+  const backend = desktop ? projectBackend(root) : null;
+  const python = desktop && backend === 'python' ? selectPython(root) : null;
+  if (python && !existsSync(join(root, 'backend/src/demo.py'))) throw new Error(text('缺少桌面演示入口 backend/src/demo.py。浏览器开发请使用 --web。', 'Desktop demo missing: backend/src/demo.py. Use --web for browser development.'));
   if (options.command === 'frontend:preview' && !existsSync(join(root, 'output/frontend/index.html'))) {
     throw new Error(text('缺少已编译前端。请先运行 npm run frontend:build 再预览。', 'Frontend build is missing. Run npm run frontend:build before preview.'));
   }
@@ -345,13 +379,27 @@ async function runDevSession(root, options) {
     if (!url) throw new Error(text('Vite 未提供已就绪的本机 URL。', 'Vite did not provide a local ready URL.'));
     console.log(text(`前端已就绪：${url}`, `Frontend ready: ${url}`));
     if (desktop && !interrupted) {
-      child = launch(python.command, [...python.args, join(root, 'backend/src/demo.py'), '--debug'], {
-        cwd: root, stdio: 'inherit', detached: process.platform !== 'win32',
-        env: { ...pythonEnvironment(), EWP_DEV_URL: url, EWP_LANG: options.language ?? languageArgs([], { cwd: root }).language }
-      });
+      if (python) {
+        child = launch(python.command, [...python.args, join(root, 'backend/src/demo.py'), '--debug'], {
+          cwd: root, stdio: 'inherit', detached: process.platform !== 'win32',
+          env: { ...pythonEnvironment(), EWP_DEV_URL: url, EWP_LANG: options.language ?? languageArgs([], { cwd: root }).language }
+        });
+      } else {
+        const driver = await withDeadline(backendDriver(root), text('加载后端', 'Backend import'), 10000, startup.signal);
+        const binary = await driver.buildBackend(root, { debug: true, language: options.language, signal: startup.signal });
+        if (interrupted || startup.signal.aborted) return 130;
+        if (typeof binary !== 'string' || !isAbsolute(binary) || !existsSync(binary)) throw new Error(text('后端构建未返回有效的绝对可执行文件路径。', 'Backend build did not return an existing absolute executable path.'));
+        const manifest = JSON.parse(readFileSync(join(root, 'frontend/package.json'), 'utf8').replace(/^\uFEFF/, ''));
+        child = launch(binary, ['--url', url, '--title', manifest.name || 'Easy Windows Pack', '--debug'], {
+          cwd: root, stdio: 'inherit', detached: process.platform !== 'win32',
+          env: { ...process.env, EWP_DEV_URL: url, EWP_LANG: options.language ?? languageArgs([], { cwd: root }).language }
+        });
+      }
       child.once('error', error => rejectEnd(new Error(text(`无法启动桌面：${error.message}。请执行 npm run init，或使用 --web。`, `Cannot start desktop: ${error.message}. Run npm run init, or use --web.`))));
       child.once('exit', (code, signal) => {
-        if (code) console.error(text('桌面异常退出。请运行 npm run init 安装 pywebview 和项目依赖；浏览器预览请使用 --web。', 'Desktop exited with an error. Run npm run init to install pywebview and the project dependencies; use --web for a browser preview.'));
+        if (code) console.error(python
+          ? text('桌面异常退出。请运行 npm run init 安装 pywebview 和项目依赖；浏览器预览请使用 --web。', 'Desktop exited with an error. Run npm run init to install pywebview and the project dependencies; use --web for a browser preview.')
+          : text('桌面异常退出。请运行 npm run init 检查原生后端；浏览器预览请使用 --web。', 'Desktop exited with an error. Run npm run init to check the native backend; use --web for a browser preview.'));
         resolveEnd(code ?? (signal ? 130 : 0));
       });
     }
@@ -404,15 +452,16 @@ async function menuChoice(prompt) {
 
 export async function runMenu(root, language, { choose = menuChoice, execute = executeTask, log = console.log, colors = createColors() } = {}) {
   return withLanguage(language, async () => {
+    const tasks = projectBackend(root) === 'python' ? MENU_TASKS : MENU_TASKS.filter(task => task.command !== 'wheel');
     for (;;) {
       log(colors.title(text('\nEasy Windows Pack — 开发菜单', '\nEasy Windows Pack — Development menu')));
-      MENU_TASKS.forEach((task, index) => log(`${colors.left(`${index + 1}.`)} ${text(task.zh, task.en)} — ${colors.command(`ewp ${task.command}${task.args ? ` ${task.args.join(' ')}` : ''}`)} / ${colors.dim(`npm run ${task.command}${task.args ? ` -- ${task.args.join(' ')}` : ''}`)}`));
+      tasks.forEach((task, index) => log(`${colors.left(`${index + 1}.`)} ${text(task.zh, task.en)} — ${colors.command(`ewp ${task.command}${task.args ? ` ${task.args.join(' ')}` : ''}`)} / ${colors.dim(`npm run ${task.command}${task.args ? ` -- ${task.args.join(' ')}` : ''}`)}`));
       log(colors.dim(text('0. 退出', '0. Exit')));
       const answer = await choose(colors.left(text('请选择任务：', 'Choose a task: ')));
       if (answer === null) return 130;
       const choice = answer.trim();
       if (choice === '0') return 0;
-      const task = /^\d+$/.test(choice) ? MENU_TASKS[Number(choice) - 1] : undefined;
+      const task = /^\d+$/.test(choice) ? tasks[Number(choice) - 1] : undefined;
       if (!task) { log(colors.warning(text('无效选择，请输入菜单编号。', 'Invalid choice; enter a menu number.'))); continue; }
       try {
         const options = parseArgs([task.command, ...(task.args ?? []), '--lang', language]);
@@ -459,9 +508,10 @@ export async function main(argv = process.argv.slice(2)) {
 async function executeTask(root, options) {
   if (options.command === 'menu') return runMenu(root, options.language);
   if (options.command === 'info') {
+    const backend = projectBackend(root);
     console.log(text(
-      `easywindowspack ${VERSION}\nNode: ${process.version}\n项目：${root}\n前端：${join(root, 'frontend')}\n配置：${configPath(root)}\nPython 虚拟环境：${join(root, '.venv')}\n默认构建：EXE`,
-      `easywindowspack ${VERSION}\nNode: ${process.version}\nProject: ${root}\nFrontend: ${join(root, 'frontend')}\nConfig: ${configPath(root)}\nPython venv: ${join(root, '.venv')}\nDefault build: EXE`));
+      `easywindowspack ${VERSION}\nNode: ${process.version}\n项目：${root}\n前端：${join(root, 'frontend')}\n配置：${configPath(root)}\n后端：${backend}${backend === 'python' ? `\nPython 虚拟环境：${join(root, '.venv')}` : ''}\n默认构建：EXE`,
+      `easywindowspack ${VERSION}\nNode: ${process.version}\nProject: ${root}\nFrontend: ${join(root, 'frontend')}\nConfig: ${configPath(root)}\nBackend: ${backend}${backend === 'python' ? `\nPython venv: ${join(root, '.venv')}` : ''}\nDefault build: EXE`));
     return 0;
   }
   if (options.command === 'check') {
@@ -476,6 +526,12 @@ async function executeTask(root, options) {
     await build({ configFile: configPath(root) });
     return 0;
   }
+  if (projectBackend(root) !== 'python') {
+    if (options.task === 'wheel') throw new Error(text('wheel 仅支持 Python 后端。', 'wheel is supported only for the Python backend.'));
+    const driver = await backendDriver(root);
+    return driver.task(root, { ...options, language: options.language ?? languageArgs([], { cwd: root }).language });
+  }
+  if (options.task === 'backend:build') return runPython(root, { ...options, task: 'exe' });
   return runPython(root, options);
 }
 

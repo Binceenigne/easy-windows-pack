@@ -1,5 +1,5 @@
 <!-- easy-dev:start -->
 # Coding agents
 
-开发任务先读取 [docs/agent.md](docs/agent.md)，按其路由显式读取 docs 下的 Skill（非默认自动发现目录）。
+框架维护任务先读取 [.maintainer/agent.md](.maintainer/agent.md)，按任务进入维护指南。docs 下的 Skill 面向应用开发者，修改这些指引时再显式读取相关 Skill。
 <!-- easy-dev:end -->

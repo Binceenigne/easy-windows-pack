@@ -5,13 +5,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { AI_TOOLS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeLanguage, normalizePackageName, projectFiles, projectManifest, templatesDirectory, TEMPLATES, validateTarget } from '../frontend/packages/create-ewp/lib/create.mjs';
+import { AI_TOOLS, BACKENDS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeBackend, normalizeLanguage, normalizePackageName, projectFiles, projectManifest, templatesDirectory, TEMPLATES, validateTarget } from '../frontend/packages/create-ewp/lib/create.mjs';
 import { HELP, helpText, main, npmCommand, parseArgs, quoteDirectory, runNpm } from '../frontend/packages/create-ewp/lib/cli.mjs';
 import { stripVTControlCharacters } from 'node:util';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
 const packageDirectory = join(repository, 'frontend/packages/create-ewp');
 const english = { language: 'en' };
+const backendEntries = { python: 'backend/src/demo.py', golang: 'backend/main_windows.go', rust: 'backend/src/main.rs', cpp: 'backend/src/main.cpp' };
 const parse = (args, options = {}) => parseArgs(args, { env: {}, ...options });
 
 function temporary(t) {
@@ -25,13 +26,18 @@ function temporary(t) {
 function preparedTemplates(t) {
   const root = temporary(t);
   const templatesDir = join(root, 'templates');
-  cpSync(templatesDirectory, templatesDir, { recursive: true });
+  cpSync(templatesDirectory, templatesDir, {
+    recursive: true, filter: source => !/[\\/](?:build|target|vendor|node_modules|__pycache__|\.git|dist|out|\.cache|\.venv|CMakeFiles|cmake-build-[^\\/]*)(?:[\\/]|$)/.test(source)
+  });
   cpSync(join(repository, 'backend/base/ewpcore'), join(templatesDir, 'common/backend/base/ewpcore'), {
     recursive: true, filter: source => !/(__pycache__|\.pyc$)/.test(source)
   });
   mkdirSync(join(templatesDir, 'common/scripts'), { recursive: true });
   for (const resource of ['scripts/dev.py', 'startup.cmd', 'scripts/startup.cmd', 'LICENSE']) {
     cpSync(join(repository, resource), join(templatesDir, 'common', resource));
+  }
+  if (existsSync(join(repository, 'scripts/backend.mjs'))) {
+    cpSync(join(repository, 'scripts/backend.mjs'), join(templatesDir, 'common/scripts/backend.mjs'));
   }
   rmSync(join(templatesDir, 'common/build.cmd'), { force: true });
   return { root, templatesDir };
@@ -68,14 +74,19 @@ test('argument parsing handles separators, equals syntax and Chinese defaults', 
   assert.deepEqual(parse(['My App', '--', '--template', 'vue-ts', '--no-install', '--no-start']), {
     language: 'zh-CN', name: 'My App', template: 'vue-ts', install: false, start: false
   });
-  assert.deepEqual(parse(['--dir=Some folder', '--template=react', '-y']), {
-    language: 'zh-CN', directory: 'Some folder', template: 'react', yes: true
+  assert.deepEqual(parse(['--dir=Some folder', '--template=react', '--backend=rust', '-y']), {
+    language: 'zh-CN', directory: 'Some folder', template: 'react', backend: 'rust', yes: true
   });
   assert.deepEqual(parse([]), { language: 'zh-CN' });
   assert.deepEqual(parse(['--help']), { language: 'zh-CN', help: true });
   assert.match(HELP, /非交互默认不安装/);
   assert.equal(normalizeLanguage('ZH-cn'), 'zh-CN');
   assert.equal(normalizeLanguage('zh'), 'zh-CN');
+  assert.deepEqual(BACKENDS, ['python', 'golang', 'rust', 'cpp']);
+  assert.equal(normalizeBackend(), 'python');
+  assert.equal(normalizeBackend(' GoLang '), 'golang');
+  assert.equal(parse(['--backend', 'CPP']).backend, 'cpp');
+  assert.equal(parse(['--backend=RUST', '--backend=rust']).backend, 'rust');
 });
 
 test('explicit language wins over environment, then project, then Chinese fallback', t => {
@@ -105,7 +116,11 @@ test('argument errors use the selected language even when --lang follows the inv
     [['a', 'b'], /只允许一个/, /Only one/], [['--start', '--no-install'], /需要安装/, /requires installation/],
     [['--install', '--no-install'], /参数冲突/, /Conflicting/], [['--ai'], /缺少值/, /Missing value/],
     [['--ai=none,codex'], /不能.*组合/, /cannot be combined/], [['--ai=bad'], /AI 工具选择无效/, /Invalid AI/],
-    [['--ai=none', '--ai=codex'], /参数冲突/, /Conflicting/]
+    [['--ai=none', '--ai=codex'], /参数冲突/, /Conflicting/],
+    [['--backend'], /缺少值/, /Missing value/], [['--backend='], /缺少值/, /Missing value/],
+    [['--backend', '-y'], /缺少值/, /Missing value/],
+    [['--backend=java'], /后端无效/, /Invalid backend/],
+    [['--backend=rust', '--backend=cpp'], /参数冲突/, /Conflicting/]
   ];
   for (const [args, zh, en] of invalid) {
     assert.throws(() => parse([...args, '--lang=zh-CN']), zh);
@@ -145,7 +160,7 @@ test('package names normalize independently of directories and cannot inject sou
   assert.equal(normalizePackageName('a'.repeat(300)).length, 80);
 });
 
-test('six templates × two languages × all AI combinations generate consistent resources and valid links', async t => {
+test('four backends × six templates × two languages × all AI combinations generate consistent resources and valid links', async t => {
   const { root, templatesDir } = preparedTemplates(t);
   const designRequirements = [
     [/共享网格与对齐线/, /shared grid and alignment guides/],
@@ -163,29 +178,31 @@ test('six templates × two languages × all AI combinations generate consistent 
     [/关闭弹窗后恢复焦点/, /restore focus after closing dialogs/],
     [/避免突兀的布局跳动和无助于理解的装饰性动效/, /avoid abrupt layout shifts and decorative motion that does not aid understanding/]
   ];
-  for (const template of TEMPLATES) for (const language of LANGUAGES) for (let mask = 0; mask < 8; mask++) {
-    await t.test(`${template} ${language} AI=${mask}`, () => {
+  for (const backend of BACKENDS) for (const template of TEMPLATES) for (const language of LANGUAGES) for (let mask = 0; mask < 8; mask++) {
+    await t.test(`${backend} ${template} ${language} AI=${mask}`, () => {
       const ai = AI_TOOLS.filter((_, index) => mask & (1 << index));
-      const result = createProject({ directory: join(root, `${template}-${language}-${mask}`), name: 'My App', template, language, ai, templatesDir });
+      const result = createProject({ directory: join(root, `${backend}-${template}-${language}-${mask}`), name: 'My App', template, backend, language, ai, templatesDir });
       const read = path => readFileSync(join(result.directory, path), 'utf8');
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
       assert.equal(pkg.dependencies.easywindowspack, '^0.1.4');
-      assert.deepEqual(pkg.ewp, { language });
+      assert.deepEqual(pkg.ewp, { language, backend });
+      assert.equal(result.backend, backend);
       assert.equal(pkg.scripts.ewp, 'ewp');
-      for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'wheel', 'exe', 'app', 'installer', 'bundle', 'test', 'check', 'full-build']) {
+      for (const task of ['help', 'info', 'menu', 'init', 'dev', 'browser', 'frontend', 'demo', 'backend:build', 'exe', 'app', 'installer', 'bundle', 'test', 'check', 'full-build']) {
         assert.equal(pkg.scripts[task], `ewp ${task === 'help' ? '--help' : task}`);
       }
       assert.equal(pkg.scripts.build, 'ewp build');
       assert.equal(pkg.scripts['build:all'], 'ewp full-build');
-      assert.equal(pkg.scripts['build:wheel'], 'ewp build --wheel');
+      assert.equal(pkg.scripts.wheel, backend === 'python' ? 'ewp wheel' : undefined);
+      assert.equal(pkg.scripts['build:wheel'], backend === 'python' ? 'ewp build --wheel' : undefined);
       assert.equal(pkg.scripts['build:exe'], 'ewp build --exe');
       assert.equal(pkg.scripts['build:app'], 'ewp app');
       assert.deepEqual(JSON.parse(read('ewp.pack.json')), {
         schemaVersion: 1,
         application: { id: pkg.name, name: pkg.name, version: pkg.version },
-        build: { mode: 'onefile', installer: false }, installer: { language },
+        build: { mode: backend === 'python' ? 'onefile' : 'onedir', installer: false }, installer: { language },
         features: [], prerequisites: [], hooks: {},
         postInstall: [
           { id: 'startup', type: 'startup', name: language === 'en' ? 'Start with Windows' : '开机自启', default: false },
@@ -193,15 +210,26 @@ test('six templates × two languages × all AI combinations generate consistent 
         ]
       });
       for (const task of ['frontend:build', 'frontend:dev', 'frontend:preview']) assert.equal(pkg.scripts[task], `ewp ${task}`);
-      assert.match(read('pyproject.toml'), /name = "my-app-desktop"/);
-      assert.match(read('pyproject.toml'), /version = "0.1.0"/);
-      assert.match(read('pyproject.toml'), /easy_windows_pack = "backend\/base\/ewpcore"/);
-      assert.match(read('pyproject.toml'), /\[project.optional-dependencies\][\s\S]*tray =[\s\S]*dev =/);
-      assert.equal(read('backend/base/ewpcore/__init__.py'), readFileSync(join(repository, 'backend/base/ewpcore/__init__.py'), 'utf8'));
-      for (const source of ['scripts/dev.py', 'startup.cmd', 'scripts/startup.cmd']) {
+      if (backend === 'python') {
+        assert.match(read('pyproject.toml'), /name = "my-app-desktop"/);
+        assert.match(read('pyproject.toml'), /version = "0.1.0"/);
+        assert.match(read('pyproject.toml'), /easy_windows_pack = "backend\/base\/ewpcore"/);
+        assert.match(read('pyproject.toml'), /\[project.optional-dependencies\][\s\S]*tray =[\s\S]*dev =/);
+        assert.equal(read('backend/base/ewpcore/__init__.py'), readFileSync(join(repository, 'backend/base/ewpcore/__init__.py'), 'utf8'));
+        assert.equal(read('scripts/dev.py'), readFileSync(join(repository, 'scripts/dev.py'), 'utf8'));
+      } else {
+        for (const path of ['pyproject.toml', 'backend/base/ewpcore', 'backend/src/demo.py', 'scripts/dev.py', 'tests/test_smoke.py']) {
+          assert.equal(existsSync(join(result.directory, path)), false, path);
+        }
+        for (const path of result.files.filter(path => path.startsWith('backend/'))) {
+          assert.deepEqual(readFileSync(join(result.directory, path)), readFileSync(join(templatesDir, 'backends', backend, path)), path);
+        }
+      }
+      for (const candidate of BACKENDS) assert.equal(existsSync(join(result.directory, backendEntries[candidate])), candidate === backend, candidate);
+      for (const source of ['startup.cmd', 'scripts/startup.cmd']) {
         assert.equal(read(source), readFileSync(join(repository, source), 'utf8'), source);
       }
-      assert.ok(existsSync(join(result.directory, 'tests/test_smoke.py')));
+      assert.equal(existsSync(join(result.directory, 'tests/test_smoke.py')), backend === 'python');
       // Dependencies are deliberately absent here: check distribution only.
       assert.equal(read('tests/npm-runtime.test.mjs'), readFileSync(join(templatesDir, 'common/tests/npm-runtime.test.mjs'), 'utf8'));
       const config = read('frontend/vite.config.mjs');
@@ -215,16 +243,24 @@ test('six templates × two languages × all AI combinations generate consistent 
       assert.ok(existsSync(join(result.directory, `frontend/src/main.${extension}`)));
       const demoPath = `frontend/src/${template.startsWith('vue') ? 'App.vue' : template.startsWith('react') ? `App.${extension}` : `main.${extension}`}`;
       const demo = read(demoPath);
-      const host = read('backend/src/demo.py');
+      const host = read(backendEntries[backend]);
       const readme = read('README.md');
-      for (const content of [demo, host, readme]) {
+      for (const path of result.files) assert.doesNotMatch(read(path), /__EWP_\w+__/, path);
+      for (const content of [demo, readme, ...(backend === 'python' ? [host] : [])]) {
         assert.doesNotMatch(content, /__EWP_\w+__/);
         assert.equal(/[\u3400-\u9fff]/u.test(content), language === 'zh-CN');
       }
-      assert.match(demo, language === 'en' ? /Your next desktop app/ : /构建你的下一个桌面应用/);
-      assert.match(demo, language === 'en' ? /Count/ : /计数/);
-      assert.match(host, /root \/ "frontend\/package.json"/);
-      assert.match(host, language === 'en' ? /enable desktop debugging/ : /启用桌面调试/);
+      assert.match(demo, language === 'en' ? /Bring your ideas to the desktop/ : /把你的想法带到桌面/);
+      assert.match(demo, /<h1[^>]*>EWP <span[^>]*>\+<\/span> <span[^>]*>(?:Vanilla|Vue|React)<\/span><\/h1>/);
+      assert.match(demo, language === 'en' ? /Start building/ : /开始构建/);
+      assert.doesNotMatch(demo, /class(?:Name)?="counter"/);
+      if (backend === 'python') {
+        assert.match(host, /root \/ "frontend\/package.json"/);
+        assert.match(host, language === 'en' ? /enable desktop debugging/ : /启用桌面调试/);
+      } else {
+        assert.ok(readme.includes(backendEntries[backend]));
+        assert.doesNotMatch(readme, /npm run (?:build:)?wheel|scripts\/dev\.py|backend\/src\/demo\.py/);
+      }
       assert.match(readme, /npm run demo.*-- --debug/);
       assert.match(readme, /npm run build:all/);
       assert.match(readme, /Vite/);
@@ -245,11 +281,14 @@ test('six templates × two languages × all AI combinations generate consistent 
       ]) assert.equal(existsSync(join(result.directory, path)), enabled, path);
       for (const path of ['docs/index.md', 'docs/design.md']) {
         assert.ok(result.files.includes(path), path);
-        assert.ok(read(path).trimEnd().split('\n').length < 15, path);
+        assert.ok(read(path).split('\n').filter(line => line.trim()).length <= (path.endsWith('index.md') ? 7 : 4), path);
+        assert.doesNotMatch(read(path), /Aurora|counter|计数|compact layout|紧凑布局|follow the system|跟随系统/);
         assert.doesNotMatch(read(path), /backend\/base|ewpcore|PyInstaller|scripts\/dev\.py|full-build/);
         for (const requirement of designRequirements) assert.doesNotMatch(read(path), requirement[language === 'en' ? 1 : 0], path);
       }
       if (!ai.length) assert.deepEqual(readdirSync(join(result.directory, 'docs')).sort(), ['design.md', 'index.md']);
+      assert.deepEqual(result.files.filter(path => /^docs\/[^/]+\.md$/.test(path)).sort(), ['docs/design.md', 'docs/index.md']);
+      assert.ok(!result.files.some(path => path.startsWith('.maintainer/') || /docs\/(?:architecture|npm-validation|packaging)\.md/.test(path)));
       for (const path of result.files.filter(path => path.endsWith('.md') && /AGENTS|CLAUDE|copilot|docs\//.test(path))) {
         assertLinks(result.directory, path);
         assert.equal(/[\u3400-\u9fff]/u.test(read(path)), language === 'zh-CN', path);
@@ -261,12 +300,15 @@ test('six templates × two languages × all AI combinations generate consistent 
         assert.doesNotMatch(read(skill), /five levels|上五级/);
         const guidance = read('docs/.easy-dev/agent.md');
         assert.match(guidance, /frontend\/src\//);
-        assert.match(guidance, /backend\/src\/demo.py/);
+        assert.ok(guidance.includes(backendEntries[backend]));
+        assert.ok(guidance.includes(backend));
         assert.equal(guidance.includes('npm run typecheck'), template.endsWith('-ts'));
         for (const [path, content] of [['docs/.easy-dev/agent.md', guidance], [skill, read(skill)]]) {
           assert.match(content, /\]\([^)]*index\.md\)/);
           assert.match(content, /\]\([^)]*design\.md\)/);
           assert.doesNotMatch(content, /backend\/base|ewpcore|prepare-npm|npm publish/);
+          for (const candidate of BACKENDS.filter(value => value !== backend)) assert.equal(content.includes(backendEntries[candidate]), false, candidate);
+          assert.match(content, language === 'en' ? /Do not automatically expand index\/design/ : /不自动扩写 index\/design/);
           assert.ok(content.trimEnd().split('\n').length < 15);
           for (const requirement of designRequirements) assert.match(content, requirement[language === 'en' ? 1 : 0], path);
         }
@@ -278,13 +320,14 @@ test('six templates × two languages × all AI combinations generate consistent 
         assert.match(config, /plugin-vue/);
         assert.match(read('frontend/src/Frame.vue'), /<Teleport v-if="content" :to="content"><slot/);
         assert.match(read('frontend/src/Frame.vue'), /onBeforeUnmount.*dispose/);
-        assert.match(demo, /count\+\+/);
+        assert.match(demo, /const windowStyle = ref(?:<[^>]+>)?\('macos'\)/);
         assert.equal(pkg.dependencies.react, undefined);
       } else if (template.startsWith('react')) {
         assert.match(config, /plugin-react/);
         assert.match(read(`frontend/src/Frame.${extension}`), /createPortal\(children, content\)/);
         assert.match(read(`frontend/src/Frame.${extension}`), /instance\.dispose\(\)/);
-        assert.match(demo, /setCount\(value => value \+ 1\)/);
+        assert.match(demo, /useState(?:<[^>]+>)?\('macos'\)/);
+        assert.match(demo, /setWindowStyle\('windows'\)/);
         assert.equal(pkg.dependencies.vue, undefined);
       } else {
         assert.doesNotMatch(config, /plugin-vue|plugin-react/);
@@ -302,8 +345,8 @@ test('generated pack configs are accepted by the real Python schema and use proj
 }, t => {
   const { root, templatesDir } = preparedTemplates(t);
   const projects = [];
-  for (const template of TEMPLATES) for (const language of LANGUAGES) {
-    projects.push(createProject({ directory: join(root, `Pack ${template} ${language}`), name: 'My Desktop App', template, language, templatesDir }));
+  for (const backend of BACKENDS) for (const template of TEMPLATES) for (const language of LANGUAGES) {
+    projects.push(createProject({ directory: join(root, `Pack ${backend} ${template} ${language}`), name: 'My Desktop App', template, backend, language, templatesDir }));
   }
   for (const name of ['a'.repeat(180), 'uninstall', 'CON', 'lpt9', '中文']) {
     projects.push(createProject({ directory: join(root, `Names ${projects.length}`), name, templatesDir }));
@@ -348,7 +391,7 @@ print(json.dumps(results))
     assert.equal(config.application.id, project.name);
     assert.equal(config.application.name, project.name);
     assert.equal(config.schemaVersion, 1);
-    assert.deepEqual(config.build, { mode: 'onefile', installer: false });
+    assert.deepEqual(config.build, { mode: project.backend === 'python' ? 'onefile' : 'onedir', installer: false });
     assert.deepEqual(config.installer, { language: project.language, files: [] });
     assert.deepEqual(config.features, []);
     assert.deepEqual(config.prerequisites, []);
@@ -371,10 +414,139 @@ test('invalid AI selections fail before writes or installation', async t => {
     assert.equal(existsSync(directory), false);
   }
   const prompts = promptFixture([['unknown']]);
-  await assert.rejects(main(['invalid-prompt', '--template=vanilla', '--no-install', '--no-start', '--lang=en'], {
+  await assert.rejects(main(['invalid-prompt', '--template=vanilla', '--backend=python', '--no-install', '--no-start', '--lang=en'], {
     cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}
   }), /AI selection/);
   assert.equal(existsSync(join(root, 'invalid-prompt')), false);
+});
+
+test('invalid backend values fail in both languages before writes or installation', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const language of LANGUAGES) {
+    const expected = language === 'en' ? /Invalid backend/ : /后端无效/;
+    for (const backend of ['java', 'go', '', null, 42, [], {}]) {
+      assert.throws(() => normalizeBackend(backend, language), expected);
+      assert.throws(() => projectManifest('app', 'vanilla', language, backend), expected);
+      assert.throws(() => projectFiles({ backend, language, templatesDir }), expected);
+      const directory = join(root, 'invalid-backend');
+      assert.throws(() => createProject({ directory, backend, language, templatesDir }), expected);
+      assert.equal(existsSync(directory), false);
+    }
+    for (const flag of ['--backend=java', '--backend=', '--backend']) {
+      await assert.rejects(main(['invalid-cli', flag, `--lang=${language}`, '--install'], {
+        cwd: root, templatesDir, interactive: false, env: {}, log() {}, run() { assert.fail('must not install'); }
+      }), language === 'en' ? /Invalid backend|Missing value/ : /后端无效|缺少值/);
+      assert.equal(existsSync(join(root, 'invalid-cli')), false);
+    }
+    const prompts = promptFixture(['java']);
+    await assert.rejects(main(['invalid-selection', '--template=vanilla', `--lang=${language}`, '--ai=none', '--install', '--no-start'], {
+      cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}, run() { assert.fail('must not install'); }
+    }), expected);
+    assert.equal(existsSync(join(root, 'invalid-selection')), false);
+  }
+});
+
+test('explicit backend skips only backend selection and persists the normalized choice', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const language of LANGUAGES) for (const backend of BACKENDS) {
+    const directory = `Explicit ${backend} ${language}`;
+    const prompts = promptFixture([language, 'react', 'ts']);
+    assert.equal(await main([directory, `--backend=${backend.toUpperCase()}`, '--ai=none', '--no-install', '--no-start'], {
+      cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}
+    }), 0);
+    assert.equal(prompts.seen.length, 3);
+    assert.equal(prompts.seen[0].message, '语言 / Language');
+    assert.deepEqual(prompts.seen[1].options.map(option => option.value), ['vanilla', 'vue', 'react']);
+    assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['js', 'ts']);
+    const pkg = JSON.parse(readFileSync(join(root, directory, 'frontend/package.json'), 'utf8'));
+    assert.deepEqual(pkg.ewp, { language, backend });
+  }
+});
+
+test('backend generation tolerates pending common scripts and copies them unchanged once prepared', t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  rmSync(join(templatesDir, 'common/scripts/backend.mjs'), { force: true });
+  const defaultFiles = projectFiles({ templatesDir });
+  const explicitPythonFiles = projectFiles({ backend: 'python', templatesDir });
+  assert.deepEqual(defaultFiles, explicitPythonFiles);
+  for (const backend of BACKENDS) {
+    const files = projectFiles({ backend, templatesDir });
+    assert.equal(files.has('scripts/backend.mjs'), false);
+    assert.ok(files.has(backendEntries[backend]));
+  }
+  for (const path of ['startup.cmd', 'scripts/startup.cmd']) rmSync(join(templatesDir, 'common', path));
+  for (const backend of BACKENDS.filter(value => value !== 'python')) {
+    const files = projectFiles({ backend, templatesDir });
+    assert.equal(files.has('startup.cmd'), false);
+    assert.equal(files.has('scripts/startup.cmd'), false);
+    assert.ok(files.has(backendEntries[backend]));
+  }
+  const resources = {
+    'scripts/backend.mjs': '/* prepared shared backend driver */\n',
+    'startup.cmd': '@echo off\r\ncall "%~dp0scripts\\startup.cmd" %*\r\n',
+    'scripts/startup.cmd': '@echo off\r\nnode "%~dp0backend.mjs" %*\r\n'
+  };
+  for (const [path, content] of Object.entries(resources)) writeFileSync(join(templatesDir, 'common', path), content);
+  rmSync(join(templatesDir, 'common/backend/base/ewpcore'), { recursive: true });
+  rmSync(join(templatesDir, 'common/scripts/dev.py'));
+  writeFileSync(join(templatesDir, 'common/pyproject.toml'), 'must not leak into native projects');
+  for (const backend of BACKENDS.filter(value => value !== 'python')) {
+    const project = createProject({ directory: join(root, backend), backend, templatesDir });
+    for (const [path, content] of Object.entries(resources)) assert.equal(readFileSync(join(project.directory, path), 'utf8'), content);
+    assert.equal(project.files.some(path => path.startsWith('backend/base/ewpcore') || path === 'scripts/dev.py' || path === 'pyproject.toml'), false);
+  }
+});
+
+test('template collection excludes build caches while preserving Go include files and binary data', t => {
+  const { templatesDir } = preparedTemplates(t);
+  const ignored = ['build', 'target', 'vendor', 'node_modules', '__pycache__', '.git', 'dist', 'out', '.cache', '.pytest_cache', '.venv', 'venv', 'CMakeFiles', 'cmake-build-debug'];
+  for (const backend of BACKENDS) {
+    const directory = join(templatesDir, backend === 'python' ? 'common' : `backends/${backend}`);
+    for (const name of ignored) {
+      const path = join(directory, 'backend', name);
+      mkdirSync(path, { recursive: true });
+      writeFileSync(join(path, 'must-not-copy.bin'), 'build artifact');
+    }
+    writeFileSync(join(directory, 'backend/cache.pyc'), 'bytecode');
+    const files = projectFiles({ backend, templatesDir });
+    assert.equal([...files.keys()].some(path => /must-not-copy|cache\.pyc/.test(path)), false);
+  }
+  const include = 'backend/include/fixture.bin';
+  const bytes = Buffer.from([0, 255, 128, 13, 10, 1]);
+  writeFileSync(join(templatesDir, 'backends/golang', include), bytes);
+  const files = projectFiles({ backend: 'golang', templatesDir });
+  assert.deepEqual(files.get(include), bytes);
+  for (const path of ['backend/include/webview.h', 'backend/include/WebView2.h']) {
+    assert.deepEqual(files.get(path), readFileSync(join(templatesDir, 'backends/golang', path)));
+  }
+});
+
+test('missing backend templates and unknown UI tokens fail before creating the destination', t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  rmSync(join(templatesDir, 'backends/rust'), { recursive: true });
+  const target = join(root, 'untouched');
+  assert.throws(() => createProject({ directory: target, backend: 'rust', templatesDir, ...english }), /does not exist/);
+  assert.equal(existsSync(target), false);
+  writeFileSync(join(templatesDir, 'vanilla/frontend/src/main.js'), '__EWP_untranslated__');
+  assert.throws(() => createProject({ directory: target, templatesDir, ...english }), /Unknown template placeholder/);
+  assert.equal(existsSync(target), false);
+});
+
+test('all backend CLIs reject invalid or nonempty destinations without changing existing files', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  const directory = join(root, 'existing');
+  mkdirSync(directory);
+  writeFileSync(join(directory, 'keep.txt'), 'keep');
+  for (const backend of BACKENDS) for (const language of LANGUAGES) {
+    for (const destination of [directory, 'CON', 'bad?', 'trailing.', 'bad\nname']) {
+      await assert.rejects(main(['--dir', destination, `--backend=${backend}`, `--lang=${language}`, '--install'], {
+        cwd: root, templatesDir, interactive: false, env: {}, log() {}, run() { assert.fail('must not install'); }
+      }), language === 'en' ? /not empty|Windows-compatible|Invalid project directory/ : /非空|不兼容 Windows|目录无效/);
+      if (destination !== directory) assert.equal(existsSync(join(root, destination)), false);
+      assert.deepEqual(readdirSync(directory), ['keep.txt']);
+      assert.equal(readFileSync(join(directory, 'keep.txt'), 'utf8'), 'keep');
+    }
+  }
 });
 
 test('explicit --lang skips only language selection and explicit AI none skips AI selection', async t => {
@@ -382,7 +554,7 @@ test('explicit --lang skips only language selection and explicit AI none skips A
   for (const explicit of [false, true]) {
     const directory = `empty-ai-${explicit}`;
     const prompts = promptFixture(explicit ? [] : [[]]);
-    assert.equal(await main([directory, '--template=vanilla', '--no-install', '--no-start', '--lang=en', ...(explicit ? ['--ai=none'] : [])], {
+    assert.equal(await main([directory, '--template=vanilla', '--backend=python', '--no-install', '--no-start', '--lang=en', ...(explicit ? ['--ai=none'] : [])], {
       cwd: root, templatesDir, interactive: true, env: { EWP_LANG: 'zh-CN' }, prompts, log() {}
     }), 0);
     assert.equal(prompts.seen.length, explicit ? 0 : 1);
@@ -466,6 +638,7 @@ test('noninteractive and --yes never prompt or launch network processes by defau
     }), 0);
     const pkg = JSON.parse(readFileSync(join(root, directory, 'frontend/package.json'), 'utf8'));
     assert.equal(pkg.ewp.language, 'zh-CN');
+    assert.equal(pkg.ewp.backend, 'python');
   }
 });
 
@@ -473,7 +646,7 @@ test('no flags always prompts for human language first and selection beats the e
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
     const opposite = language === 'en' ? 'zh-CN' : 'en';
-    const prompts = promptFixture([language, `App ${language}`, 'vue', 'ts', ['claude'], true, false]);
+    const prompts = promptFixture([language, `App ${language}`, 'vue', 'ts', 'golang', ['claude'], true, false]);
     const runs = [];
     const output = [];
     assert.equal(await main([], {
@@ -486,23 +659,29 @@ test('no flags always prompts for human language first and selection beats the e
     assert.equal(prompts.seen[1].message, language === 'en' ? 'Project name' : '项目名称');
     assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['vanilla', 'vue', 'react']);
     assert.deepEqual(prompts.seen[3].options.map(option => option.value), ['js', 'ts']);
-    assert.deepEqual(prompts.seen[4].initialValues, []);
-    assert.equal(prompts.seen[4].required, false);
-    assert.deepEqual(prompts.seen[4].options.map(option => option.value), AI_TOOLS);
+    assert.equal(prompts.seen[4].message, language === 'en' ? 'Select a backend' : '选择后端');
+    assert.equal(prompts.seen[4].initialValue, 'python');
+    assert.deepEqual(prompts.seen[4].options.map(option => option.value), BACKENDS);
+    assert.deepEqual(prompts.seen[4].options.map(option => option.label), ['Python', 'Go', 'Rust', 'C++']);
+    assert.deepEqual(prompts.seen[5].initialValues, []);
+    assert.equal(prompts.seen[5].required, false);
+    assert.deepEqual(prompts.seen[5].options.map(option => option.value), AI_TOOLS);
+    assert.equal(prompts.seen[7].message, language === 'en' ? 'Initialize golang backend and start desktop?' : '初始化 golang 后端并启动桌面？');
     assert.deepEqual(runs, [[['install'], join(root, `App ${language}/frontend`), { language, env: { EWP_LANG: language } }]]);
     assert.match(output.join('\n'), language === 'en' ? /Project created:[\s\S]*Desktop development:[\s\S]*Command help/ : /项目已创建：[\s\S]*桌面开发：[\s\S]*命令帮助/);
     assert.equal(prompts.events.at(-1), language === 'en' ? 'Ready' : '准备完成');
     const pkg = JSON.parse(readFileSync(join(root, `App ${language}/frontend/package.json`), 'utf8'));
     assert.equal(pkg.ewp.language, language);
+    assert.equal(pkg.ewp.backend, 'golang');
     assert.equal(existsSync(join(root, `App ${language}/docs/.agents`)), false);
   }
 });
 
 test('cancellation at the language prompt and every subsequent prompt leaves no project', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  for (const language of LANGUAGES) for (let index = 0; index < 7; index++) {
+  for (const language of LANGUAGES) for (let index = 0; index < 8; index++) {
     const directory = `Cancelled ${language} ${index}`;
-    const values = [language, directory, 'react', 'ts', ['codex'], true, false];
+    const values = [language, directory, 'react', 'ts', 'rust', ['codex'], true, false];
     const prompts = promptFixture(values);
     values[index] = prompts.cancellation;
     assert.equal(await main([], {
@@ -517,7 +696,7 @@ test('cancellation at the language prompt and every subsequent prompt leaves no 
 test('colored creation prompts preserve values and report actual stages in execution order', async t => {
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
-    const prompts = promptFixture([language, `Color ${language}`, 'vue', 'ts', ['claude'], true, true]);
+    const prompts = promptFixture([language, `Color ${language}`, 'vue', 'ts', 'python', ['claude'], true, true]);
     const events = [];
     assert.equal(await main([], {
       cwd: root, templatesDir, interactive: true, prompts, env: { FORCE_COLOR: '1' }, output: { isTTY: false },
@@ -539,7 +718,7 @@ test('colored creation prompts preserve values and report actual stages in execu
 
 test('NO_COLOR keeps prompts plain and failed installs never report completion or start Python', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  const prompts = promptFixture(['vanilla', 'js', [], true, true]);
+  const prompts = promptFixture(['vanilla', 'js', 'python', [], true, true]);
   const events = [];
   await assert.rejects(main(['Plain', '--lang=en'], {
     cwd: root, templatesDir, interactive: true, prompts,
@@ -554,7 +733,7 @@ test('NO_COLOR keeps prompts plain and failed installs never report completion o
 test('interactive errors and project-name validation use the selected language', async t => {
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
-    const prompts = promptFixture([language, `Conflict ${language}`, 'vanilla', 'js', [], false, true]);
+    const prompts = promptFixture([language, `Conflict ${language}`, 'vanilla', 'js', 'python', [], false, true]);
     await assert.rejects(main([], {
       cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}
     }), language === 'en' ? /Starting requires npm/ : /启动需要 npm/);
@@ -565,25 +744,30 @@ test('interactive errors and project-name validation use the selected language',
 
 test('startup runs install, init and dev with one language; failures preserve files', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  for (const language of LANGUAGES) {
+  for (const backend of BACKENDS) for (const language of LANGUAGES) {
     const runs = [];
-    assert.equal(await main([`Started ${language}`, '--template=react-ts', '--start', `--lang=${language}`], {
-      cwd: root, templatesDir, interactive: false, env: { EWP_LANG: language === 'en' ? 'zh-CN' : 'en' }, log() {},
+    const output = [];
+    assert.equal(await main([`Started ${backend} ${language}`, '--template=react-ts', `--backend=${backend}`, '--start', `--lang=${language}`], {
+      cwd: root, templatesDir, interactive: false, env: { EWP_LANG: language === 'en' ? 'zh-CN' : 'en' }, log: value => output.push(value),
       run: async (args, cwd, options) => {
         runs.push(args);
-        assert.equal(cwd, join(root, `Started ${language}/frontend`));
+        assert.equal(cwd, join(root, `Started ${backend} ${language}/frontend`));
         assert.equal(options.language, language);
         assert.equal(options.env.EWP_LANG, language);
       }
     }), 0);
     assert.deepEqual(runs, [['install'], ['run', 'init'], ['run', 'dev']]);
+    if (backend !== 'python') {
+      assert.match(output.join('\n'), new RegExp(language === 'en' ? `Initialize ${backend} backend` : `初始化 ${backend} 后端`));
+      assert.doesNotMatch(output.join('\n'), /Python/);
+    }
     const stopped = [];
-    await assert.rejects(main([`Failed ${language}`, '--start', `--lang=${language}`], {
+    await assert.rejects(main([`Failed ${backend} ${language}`, `--backend=${backend}`, '--start', `--lang=${language}`], {
       cwd: root, templatesDir, interactive: false, env: {}, log() {},
       run: async args => { stopped.push(args); throw creatorError('npmFailed', { command: 'install', code: 7, directory: root }, language === 'en' ? 'zh-CN' : 'en'); }
     }), language === 'en' ? /npm install failed/ : /npm install 执行失败/);
     assert.deepEqual(stopped, [['install']]);
-    assert.ok(existsSync(join(root, `Failed ${language}/frontend/package.json`)));
+    assert.ok(existsSync(join(root, `Failed ${backend} ${language}/frontend/package.json`)));
   }
 });
 
@@ -597,6 +781,7 @@ test('help and executable errors work in both languages outside a project', asyn
     assert.equal(output[0], helpText(language));
     assert.match(output[0], language === 'en' ? /Create a desktop project/ : /创建桌面项目/);
     assert.match(output[0], /--lang > EWP_LANG/);
+    assert.match(output[0], /--backend <[^>]+>\s+python \| golang \| rust \| cpp/);
     const environment = { ...process.env, EWP_LANG: language === 'en' ? 'zh-CN' : 'en' };
     const help = spawnSync(process.execPath, [join(packageDirectory, 'bin/create-ewp.mjs'), '--help', `--lang=${language}`], { cwd, env: environment, encoding: 'utf8' });
     assert.equal(help.status, 0, help.stderr);
@@ -646,6 +831,7 @@ test('npm pack dry-run includes both README resources and all templates', t => {
   assert.equal(result.status, 0, result.stderr);
   const files = JSON.parse(result.stdout)[0].files.map(file => file.path);
   for (const template of TEMPLATES) assert.ok(files.some(path => path.startsWith(`templates/${template}/frontend/src/`)), template);
+  for (const backend of BACKENDS.filter(value => value !== 'python')) assert.ok(files.includes(`templates/backends/${backend}/${backendEntries[backend]}`), backend);
   for (const path of ['templates/common/_gitignore', 'templates/common/README.md', 'templates/common/README.en.md', 'templates/common/tests/npm-runtime.test.mjs', 'bin/create-ewp.mjs', 'lib/create.mjs']) {
     assert.ok(files.includes(path), path);
   }
@@ -739,13 +925,20 @@ test('integration: six templates in both languages build, typecheck and retain r
         await frame.waitFor();
         assert.equal(await frame.count(), 1, template);
         assert.equal(await frame.locator('[data-ewp-title]').textContent(), project.name, template);
-        assert.equal(await frame.locator('h1').textContent(), language === 'en' ? 'Your next desktop app.' : '构建你的下一个桌面应用。');
-        const counter = frame.locator('[data-ewp-content] .counter');
-        await counter.click();
-        await counter.click();
-        assert.equal(await counter.textContent(), language === 'en' ? 'Count: 2' : '计数: 2', template);
-        await frame.locator('select').selectOption('windows');
+        assert.equal(await frame.locator('h1').textContent(), `EWP + ${template.startsWith('vue') ? 'Vue' : template.startsWith('react') ? 'React' : 'Vanilla'}`);
+        assert.equal(await frame.locator('.description').textContent(), language === 'en' ? 'Bring your ideas to the desktop.' : '把你的想法带到桌面。');
+        assert.equal(await frame.locator('.welcome-button.primary').textContent(), language === 'en' ? 'Start building →' : '开始构建 →');
+        const theme = page.locator('html');
+        const initialTheme = await theme.getAttribute('data-welcome-theme');
+        await frame.locator('.theme-toggle').click();
+        assert.notEqual(await theme.getAttribute('data-welcome-theme'), initialTheme, template);
+        await frame.locator('.theme-toggle').click();
+        assert.equal(await theme.getAttribute('data-welcome-theme'), initialTheme, template);
+        assert.equal(await frame.getAttribute('data-window-style'), 'macos', template);
+        const windows = frame.locator('.experience-button').filter({ hasText: 'Windows' });
+        await windows.click();
         assert.equal(await frame.getAttribute('data-window-style'), 'windows', template);
+        assert.equal(await windows.getAttribute('aria-pressed'), 'true', template);
         assert.deepEqual(errors, [], template);
       } finally {
         await page.close();

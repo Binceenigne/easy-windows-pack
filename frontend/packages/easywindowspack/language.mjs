@@ -48,25 +48,27 @@ export function helpText(language = 'zh-CN') {
 
 项目根目录：ewp <任务>；frontend 内：npm run <任务>
 未全局安装时：npm --prefix frontend run ewp -- <任务>
-  menu                     打开开发菜单（无需先初始化 Python）
-  init                     初始化项目 Python .venv 与依赖
+  menu                     打开开发菜单（按后端过滤仅 Python 支持的任务）
+  init                     初始化所选后端与前端；Python 项目创建 .venv
   dev [--web]              Vite + 桌面热更新；--web 仅浏览器
   browser | frontend:dev   Vite 浏览器热更新
   frontend | frontend:build  编译前端
   frontend:preview         预览已编译的前端
   demo [--debug]           编译前端后运行桌面演示，可开启开发者工具
-  wheel | exe | bundle     构建 wheel / Windows EXE / 源码包
+  wheel | exe | bundle     wheel 仅 Python；EXE / 源码包支持所选后端
+  backend:build            构建所选后端；Python 映射到 exe
   app | build:app           按配置构建应用，默认使用配置中的模式
   installer                构建应用并强制生成安装包
   build [-w|--wheel] [-e|--exe] [--all]  默认构建 EXE，目标互斥
-  build:all | full-build   完整构建：test → wheel → exe → bundle
-  test | info | check      Python 测试 / 项目信息 / Node 检查
+  build:all | full-build   完整构建（各后端负责自己的构建阶段）
+  test | info | check      后端测试 / 含所选后端的项目信息 / Node 检查
 
 应用打包参数（app / installer / exe / build / full-build）：
   --mode onefile|onedir    覆盖应用模式；支持单文件或目录
   --config PATH           配置路径相对项目根，默认 ewp.pack.json；含空格时加引号
   --installer             同时生成安装包；build --wheel / -w 与以上参数互斥
 新打包产物：output/apps/ 和 output/installers/；exe 不带以上参数时使用 output/exe/。
+原生后端可采用 onedir 目录部署（将可执行文件和运行依赖一起分发）；wheel 仅供 Python 项目。
 浏览器和 dev 参数：--no-open；--port <0..65535>（默认动态端口）
 语言：--lang zh-CN|en > EWP_LANG > frontend/package.json ewp.language > zh-CN
 语言参数可放在命令前后，仅覆盖本次输出。
@@ -83,25 +85,27 @@ Welcome needs no project: ewp; full help: ewp help / ewp -h / ewp --help
 
 Project root: ewp <task>; inside frontend: npm run <task>
 Without a global install: npm --prefix frontend run ewp -- <task>
-  menu                     Open development menu (no Python setup required)
-  init                     Initialize the project's Python .venv and dependencies
+  menu                     Open development menu (filters Python-only tasks by backend)
+  init                     Initialize the selected backend and frontend; Python creates .venv
   dev [--web]              Vite + desktop HMR; --web opens a browser only
   browser | frontend:dev   Vite browser development
   frontend | frontend:build  Build frontend
   frontend:preview         Preview the built frontend
   demo [--debug]           Build frontend and run desktop; optional developer tools
-  wheel | exe | bundle     Build wheel / Windows EXE / source bundle
+  wheel | exe | bundle     Wheel is Python-only; build EXE / source bundle for selected backend
+  backend:build            Build the selected backend; Python maps this to exe
   app | build:app           Build the configured application using its configured mode
   installer                Build the application and always create an installer
   build [-w|--wheel] [-e|--exe] [--all]  Build EXE by default; choose one target
-  build:all | full-build   Full build: test → wheel → exe → bundle
-  test | info | check      Python tests / project information / Node checks
+  build:all | full-build   Full build (backend determines its build stages)
+  test | info | check      Backend tests / project info including backend / Node checks
 
 Application packaging options (app / installer / exe / build / full-build):
   --mode onefile|onedir    Override the application mode: single file or directory
   --config PATH           Relative to project root; default: ewp.pack.json; quote spaces
   --installer             Also create an installer; build --wheel / -w conflicts with these options
 New outputs: output/apps/ and output/installers/; exe without these options uses output/exe/.
+Native backends can deploy onedir (ship the executable together with runtime dependencies); wheels are Python-only.
 Browser and dev options: --no-open; --port <0..65535> (default: dynamic port)
 Language: --lang zh-CN|en > EWP_LANG > frontend/package.json ewp.language > zh-CN
 Language flags work before or after the command and only affect this invocation.
