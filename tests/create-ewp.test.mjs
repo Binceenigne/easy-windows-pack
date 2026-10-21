@@ -13,6 +13,7 @@ const repository = fileURLToPath(new URL('../', import.meta.url));
 const packageDirectory = join(repository, 'frontend/packages/create-ewp');
 const english = { language: 'en' };
 const backendEntries = { python: 'backend/src/demo.py', golang: 'backend/main_windows.go', rust: 'backend/src/main.rs', cpp: 'backend/src/main.cpp' };
+const templatePartnerAssets = { vanilla: 'javascript.svg', 'vanilla-ts': 'typescript.svg', vue: 'vue.svg', 'vue-ts': 'vue.svg', react: 'react.svg', 'react-ts': 'react.svg' };
 const parse = (args, options = {}) => parseArgs(args, { env: {}, ...options });
 
 function temporary(t) {
@@ -241,8 +242,16 @@ test('four backends × six templates × two languages × all AI combinations gen
       assert.match(read('frontend/index.html'), new RegExp(`/src/main\\.${extension}`));
       assert.match(read('frontend/index.html'), new RegExp(`lang="${language}"`));
       assert.ok(existsSync(join(result.directory, `frontend/src/main.${extension}`)));
+      const partnerAsset = `frontend/src/assets/${templatePartnerAssets[template]}`;
+      assert.ok(existsSync(join(result.directory, partnerAsset)), `${template}: missing ${partnerAsset}`);
       const demoPath = `frontend/src/${template.startsWith('vue') ? 'App.vue' : template.startsWith('react') ? `App.${extension}` : `main.${extension}`}`;
       const demo = read(demoPath);
+      for (const [, asset] of demo.matchAll(/['"]\.\/assets\/([^'"?]+\.svg)['"]/g)) {
+        const generatedAsset = join(result.directory, 'frontend/src/assets', asset);
+        assert.ok(existsSync(generatedAsset), `${demoPath}: unresolved SVG import ${asset}`);
+        assert.deepEqual(readFileSync(generatedAsset), readFileSync(join(repository, 'frontend/src/assets', asset)));
+      }
+      assert.equal(read('frontend/src/assets/LICENSE.vite'), readFileSync(join(repository, 'frontend/src/assets/LICENSE.vite'), 'utf8'));
       const host = read(backendEntries[backend]);
       const readme = read('README.md');
       for (const path of result.files) assert.doesNotMatch(read(path), /__EWP_\w+__/, path);

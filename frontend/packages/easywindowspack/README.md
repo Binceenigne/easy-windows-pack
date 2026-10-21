@@ -2,20 +2,20 @@
 
 Version 0.1.4 · MIT
 
-共享窗口外壳、桌面组件和 `ewp` CLI，连接 Vite 前端与 Python / pywebview 桌面，支持 Windows / macOS 窗口外观。
-Shared window frames, desktop components and the `ewp` CLI connect Vite frontends with Python / pywebview desktops, with Windows / macOS window themes.
+共享窗口外壳、桌面组件和 `ewp` CLI，连接 Vite 前端与 Python、Go、Rust 或 C++ 桌面宿主，支持 Windows / macOS 窗口外观。
+Shared window frames, desktop components and the `ewp` CLI connect Vite frontends with Python, Go, Rust or C++ desktop hosts, with Windows / macOS window themes.
 
 ## 环境 / Requirements
 
-- Node.js >=22.12.0（含 npm）；桌面与打包需 Python >=3.10，Windows 桌面另需 WebView2。
-  Node.js >=22.12.0, including npm; desktop and packaging need Python >=3.10, with WebView2 for Windows desktop.
+- Node.js >=22.12.0（含 npm）；Windows 桌面需 WebView2 与所选后端工具链：Python >=3.10；Go >=1.22 + MinGW-w64 C++；Rust / Cargo + MSVC；或 CMake >=3.24 + C++17。原生后端另需 Windows SDK，安装器需 NSIS 3。
+  Node.js >=22.12.0, including npm; Windows desktop needs WebView2 and the selected toolchain: Python >=3.10; Go >=1.22 + MinGW-w64 C++; Rust / Cargo + MSVC; or CMake >=3.24 + C++17. Native backends also need the Windows SDK; native installers need NSIS 3.
 - 浏览器开发和前端编译无需 Python；浏览器不提供原生窗口控制。EXE 打包面向 Windows，macOS 外观仅为 UI 主题。
   Browser development and frontend builds need no Python; browsers provide no native window controls. EXE packaging targets Windows; macOS appearance is a UI theme.
 
 ## 安装与创建 / Install and create
 
-无需全局安装即可创建，目标目录必须为空；向导先选简体中文 / English，再选项目名、框架、JS / TS、可选 AI、安装与启动。
-Create without a global installation in an empty destination; the wizard asks for language, name, framework, JS / TS, optional AI, installation and startup.
+无需全局安装即可创建，目标目录必须为空；向导先选简体中文 / English，再选项目名、框架、JS / TS、后端、可选 AI、安装与启动。`--backend python|golang|rust|cpp` 可直接指定后端，默认 Python。
+Create without a global installation in an empty destination; the wizard asks for language, name, framework, JS / TS, backend, optional AI, installation and startup. Set `--backend python|golang|rust|cpp` to select a backend directly; Python is the default.
 
 ```powershell
 npm create ewp@latest my-app -- --template react-ts --lang en --no-install --no-start --yes
@@ -25,8 +25,8 @@ npm run init
 npm run dev
 ```
 
-`init` 创建或复用根 `.venv`、安装依赖并编译前端，无需手动激活；`dev` 提供桌面 HMR，Ctrl+C 停止。
-`init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; `dev` provides desktop HMR, stopped with Ctrl+C.
+Python 的 `init` 创建或复用根 `.venv`、安装依赖并编译前端，无需手动激活；原生后端的 `init` 编译前端与调试宿主，无需 Python。`dev` 提供所选后端的桌面 HMR，Ctrl+C 停止。
+Python `init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; native `init` builds the frontend and debug host without Python. `dev` provides desktop HMR for the selected backend, stopped with Ctrl+C.
 0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)）；已有应用在 `frontend/` 用 `npm install easywindowspack@latest` 升级不会改写该脚本、README、AI 指引或 demo。
 New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)); upgrading with `npm install easywindowspack@latest` inside an existing app's `frontend/` does not rewrite this script, README, AI guidance or demos.
 
@@ -41,8 +41,8 @@ Confirm published versions with these npm queries and the linked validation reco
 | Vue | `vue` | `vue-ts` |
 | React | `react` | `react-ts` |
 
-模板含 SVG welcome、计数器、窗口外观选择和系统浅深色。生成应用 **0.1.0** 与本轮框架 npm **0.1.4** 独立，应用依赖目标为 `easywindowspack@^0.1.4`。
-Templates include an SVG welcome, counter, window themes and system light/dark appearance. Generated app version **0.1.0** is independent of framework npm **0.1.4**; the app dependency target is `easywindowspack@^0.1.4`.
+模板含 SVG welcome、窗口外观与浅深色切换；前端模板与后端可独立选择。生成应用 **0.1.0** 与本轮框架 npm **0.1.4** 独立，应用依赖目标为 `easywindowspack@^0.1.4`。
+Templates include an SVG welcome, window themes and light/dark switching; frontend templates and backends can be selected independently. Generated app version **0.1.0** is independent of framework npm **0.1.4**; the app dependency target is `easywindowspack@^0.1.4`.
 
 `--lang zh-CN` / `--lang en` 跳过语言提示并保存到 `frontend/package.json` 的 `ewp.language`；CLI 优先级：`--lang` → `EWP_LANG` → 保存值 → `zh-CN`。
 `--lang zh-CN` / `--lang en` skips the language prompt and saves `ewp.language` in `frontend/package.json`; CLI priority: `--lang` → `EWP_LANG` → saved value → `zh-CN`.
@@ -100,12 +100,13 @@ Run inside `frontend/`; from the project root use `npm --prefix frontend run <ta
 | `npm run build` | 默认 Windows EXE → `output/exe/` / Default Windows EXE |
 | `npm run build -- --wheel` | Python wheel → `output/wheels/` |
 | `npm run app` / `installer` | 配置应用 / 安装包 → `output/apps/` / `output/installers/` / Configured app / setup |
-| `npm run build:all` / `full-build` | test → wheel → exe → bundle |
+| `npm run backend:build` | 原生宿主编译 / Native host build |
+| `npm run build:all` / `full-build` | Python: test → wheel → exe → bundle；原生 / native: test → frontend → host → app → bundle |
 
 打包先完成 `init`，构建自动编译前端；npm 参数须放在 `--` 后，裸 `-w` 属于 npm workspace。
 Run `init` before packaging; builds compile the frontend automatically. Pass npm script arguments after `--`; bare `-w` selects an npm workspace.
-根 `ewp.pack.json` 配置 onefile / onedir 与安装选项，例如 `npm run build -- --mode onedir`。EXE 仅携带编译前端；Python **0.3.0** wheel 已本地构建，PyPI 未发布。
-Root `ewp.pack.json` configures onefile / onedir and installation, e.g. `npm run build -- --mode onedir`. EXEs include only compiled frontend assets; Python **0.3.0** wheel is built locally and is not published to PyPI.
+根 `ewp.pack.json` 配置 onefile / onedir 与安装选项；原生后端仅支持 onedir、不支持 onefile，例如 `npm run build -- --mode onedir`。EXE 仅携带编译前端；Python **0.3.0** wheel 已本地构建，PyPI 未发布。
+Root `ewp.pack.json` configures onefile / onedir and installation; native backends support onedir only and reject onefile, e.g. `npm run build -- --mode onedir`. EXEs include only compiled frontend assets; the Python **0.3.0** wheel is built locally and is not published to PyPI.
 
 ## 全局 CLI 与颜色 / Global CLI and color
 

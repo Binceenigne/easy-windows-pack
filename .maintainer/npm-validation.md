@@ -2,7 +2,22 @@
 
 [维护导航](README.md) · [历史完整原文与 Git 基线](history.md)
 
-以下为迁移前资料的压缩索引，日期、通过数、发布状态和哈希仅属于当时阶段，**不是此次文档边界整改的验证结果**。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本文不重新查询 registry，也不将本地 pack 等同于公开发布。
+本页分别记录当前发布准备与迁移前的历史索引；各日期、通过数、发布状态和哈希仅属于对应阶段。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本地 pack 不等同于公开发布。
+
+## 2026-10-21 0.1.4 发布准备 / Release preparation
+
+`0.1.4` 已修复归档中五套模板缺失的 TypeScript / Vue / React SVG：资源从受 CC0 1.0 许可的 `create-vite@7.1.2` 模板复制，归档保留上游 `LICENSE.vite`（MIT / CC0 许可）。`prepare-npm` 从跟踪的权威资源复制全部模板 SVG，生成矩阵测试会验证每个源文件引用都有随项目生成的对应资源。
+
+当前归档完成 Node 回归 **442 passed / 0 failed / 5 conditional skips**；真实 tarball 集成 **8/8 passed**，包括独立 consumer 安装、六个 Vite 构建、三套 TypeScript 检查、Edge 交互、生命周期与 HMR。最终归档还生成并核对了 Go / Rust / C++ 三种原生项目布局及其资源；本轮没有重新编译原生宿主。
+
+证据：`output/npm-0.1.4-release-tests.log`、`output/npm-0.1.4-release-pack.log`、`output/npm-0.1.4-release-integration.log`、`output/npm-0.1.4-release-publish.log`；归档安装与原生生成报告分别为 `build/npm-pack-validation/pack validation ahiOg6/report.json` 和同目录下的 `native-generation-report.json`。
+
+| Archive | SHA-1 | SHA-256 | Registry status |
+| --- | --- | --- | --- |
+| `create-ewp-0.1.4.tgz` (235,087 bytes) | `1fd08dbb72a9f26ec7faf82c531d51c71ccbb4c0` | `961c5ff60e6022ce4fb843fa39ed1e0b2d587691e61c7582271bfff588e7fa30` | not published |
+| `easywindowspack-0.1.4.tgz` (30,377 bytes) | `da2351ae01a2c5b19773636c5bdec420a6447f98` | `a9a91ab97f8854fb7a15470797ac68064f5b469fd1ba97a89081257d0b1706a6` | not published |
+
+Official npm authentication is currently unavailable: `npm whoami` returns `E401` and publishing the validated creator archive returns `E404` on PUT. Registry queries confirm neither `create-ewp@0.1.4` nor `easywindowspack@0.1.4` exists; `latest` remains 0.1.3. No publication occurred. After the account completes npm CLI authorization, publish the two listed archives in order `create-ewp` then `easywindowspack`, then verify registry hashes and fresh installation.
 
 ## 2026-10-20 0.1.4 底部固定进度栏 / Pinned terminal progress
 

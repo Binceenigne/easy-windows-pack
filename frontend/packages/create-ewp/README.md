@@ -2,13 +2,13 @@
 
 Version 0.1.4 · MIT
 
-用 Vite、Python 与 pywebview 创建 Windows 桌面应用，提供 Vanilla / Vue / React × JavaScript / TypeScript 六套模板。
-Create Windows desktop apps with Vite, Python and pywebview, using six Vanilla / Vue / React × JavaScript / TypeScript templates.
+用 Vite 与 Python / Go / Rust / C++ 后端创建 Windows 桌面应用，提供 Vanilla / Vue / React × JavaScript / TypeScript 六套前端模板。
+Create Windows desktop apps with Vite and Python / Go / Rust / C++ backends, using six Vanilla / Vue / React × JavaScript / TypeScript frontend templates.
 
 ## 环境 / Requirements
 
 - Node.js >=22.12.0（含 npm）/ Node.js >=22.12.0, including npm.
-- 桌面与打包：Python >=3.10；Windows 桌面另需 WebView2。/ Desktop and packaging: Python >=3.10; Windows desktop also needs WebView2.
+- Windows 桌面需 WebView2 与所选后端工具链：Python >=3.10；Go >=1.22 + MinGW-w64 C++；Rust / Cargo + MSVC；或 CMake >=3.24 + C++17。原生后端另需 Windows SDK，安装器需 NSIS 3。/ Windows desktop needs WebView2 and the selected toolchain: Python >=3.10; Go >=1.22 + MinGW-w64 C++; Rust / Cargo + MSVC; or CMake >=3.24 + C++17. Native backends also need the Windows SDK; native installers need NSIS 3.
 - 纯浏览器开发和前端编译无需 Python；macOS 窗口外观仅为 UI 主题。/ Browser development and frontend builds need no Python; macOS window appearance is a UI theme.
 
 ## 创建与启动 / Create and start
@@ -20,8 +20,8 @@ Run in the parent directory with an empty destination (`.git` also counts as non
 npm create ewp@latest
 ```
 
-向导依次选择简体中文 / English、项目名、框架、JS / TS、可选 AI、安装依赖和启动桌面；显式 `--lang` 跳过语言提示。
-The wizard asks for language, project name, framework, JS / TS, optional AI tools, installation and desktop startup; explicit `--lang` skips the language prompt.
+向导依次选择简体中文 / English、项目名、框架、JS / TS、后端、可选 AI、安装依赖和启动桌面；显式 `--lang` 跳过语言提示，`--backend python|golang|rust|cpp` 跳过后端提示，默认 Python。
+The wizard asks for language, project name, framework, JS / TS, backend, optional AI tools, installation and desktop startup; explicit `--lang` skips the language prompt and `--backend python|golang|rust|cpp` skips backend selection, defaulting to Python.
 
 ```powershell
 npm create ewp@latest my-app -- --template vue-ts --lang en --no-install --no-start --yes
@@ -31,14 +31,14 @@ npm run init
 npm run dev
 ```
 
-`init` 创建或复用项目根 `.venv`、安装依赖并编译前端，无需手动激活；`dev` 启动桌面 HMR，Ctrl+C 停止。
-`init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; `dev` starts desktop HMR, stopped with Ctrl+C.
+Python 的 `init` 创建或复用项目根 `.venv`、安装依赖并编译前端，无需手动激活；原生后端的 `init` 编译前端与调试宿主，无需 Python。`dev` 启动所选后端的桌面 HMR，Ctrl+C 停止。
+Python `init` creates or reuses root `.venv`, installs dependencies and builds the frontend without manual activation; native `init` builds the frontend and debug host without Python. `dev` starts desktop HMR for the selected backend, stopped with Ctrl+C.
 
 0.1.4 新建应用随 creator 获得新版 `scripts/dev.py`：Python init/build 在 VT TTY 底部固定两行蓝色阶段进度，上方日志滚动；已有项目仅升级 npm 依赖不会改写该脚本（[恢复、plain 回退与开关](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)）。
 New apps created with 0.1.4 receive the updated `scripts/dev.py` from the creator: Python init/build pins blue stage progress to two bottom rows in a VT TTY, with logs scrolling above; npm dependency upgrades do not rewrite this script in existing apps (see [restoration, plain fallbacks and controls](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/development.md)).
 
-`--install` 仅安装 npm 依赖；`--start` 依次安装、初始化 Python 并启动桌面，不能与 `--no-install` 同用。
-`--install` installs npm dependencies only; `--start` installs, initializes Python and launches desktop, and cannot be combined with `--no-install`.
+`--install` 仅安装 npm 依赖；`--start` 依次安装、初始化所选后端并启动桌面，不能与 `--no-install` 同用。
+`--install` installs npm dependencies only; `--start` installs, initializes the selected backend and launches desktop, and cannot be combined with `--no-install`.
 
 公开版本以 `npm view create-ewp version`、`npm view easywindowspack version` 与[验收记录](https://github.com/Binceenigne/easy-windows-pack/blob/main/.maintainer/npm-validation.md)为准。
 Confirm published versions with these npm queries and the linked validation record.
@@ -51,8 +51,8 @@ Confirm published versions with these npm queries and the linked validation reco
 | Vue | `vue` | `vue-ts` |
 | React | `react` | `react-ts` |
 
-六模板均含 SVG 品牌 welcome、计数器、Windows / macOS 窗口外观选择与系统浅深色；TS 模板另有 `typecheck`。
-All six include an SVG-branded welcome, counter, Windows / macOS window themes and system light/dark appearance; TS templates also provide `typecheck`.
+六模板均含 SVG 品牌 welcome、Windows / macOS 窗口外观与浅深色切换；TS 模板另有 `typecheck`。前端模板与后端可独立选择。
+All six include an SVG-branded welcome, Windows / macOS window themes and light/dark switching; TS templates also provide `typecheck`. Frontend templates and backends can be selected independently.
 
 生成应用版本从 **0.1.0** 开始，独立于本轮框架 npm **0.1.4**；应用依赖目标为 `easywindowspack@^0.1.4`。
 Generated apps start at **0.1.0**, independently of framework npm **0.1.4**; the app dependency target is `easywindowspack@^0.1.4`.
@@ -93,13 +93,14 @@ Run inside the app's `frontend/`; from its root use `npm --prefix frontend run <
 | `npm run build` | 默认 Windows EXE → `output/exe/` / Default Windows EXE |
 | `npm run build -- --wheel` | Python wheel → `output/wheels/` |
 | `npm run app` / `installer` | 配置应用 / 安装包 → `output/apps/` / `output/installers/` / Configured app / setup |
-| `npm run build:all` | test → wheel → exe → bundle |
+| `npm run backend:build` | 原生宿主编译 / Native host build |
+| `npm run build:all` | Python: test → wheel → exe → bundle；原生 / native: test → frontend → host → app → bundle |
 
 打包先完成 `init`，构建自动编译前端；根 `startup.cmd` 打开菜单。npm 参数放在 `--` 后，裸 `-w` 属于 npm workspace。
 Run `init` before packaging; builds compile the frontend automatically. Root `startup.cmd` opens the menu. Pass npm script arguments after `--`; bare `-w` selects an npm workspace.
 
-根 `ewp.pack.json` 配置 onefile / onedir 与安装选项；例如 `npm run build -- --mode onedir`。配套 Python **0.3.0** wheel 已本地构建，PyPI 未发布。
-Root `ewp.pack.json` configures onefile / onedir and installation; for example, `npm run build -- --mode onedir`. The companion Python **0.3.0** wheel is built locally and is not published to PyPI.
+根 `ewp.pack.json` 配置 onefile / onedir 与安装选项；原生后端仅支持 onedir、不支持 onefile，例如 `npm run build -- --mode onedir`。配套 Python **0.3.0** wheel 已本地构建，PyPI 未发布。
+Root `ewp.pack.json` configures onefile / onedir and installation; native backends support onedir only and reject onefile, e.g. `npm run build -- --mode onedir`. The companion Python **0.3.0** wheel is built locally and is not published to PyPI.
 
 ## 全局 CLI 与终端 / Global CLI and terminal
 

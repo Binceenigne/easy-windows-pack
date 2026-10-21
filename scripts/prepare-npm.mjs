@@ -3,8 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const brandIcons = ['ewp-color.svg', 'ewp-dark.svg', 'ewp-mono.svg', 'javascript.svg'];
-for (const source of ['startup.cmd', 'scripts/startup.cmd', 'scripts/dev.py', ...brandIcons.map(name => `frontend/src/assets/${name}`)]) {
+const templateAssets = ['ewp-color.svg', 'ewp-dark.svg', 'ewp-mono.svg', 'javascript.svg', 'typescript.svg', 'vue.svg', 'react.svg', 'LICENSE.vite'];
+for (const source of ['startup.cmd', 'scripts/startup.cmd', 'scripts/dev.py', ...templateAssets.map(name => `frontend/src/assets/${name}`)]) {
   if (!existsSync(join(root, source))) throw new Error(`Missing authoritative npm resource: ${source}`);
 }
 mkdirSync(join(root, 'output/npm'), { recursive: true });
@@ -22,9 +22,9 @@ const template = readFileSync(join(root, 'frontend/components/titlebar/window-fr
 writeFileSync(join(assets, 'frame-template.mjs'), `export const frameTemplate = ${JSON.stringify(template)};\n`);
 const common = join(root, 'frontend/packages/create-ewp/templates/common');
 const brandAssets = join(common, 'frontend/src/assets');
-// Framework partner SVGs are template-owned; replace only authoritative EWP assets.
+// Keep template SVGs and their upstream license reproducible from tracked sources.
 mkdirSync(brandAssets, { recursive: true });
-for (const name of brandIcons) cpSync(join(root, 'frontend/src/assets', name), join(brandAssets, name));
+for (const name of templateAssets) cpSync(join(root, 'frontend/src/assets', name), join(brandAssets, name));
 // Remove the previously generated launcher when preparing an existing checkout.
 rmSync(join(common, 'build.cmd'), { force: true });
 for (const [source, destination] of [

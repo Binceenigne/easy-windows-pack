@@ -41,7 +41,7 @@ Vue Teleport / React portal 保留 slot/children 的事件与响应式；模板�
 
 ## 单源 prepare、检查与发布 / Preparation and release
 
-[prepare-npm.mjs](../scripts/prepare-npm.mjs) 从 frontend components/frame 生成 runtime assets 与 frame-template.mjs；从 backend/base/ewpcore、scripts/dev.py、startup.cmd、scripts/startup.cmd、LICENSE 生成 creator common runtime。品牌 SVG 从 frontend/src/assets 复制。common README 是模板自有来源，按语言输出为生成项目的 README.md，不复制框架根 README。维护目录不在复制清单中；生成器只读随包资源，缺必需资源时写入前失败。
+[prepare-npm.mjs](../scripts/prepare-npm.mjs) 从 frontend components/frame 生成 runtime assets 与 frame-template.mjs；从 backend/base/ewpcore、scripts/dev.py、startup.cmd、scripts/startup.cmd、LICENSE 生成 creator common runtime。品牌与框架伙伴 SVG 从 frontend/src/assets 复制；伙伴图标来自 create-vite@7.1.2 的 CC0 1.0 模板，随包保留上游 LICENSE.vite（含 MIT / CC0 许可），六模板的 SVG 导入都应有对应资源。common README 是模板自有来源，按语言输出为生成项目的 README.md，不复制框架根 README。维护目录不在复制清单中；生成器只读随包资源，缺必需资源时写入前失败。
 
 从根 `npm --prefix frontend run prepare:npm` 准备；在 frontend 内 `npm pack --workspace create-ewp --pack-destination ../output/npm` 及对应 easywindowspack 命令生成归档。prepack 使用相同 prepare。不要手工改生成副本。本地生成入口为 `node frontend/packages/create-ewp/bin/create-ewp.mjs`，未发布版本验收应使用匹配本地 tarball。
 
