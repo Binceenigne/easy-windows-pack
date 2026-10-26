@@ -2,7 +2,7 @@
 
 [维护导航](README.md) · [历史完整原文与 Git 基线](history.md)
 
-本页分别记录当前发布准备与迁移前的历史索引；各日期、通过数、发布状态和哈希仅属于对应阶段。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本地 pack 不等同于公开发布。
+本页分别记录各版本发布验收与迁移前的历史索引；各日期、通过数、发布状态和哈希仅属于对应阶段。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本地 pack 不等同于公开发布。
 
 ## 2026-10-26 0.1.5 菜单、帮助与离线文档 / Menu, help and offline documentation
 
@@ -14,10 +14,14 @@
 
 | Archive | SHA-1 | SHA-256 | Registry status |
 | --- | --- | --- | --- |
-| `create-ewp-0.1.5.tgz` (238,178 bytes) | `521c52b29b2f6b7a470bd227ef7bf334b306d373` | `a68c9aa7183005cf21d78c8ca301903d5ddb6ac65d67a948d49b3f9ccae76afb` | waiting for publish authentication |
-| `easywindowspack-0.1.5.tgz` (245,039 bytes) | `6d9208d140675198b10ac19999e2617e6047c24a` | `6b596c2c10fc85ffc12b922100a60aa5e7588be00f0bf4ee720d95b1806adb95` | not published |
+| `create-ewp-0.1.5.tgz` (238,178 bytes) | `521c52b29b2f6b7a470bd227ef7bf334b306d373` | `a68c9aa7183005cf21d78c8ca301903d5ddb6ac65d67a948d49b3f9ccae76afb` | published; latest 0.1.5; registry hashes and bytes verified |
+| `easywindowspack-0.1.5.tgz` (245,039 bytes) | `6d9208d140675198b10ac19999e2617e6047c24a` | `6b596c2c10fc85ffc12b922100a60aa5e7588be00f0bf4ee720d95b1806adb95` | published; latest 0.1.5; registry hashes and bytes verified |
 
-用户已授权发布。GitHub 身份修复后已成功推送 `main`，`git ls-remote` 核验远程包含已验证提交 `c5e223f898afce9bf4ea9bd88e7887f9dcdfe5d7`（含此前的模板 SVG 修复）。npm CLI 登录有效，creator 发布仍等待官方网页/安全密钥验证；先前链接超时，新认证页停在 Cloudflare 检查。最新 registry 查询两包 latest 仍为 `0.1.4`，`0.1.5` 尚未公开发布。发布成功后应校验两包 latest / 哈希及独立 registry 安装，再更新本节状态。
+用户已授权发布并完成两包各自的 npm CLI 网页认证。两包按 creator → runtime 顺序公开发布，官方 registry 的 version / latest 均为 `0.1.5`；SHA-1、SHA-512 integrity 及重新下载的 tarball 字节均与上述已验证归档一致。此前过期的认证链接及 runtime 发布后短暂的 registry E404 均为已解决的中间状态。
+
+独立目录仅从官方 registry 安装两包并生成 Vue TS / Rust 项目，runtime check **3 passed**、TypeScript 检查和 Vite 前端构建通过。锁文件确认 runtime 及其 creator 依赖均为 registry 的 `0.1.5`；文档 URL、`ews docs --print --lang en`、六种随包文档资源及构建生成的按需面板模块均已核验。生成项目未复制完整手册到 docs/。本机全局两包已更新至正式 registry `0.1.5`，`ewp --version`、`ewp docs --no-open` 和 `ews docs --no-open` 均通过；本轮仍未验证原生宿主编译或 EXE。
+
+发布和安装证据：`output/npm-015-publish-creator-manual-auth.log`、`output/npm-015-publish-runtime-auth-refresh.log`、`output/npm-015-registry-validation.log`、`output/npm-015-global-install.log`、`output/npm-015-global-validation.log`；报告 `build/npm-registry-015-067f2725-4dbe-4d34-a9d3-acbebb30fe01/report.json`。GitHub 身份修复后已成功推送 `main`，`git ls-remote` 核验远程包含已验证功能提交 `c5e223f898afce9bf4ea9bd88e7887f9dcdfe5d7`（含此前的模板 SVG 修复）。
 
 ## 2026-10-26 0.1.4 重新准备发布 / Refreshed release preparation
 
