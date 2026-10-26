@@ -1,4 +1,4 @@
-import test from 'node:test';
+﻿import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -6,7 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { AI_TOOLS, BACKENDS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeBackend, normalizeLanguage, normalizePackageName, projectFiles, projectManifest, templatesDirectory, TEMPLATES, validateTarget } from '../frontend/packages/create-ewp/lib/create.mjs';
-import { HELP, helpText, main, npmCommand, parseArgs, quoteDirectory, runNpm } from '../frontend/packages/create-ewp/lib/cli.mjs';
+import { HELP, helpText, main as creatorMain, npmCommand, parseArgs, quoteDirectory, runNpm } from '../frontend/packages/create-ewp/lib/cli.mjs';
 import { stripVTControlCharacters } from 'node:util';
 
 const repository = fileURLToPath(new URL('../', import.meta.url));
@@ -15,6 +15,7 @@ const english = { language: 'en' };
 const backendEntries = { python: 'backend/src/demo.py', golang: 'backend/main_windows.go', rust: 'backend/src/main.rs', cpp: 'backend/src/main.cpp' };
 const templatePartnerAssets = { vanilla: 'javascript.svg', 'vanilla-ts': 'typescript.svg', vue: 'vue.svg', 'vue-ts': 'vue.svg', react: 'react.svg', 'react-ts': 'react.svg' };
 const parse = (args, options = {}) => parseArgs(args, { env: {}, ...options });
+const main = (args, options = {}) => creatorMain(args, { inspect: backend => ({ backend, missing: [], available: true }), ...options });
 
 function temporary(t) {
   const root = mkdtempSync(join(tmpdir(), 'create-ewp space-'));
@@ -187,7 +188,7 @@ test('four backends × six templates × two languages × all AI combinations gen
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
-      assert.equal(pkg.dependencies.easywindowspack, '^0.1.4');
+      assert.equal(pkg.dependencies.easywindowspack, '^0.1.5');
       assert.deepEqual(pkg.ewp, { language, backend });
       assert.equal(result.backend, backend);
       assert.equal(pkg.scripts.ewp, 'ewp');
@@ -261,7 +262,7 @@ test('four backends × six templates × two languages × all AI combinations gen
       }
       assert.match(demo, language === 'en' ? /Bring your ideas to the desktop/ : /把你的想法带到桌面/);
       assert.match(demo, /<h1[^>]*>EWP <span[^>]*>\+<\/span> <span[^>]*>(?:Vanilla|Vue|React)<\/span><\/h1>/);
-      assert.match(demo, language === 'en' ? /Start building/ : /开始构建/);
+      assert.match(demo, language === 'en' ? /Documentation/ : /查看文档/);
       assert.doesNotMatch(demo, /class(?:Name)?="counter"/);
       if (backend === 'python') {
         assert.match(host, /root \/ "frontend\/package.json"/);
@@ -452,6 +453,22 @@ test('invalid backend values fail in both languages before writes or installatio
       cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}, run() { assert.fail('must not install'); }
     }), expected);
     assert.equal(existsSync(join(root, 'invalid-selection')), false);
+  }
+});
+
+test('missing toolchains warn with links but do not prevent project creation', async t => {
+  const { root, templatesDir } = preparedTemplates(t);
+  for (const language of LANGUAGES) {
+    const output = [];
+    const name = `Missing Rust ${language}`;
+    assert.equal(await main([name, '--backend=rust', '--template=vanilla', '--yes', `--lang=${language}`], {
+      cwd: root, templatesDir, env: {}, interactive: false,
+      inspect: backend => ({ backend, missing: ['Rust/Cargo with the MSVC target'], available: false }),
+      run() { assert.fail('must not install tools or dependencies'); }, log: message => output.push(message)
+    }), 0);
+    assert.match(output.join('\n'), /https:\/\/rustup.rs\//);
+    assert.match(output.join('\n'), language === 'en' ? /not downloaded automatically/ : /不会自动下载/);
+    assert.ok(existsSync(join(root, name, 'backend/src/main.rs')));
   }
 });
 
@@ -655,7 +672,7 @@ test('no flags always prompts for human language first and selection beats the e
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
     const opposite = language === 'en' ? 'zh-CN' : 'en';
-    const prompts = promptFixture([language, `App ${language}`, 'vue', 'ts', 'golang', ['claude'], true, false]);
+    const prompts = promptFixture([language, `App ${language}`, 'golang', 'vue', 'ts', ['claude'], true, false]);
     const runs = [];
     const output = [];
     assert.equal(await main([], {
@@ -666,12 +683,12 @@ test('no flags always prompts for human language first and selection beats the e
     assert.equal(prompts.seen[0].initialValue, opposite);
     assert.deepEqual(prompts.seen[0].options.map(option => option.value), LANGUAGES);
     assert.equal(prompts.seen[1].message, language === 'en' ? 'Project name' : '项目名称');
-    assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['vanilla', 'vue', 'react']);
-    assert.deepEqual(prompts.seen[3].options.map(option => option.value), ['js', 'ts']);
-    assert.equal(prompts.seen[4].message, language === 'en' ? 'Select a backend' : '选择后端');
-    assert.equal(prompts.seen[4].initialValue, 'python');
-    assert.deepEqual(prompts.seen[4].options.map(option => option.value), BACKENDS);
-    assert.deepEqual(prompts.seen[4].options.map(option => option.label), ['Python', 'Go', 'Rust', 'C++']);
+    assert.deepEqual(prompts.seen[3].options.map(option => option.value), ['vanilla', 'vue', 'react']);
+    assert.deepEqual(prompts.seen[4].options.map(option => option.value), ['js', 'ts']);
+    assert.equal(prompts.seen[2].message, language === 'en' ? 'Select a backend' : '选择后端');
+    assert.equal(prompts.seen[2].initialValue, 'python');
+    assert.deepEqual(prompts.seen[2].options.map(option => option.value), BACKENDS);
+    assert.deepEqual(prompts.seen[2].options.map(option => option.label), ['Python', 'Go', 'Rust', 'C++']);
     assert.deepEqual(prompts.seen[5].initialValues, []);
     assert.equal(prompts.seen[5].required, false);
     assert.deepEqual(prompts.seen[5].options.map(option => option.value), AI_TOOLS);
@@ -690,7 +707,7 @@ test('cancellation at the language prompt and every subsequent prompt leaves no 
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) for (let index = 0; index < 8; index++) {
     const directory = `Cancelled ${language} ${index}`;
-    const values = [language, directory, 'react', 'ts', 'rust', ['codex'], true, false];
+    const values = [language, directory, 'rust', 'react', 'ts', ['codex'], true, false];
     const prompts = promptFixture(values);
     values[index] = prompts.cancellation;
     assert.equal(await main([], {
@@ -705,7 +722,7 @@ test('cancellation at the language prompt and every subsequent prompt leaves no 
 test('colored creation prompts preserve values and report actual stages in execution order', async t => {
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
-    const prompts = promptFixture([language, `Color ${language}`, 'vue', 'ts', 'python', ['claude'], true, true]);
+    const prompts = promptFixture([language, `Color ${language}`, 'python', 'vue', 'ts', ['claude'], true, true]);
     const events = [];
     assert.equal(await main([], {
       cwd: root, templatesDir, interactive: true, prompts, env: { FORCE_COLOR: '1' }, output: { isTTY: false },
@@ -713,8 +730,8 @@ test('colored creation prompts preserve values and report actual stages in execu
     }), 0);
     assert.match(prompts.seen[0].message, /\x1b\[/);
     assert.equal(stripVTControlCharacters(prompts.seen[0].message), '语言 / Language');
-    assert.deepEqual(prompts.seen[2].options.map(option => option.value), ['vanilla', 'vue', 'react']);
-    assert.ok(prompts.seen[2].options.every(option => /\x1b\[/.test(option.label)));
+    assert.deepEqual(prompts.seen[3].options.map(option => option.value), ['vanilla', 'vue', 'react']);
+    assert.ok(prompts.seen[3].options.every(option => /\x1b\[/.test(option.label)));
     const plain = events.map(stripVTControlCharacters);
     assert.deepEqual(plain.filter(value => /^\[\d/.test(value)).map(value => value.slice(0, 5)), ['[1/4]', '[2/4]', '[3/4]', '[4/4]']);
     assert.ok(plain.findIndex(value => value.startsWith('[2/4]')) < plain.indexOf('RUN:install'));
@@ -727,7 +744,7 @@ test('colored creation prompts preserve values and report actual stages in execu
 
 test('NO_COLOR keeps prompts plain and failed installs never report completion or start Python', async t => {
   const { root, templatesDir } = preparedTemplates(t);
-  const prompts = promptFixture(['vanilla', 'js', 'python', [], true, true]);
+  const prompts = promptFixture(['python', 'vanilla', 'js', [], true, true]);
   const events = [];
   await assert.rejects(main(['Plain', '--lang=en'], {
     cwd: root, templatesDir, interactive: true, prompts,
@@ -742,7 +759,7 @@ test('NO_COLOR keeps prompts plain and failed installs never report completion o
 test('interactive errors and project-name validation use the selected language', async t => {
   const { root, templatesDir } = preparedTemplates(t);
   for (const language of LANGUAGES) {
-    const prompts = promptFixture([language, `Conflict ${language}`, 'vanilla', 'js', 'python', [], false, true]);
+    const prompts = promptFixture([language, `Conflict ${language}`, 'python', 'vanilla', 'js', [], false, true]);
     await assert.rejects(main([], {
       cwd: root, templatesDir, interactive: true, env: {}, prompts, log() {}
     }), language === 'en' ? /Starting requires npm/ : /启动需要 npm/);
@@ -936,7 +953,7 @@ test('integration: six templates in both languages build, typecheck and retain r
         assert.equal(await frame.locator('[data-ewp-title]').textContent(), project.name, template);
         assert.equal(await frame.locator('h1').textContent(), `EWP + ${template.startsWith('vue') ? 'Vue' : template.startsWith('react') ? 'React' : 'Vanilla'}`);
         assert.equal(await frame.locator('.description').textContent(), language === 'en' ? 'Bring your ideas to the desktop.' : '把你的想法带到桌面。');
-        assert.equal(await frame.locator('.welcome-button.primary').textContent(), language === 'en' ? 'Start building →' : '开始构建 →');
+        assert.equal(await frame.locator('.welcome-button.primary').textContent(), language === 'en' ? 'Documentation →' : '查看文档 →');
         const theme = page.locator('html');
         const initialTheme = await theme.getAttribute('data-welcome-theme');
         await frame.locator('.theme-toggle').click();

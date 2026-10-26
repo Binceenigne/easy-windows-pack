@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { openDocs } from 'easywindowspack/docs';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import Frame from './Frame.vue';
 import colorLogo from './assets/ewp-color.svg';
@@ -33,7 +34,7 @@ onBeforeUnmount(() => { delete document.documentElement.dataset.welcomeTheme; })
         <h1 id="welcome-title">EWP <span class="title-join">+</span> <span class="partner-name">Vue</span></h1>
         <p class="description">__EWP_description__</p>
         <nav class="welcome-links" aria-label="__EWP_resources__">
-          <a class="welcome-button primary" href="https://github.com/Binceenigne/easy-windows-pack#readme" target="_blank" rel="noopener noreferrer">__EWP_docs__ <span aria-hidden="true">→</span></a>
+          <button class="welcome-button primary" type="button" @click="openDocs({ language: '__EWP_docsLang__' })">__EWP_docs__ <span aria-hidden="true">→</span></button>
           <a class="welcome-button" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer">__EWP_source__ <span aria-hidden="true">↗</span></a>
         </nav>
         <p class="hint">__EWP_hint__ <code>__EWP_editFile__</code>__EWP_saveHint__</p>

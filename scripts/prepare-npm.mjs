@@ -1,6 +1,8 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { prepareManual } from '../frontend/packages/easywindowspack/manual/build.mjs';
+import { BACKEND_CAPABILITIES } from '../frontend/packages/easywindowspack/capabilities.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const templateAssets = ['ewp-color.svg', 'ewp-dark.svg', 'ewp-mono.svg', 'javascript.svg', 'typescript.svg', 'vue.svg', 'react.svg', 'LICENSE.vite'];
@@ -43,4 +45,6 @@ for (const [source, destination] of [
   });
 }
 for (const name of ['easywindowspack', 'create-ewp']) cpSync(join(root, 'LICENSE'), join(root, 'frontend/packages', name, 'LICENSE'));
-console.log('npm resources prepared from authoritative frontend/backend sources.');
+const version = JSON.parse(readFileSync(join(root, 'frontend/packages/easywindowspack/package.json'), 'utf8')).version;
+await prepareManual(join(assets, 'docs'), { version, capabilities: BACKEND_CAPABILITIES });
+console.log('npm resources and offline documentation prepared from authoritative frontend/backend sources.');

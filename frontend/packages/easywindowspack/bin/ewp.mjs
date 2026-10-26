@@ -7,6 +7,8 @@ import { createServer as createNetServer } from 'node:net';
 import { createInterface } from 'node:readline/promises';
 import { VERSION, helpText, languageArgs, text, withLanguage } from '../language.mjs';
 import { compactBanner, createColors } from 'create-ewp/terminal';
+import { MENU_TASKS, inspectInstaller, inspectProject, menuModel } from '../capabilities.mjs';
+import { runDocs } from '../documentation.mjs';
 
 export const HELP = helpText();
 const ALIASES = { browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app', 'full-build': 'build:all' };
@@ -25,7 +27,7 @@ function parseCommand(args, language) {
   if (command === 'create') return { command, args, language };
   if (['help', '--help', '-h'].includes(command) || args.includes('--help') || args.includes('-h')) return { command: 'help' };
   if (['version', '--version', '-v', '-V'].includes(command)) return { command: 'version' };
-  if (!['menu', 'init', 'dev', 'demo', 'app', 'installer', 'build', 'build:all', 'backend:build', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
+  if (!['docs', 'menu', 'init', 'dev', 'demo', 'app', 'installer', 'build', 'build:all', 'backend:build', 'wheel', 'exe', 'bundle', 'test', 'check', 'info', 'frontend:dev', 'frontend:build', 'frontend:preview'].includes(command)) {
     throw new Error(text(`未知命令：${command}。请使用 ewp help。`, `Unknown command: ${command}. Use ewp help.`));
   }
   const parsed = { command, task: command, web: command.startsWith('frontend:'), open: true, port: 0 };
@@ -53,7 +55,10 @@ function parseCommand(args, language) {
       parsed.installer = true;
     } else if (command === 'demo' && arg === '--debug') {
       parsed.debug = true;
-    } else if (['dev', 'frontend:dev', 'frontend:preview'].includes(command) && arg === '--no-open') {
+    } else if (['docs', 'dev', 'frontend:dev', 'frontend:preview'].includes(command) && arg === '--no-open') {
+      parsed.open = false;
+    } else if (command === 'docs' && arg === '--print') {
+      parsed.print = true;
       parsed.open = false;
     } else if (command === 'dev' && arg === '--web') {
       parsed.web = true;
@@ -127,7 +132,7 @@ export function selectPython(root, { platform = process.platform, exists = exist
     const version = /Python (\d+)\.(\d+)/.exec(`${result.stdout ?? ''}${result.stderr ?? ''}`);
     if (!result.error && result.status === 0 && version && (Number(version[1]) > 3 || (Number(version[1]) === 3 && Number(version[2]) >= 10))) return candidate;
   }
-  throw new Error(text('未找到 Python 3。请安装 Python 3.10+（Windows 请启用 py 启动器），然后运行 npm run init。', 'Python 3 is missing. Install Python 3.10+ (Windows: enable the py launcher), then run npm run init.'));
+  throw new Error(text('未找到 Python 3.10+。官方下载：https://www.python.org/downloads/ 。安装后重新打开终端，再运行 npm run init；不会自动下载工具链。', 'Python 3.10+ is missing. Download: https://www.python.org/downloads/ . Reopen the terminal after installation, then run npm run init. Toolchains are not downloaded automatically.'));
 }
 
 // .cmd/.bat cannot be spawned as executables. All tokens are quoted, shell
@@ -421,23 +426,7 @@ async function runDevSession(root, options) {
   }
 }
 
-export const MENU_TASKS = [
-  { command: 'init', zh: '初始化环境', en: 'Initialize environment' },
-  { command: 'browser', zh: 'Vite 浏览器预览', en: 'Vite browser preview' },
-  { command: 'frontend', zh: '构建前端', en: 'Build frontend' },
-  { command: 'demo', args: ['--debug'], zh: '桌面演示（开发者工具）', en: 'Desktop demo (developer tools)' },
-  { command: 'wheel', zh: '构建 Wheel', en: 'Build wheel' },
-  { command: 'exe', zh: '构建 Windows EXE', en: 'Build Windows EXE' },
-  { command: 'app', zh: '按配置构建应用', en: 'Build configured application' },
-  { command: 'installer', zh: '构建应用安装包', en: 'Build application installer' },
-  { command: 'bundle', zh: '构建源码包', en: 'Build source bundle' },
-  { command: 'build:all', zh: '完整构建', en: 'Full build' },
-  { command: 'test', zh: '运行测试', en: 'Run tests' },
-  { command: 'info', zh: '环境信息', en: 'Environment info' },
-  { command: 'dev', zh: '桌面热更新开发（HMR）', en: 'Desktop development with HMR' },
-  { command: 'frontend:preview', zh: '预览编译后的前端', en: 'Preview built frontend' },
-  { command: 'check', zh: 'Node 运行时检查', en: 'Node runtime checks' }
-];
+export { MENU_TASKS };
 
 async function menuChoice(prompt) {
   const input = createInterface({ input: process.stdin, output: process.stdout });
@@ -450,13 +439,29 @@ async function menuChoice(prompt) {
   } finally { input.close(); }
 }
 
-export async function runMenu(root, language, { choose = menuChoice, execute = executeTask, log = console.log, colors = createColors() } = {}) {
+export async function runMenu(root, language, { choose = menuChoice, execute = executeTask, log = console.log, colors = createColors(), inspect = inspectProject } = {}) {
   return withLanguage(language, async () => {
-    const tasks = projectBackend(root) === 'python' ? MENU_TASKS : MENU_TASKS.filter(task => task.command !== 'wheel');
+    const groups = { start: ['开始', 'Start'], develop: ['开发', 'Develop'], build: ['前端', 'Frontend'], package: ['分发', 'Distribute'], inspect: ['检查', 'Inspect'], guide: ['文档', 'Documentation'] };
     for (;;) {
+      const state = inspect(root, projectBackend(root));
+      const model = menuModel(state, language);
+      const { tasks } = model;
       log(colors.title(text('\nEasy Windows Pack — 开发菜单', '\nEasy Windows Pack — Development menu')));
-      tasks.forEach((task, index) => log(`${colors.left(`${index + 1}.`)} ${text(task.zh, task.en)} — ${colors.command(`ewp ${task.command}${task.args ? ` ${task.args.join(' ')}` : ''}`)} / ${colors.dim(`npm run ${task.command}${task.args ? ` -- ${task.args.join(' ')}` : ''}`)}`));
-      log(colors.dim(text('0. 退出', '0. Exit')));
+      log(colors.dim(`${model.capability.name} | ${model.capability.modes.join(' / ')} | ${text('仅列出当前可用任务', 'Available tasks only')}`));
+      let group;
+      tasks.forEach((task, index) => {
+        if (group !== task.group) { group = task.group; log(`\n${colors.title(text(...groups[group]))}`); }
+        const args = task.args?.length ? ` ${task.args.join(' ')}` : '';
+        log(`  ${colors.left(`${index + 1}.`.padEnd(4))}${text(task.zh, task.en)}  ${colors.command(`ewp ${task.command}${args}`)}`);
+      });
+      if (model.hidden.length) {
+        const reasons = new Map();
+        for (const task of model.hidden) reasons.set(task.reason, [...(reasons.get(task.reason) || []), text(task.zh, task.en)]);
+        log(`\n${colors.dim(text('暂不可用（不参与编号）', 'Unavailable (not selectable)'))}`);
+        for (const [reason, labels] of reasons) log(`  ${colors.dim(`${labels.join(' / ')}: ${reason}`)}`);
+      }
+      for (const guidance of model.guidance) log(colors.warning(guidance));
+      log(`\n${colors.dim(text('0. 退出', '0. Exit'))}`);
       const answer = await choose(colors.left(text('请选择任务：', 'Choose a task: ')));
       if (answer === null) return 130;
       const choice = answer.trim();
@@ -481,10 +486,19 @@ export function welcomeText(language = 'zh-CN', colors = createColors()) {
     ...[
       ['ewp dev', text('启动桌面开发', 'Start desktop dev')],
       ['ewp build', text('构建 Windows EXE', 'Build Windows EXE')],
-      ['ewp menu', text('打开项目菜单', 'Open project menu')]
+      ['ewp menu', text('打开项目菜单', 'Open project menu')],
+      ['ewp docs', text('打开离线文档', 'Open offline documentation')]
     ].map(([command, label]) => `  ${colors.command(command.padEnd(17))}${label}`),
     '', `  ${text('输入 ', 'Run ')}${colors.command('ewp -h')}${text(' 查看完整教程', ' for the full guide')}`, ''
   ].join('\n'));
+}
+
+export function projectHelp(language, { cwd = process.cwd(), colors = createColors(), inspect = inspectProject } = {}) {
+  let model;
+  let root;
+  try { root = findProjectRoot(cwd); } catch { /* Global help does not need a project. */ }
+  if (root) model = menuModel(inspect(root, projectBackend(root)), language);
+  return helpText(language, { colors, model });
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -498,7 +512,8 @@ export async function main(argv = process.argv.slice(2)) {
       const { main: create } = await import('create-ewp/cli');
       return create([...options.args, ...(explicit ? ['--lang', language] : [])]);
     }
-    if (options.command === 'help') { console.log(helpText(language)); return 0; }
+    if (options.command === 'help') { console.log(projectHelp(language)); return 0; }
+    if (options.command === 'docs') return runDocs({ ...options, language });
     if (options.command === 'version') { console.log(VERSION); return 0; }
     const root = findProjectRoot();
     return executeTask(root, { ...options, language });
@@ -506,6 +521,8 @@ export async function main(argv = process.argv.slice(2)) {
 }
 
 async function executeTask(root, options) {
+  if (options.command === 'docs') return runDocs(options);
+  if (options.command === 'help') { console.log(projectHelp(options.language, { cwd: root })); return 0; }
   if (options.command === 'menu') return runMenu(root, options.language);
   if (options.command === 'info') {
     const backend = projectBackend(root);
@@ -529,6 +546,13 @@ async function executeTask(root, options) {
   if (projectBackend(root) !== 'python') {
     if (options.task === 'wheel') throw new Error(text('wheel 仅支持 Python 后端。', 'wheel is supported only for the Python backend.'));
     const driver = await backendDriver(root);
+    if (['app', 'installer', 'exe', 'full-build', 'build:all'].includes(options.task) && typeof driver.loadPackConfig === 'function') {
+      const config = driver.loadPackConfig(root, options);
+      if (config.install && !inspectInstaller().available) throw new Error(text(
+        '缺少 NSIS 3 (makensis)，尚未开始构建安装包。官方下载：https://nsis.sourceforge.io/Download 。安装后加入 PATH，或设置 EWP_MAKENSIS 为 makensis.exe 的完整路径。',
+        'NSIS 3 (makensis) is missing; installer building has not started. Download: https://nsis.sourceforge.io/Download . Add it to PATH or set EWP_MAKENSIS to the full makensis.exe path.'
+      ));
+    }
     return driver.task(root, { ...options, language: options.language ?? languageArgs([], { cwd: root }).language });
   }
   if (options.task === 'backend:build') return runPython(root, { ...options, task: 'exe' });

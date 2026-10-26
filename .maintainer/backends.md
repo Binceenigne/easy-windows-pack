@@ -15,7 +15,7 @@ Windows 桌面均需要 WebView2 Runtime。Go 依赖固定 commit，Rust/C++ 依
 
 根 startup.cmd 优先 Node runtime，再为旧 Python 项目保留无 Node 的脚本回退。scripts 下的批处理和 PowerShell 构建入口按所选后端路由。原生项目不生成 Python runtime、pyproject 或 dev.py。
 
-`scripts/backend.mjs` 是通用原生任务驱动，由 prepare 复制到公共模板。`init` 编译前端和调试宿主，`dev` 使用真实 Vite URL 和调试宿主，`demo` 使用生产页面，`backend:build` 编译宿主。Ctrl+C 关闭编译或桌面进程树并释放 Vite。Python 继续使用 scripts/dev.py。
+`scripts/backend.mjs` 是通用原生任务驱动，由 prepare 复制到公共模板。`init` 每次先安装/校验 frontend 的 npm 依赖（包含开发依赖），检测工具链并在缺失时给出官方下载链接，再编译前端和调试宿主；失败后可用相同命令重试，不删除源码或清空编译缓存。系统工具链不自动下载。`dev` 使用真实 Vite URL 和调试宿主，`demo` 使用生产页面，`backend:build` 编译宿主。Ctrl+C 关闭编译或桌面进程树并释放 Vite。Python 继续使用 scripts/dev.py。
 
 `app` 输出 output/apps/<id>；无配置覆盖的 `exe/build` 输出 output/exe/<id>。目录包含 <id>.exe、frontend 编译资源与许可证。Rust 使用静态 CRT，C++ 使用静态 MSVC runtime；Go 的编译器决定额外 runtime 依赖，实际分发前检查 DLL。独立目录可以直接启动，不需要 Node/Python。
 

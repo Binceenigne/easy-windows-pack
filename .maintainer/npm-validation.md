@@ -4,6 +4,36 @@
 
 本页分别记录当前发布准备与迁移前的历史索引；各日期、通过数、发布状态和哈希仅属于对应阶段。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本地 pack 不等同于公开发布。
 
+## 2026-10-26 0.1.5 菜单、帮助与离线文档 / Menu, help and offline documentation
+
+本轮将菜单改为按后端、平台与工具可用性过滤，帮助按任务分组并着色；新增 `ewp docs` / `ews docs`、双语离线手册和 `easywindowspack/docs` 的窗口内阅读入口。六模板直接复用安装包中的按需文档模块，不在生成项目源码或 docs/ 复制全文；页面采用 demo 配色、统一彩色 SVG 和直角界面，支持模块导航、页内目录、搜索、高亮及 reduced-motion。
+
+最终源码 npm 回归 **461 passed / 0 failed / 5 conditional skips**；真实 tarball **8/8 passed**，覆盖六模板构建、三套 TypeScript、Edge 交互、HMR 与每个 demo 的窗口内文档及返回。手册浏览器验证 **7/7 passed**，包括深浅主题、手机布局、页内跳转、原始 Markdown、无 JS 阅读、保持应用状态/焦点及不调用桥接。本轮未重新编译原生宿主。
+
+证据：`output/npm-015-final-tests.log`、`output/npm-015-final-pack.log`、`output/npm-015-final-integration.log`、`output/npm-015-manual-browser.log`；报告 `build/npm-pack-validation/pack validation qxzgrt/report.json` 与 `build/manual-browser-validation/report.json`。
+
+| Archive | SHA-1 | SHA-256 | Registry status |
+| --- | --- | --- | --- |
+| `create-ewp-0.1.5.tgz` (238,178 bytes) | `521c52b29b2f6b7a470bd227ef7bf334b306d373` | `a68c9aa7183005cf21d78c8ca301903d5ddb6ac65d67a948d49b3f9ccae76afb` | waiting for publish authentication |
+| `easywindowspack-0.1.5.tgz` (245,039 bytes) | `6d9208d140675198b10ac19999e2617e6047c24a` | `6b596c2c10fc85ffc12b922100a60aa5e7588be00f0bf4ee720d95b1806adb95` | not published |
+
+用户已授权发布。npm CLI 登录有效，creator 发布等待官方安全密钥验证；两包 registry latest 暂为 `0.1.4`。GitHub HTTPS 推送使用旧账号返回 403，SSH 无可用公钥，已启动 GitHub CLI 设备登录。发布成功后应校验两包 latest / 哈希及独立 registry 安装，再更新本节状态。
+
+## 2026-10-26 0.1.4 重新准备发布 / Refreshed release preparation
+
+两包版本统一为 `0.1.4`，归档包含初始化失败后重试、缺少工具链的官方下载提示，以及后端优先的创建交互。发布前 Node 回归 **449 passed / 0 failed / 5 conditional skips**；真实归档集成 **8/8 passed**，覆盖六模板安装与构建、三套 TypeScript、Edge 交互和 HMR。两个归档的 `npm publish --dry-run` 均通过；本轮没有编译原生宿主。
+
+证据：`output/npm-release-20261026-tests.log`、`output/npm-release-20261026-pack.log`、`output/npm-release-20261026-integration.log`、`output/npm-release-20261026-dry-run.log`；集成报告为 `build/npm-pack-validation/pack validation 9dew7f/report.json`。本节归档替代下方 10 月 21 日的候选归档。
+
+| Archive | SHA-1 | SHA-256 | Registry status |
+| --- | --- | --- | --- |
+| `create-ewp-0.1.4.tgz` (237,925 bytes) | `ec4fd1e20095c099190d97c1bb3578964216b0a6` | `4457efca94d46c699a20d87b2fb8fbf70ab8bbac7f40a7e3cee4327bfffbd985` | published; latest 0.1.4; registry hashes verified |
+| `easywindowspack-0.1.4.tgz` (30,852 bytes) | `d2d9c491b6a3d70a078e108b3d71da89b4599770` | `81c2c3a0717c369711603bd268ab2c25c5ea5b7bc56a0b5733073784baf7c0a6` | published; latest 0.1.4; registry hashes verified |
+
+用户已授权发布并完成 npm CLI 登录及两次安全密钥认证。两包按 creator → runtime 顺序发布，官方 registry 的 version / latest 均为 `0.1.4`；SHA-1、SHA-512 integrity 及重新下载的 tarball 字节均与上述已验证归档一致。独立 registry 安装、Vue TS / Rust 项目生成、runtime check **3 passed**、TypeScript 检查和 Vite 前端构建通过；锁文件确认 runtime 与其 creator 依赖均来自官方 registry 的 `0.1.4`。本机全局两包也已切换为正式 registry 版本；计算器移除了临时 file 依赖及 creator override，更新锁文件后 check **3 passed** 与前端构建通过。本轮未验证原生宿主编译或 EXE。
+
+发布和安装证据：`output/npm-release-20261026-publish-creator-web.log`、`output/npm-release-20261026-publish-runtime-retry.log`、`output/npm-release-20261026-registry-validation.log`；`build/npm-registry-014-d358ea4c-6956-44f0-81d6-b81628250542/report.json`。本轮先前的 E401、EOTP 和过期链接均为已解决的中间状态。
+
 ## 2026-10-21 0.1.4 发布准备 / Release preparation
 
 `0.1.4` 已修复归档中五套模板缺失的 TypeScript / Vue / React SVG：资源从受 CC0 1.0 许可的 `create-vite@7.1.2` 模板复制，归档保留上游 `LICENSE.vite`（MIT / CC0 许可）。`prepare-npm` 从跟踪的权威资源复制全部模板 SVG，生成矩阵测试会验证每个源文件引用都有随项目生成的对应资源。

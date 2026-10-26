@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { AI_TOOLS, BACKENDS, createProject, creatorError, LANGUAGES, localizeError, normalizeAi, normalizeBackend, normalizeLanguage, TEMPLATES, validateTarget } from './create.mjs';
 import { createColors } from './terminal.mjs';
+import { inspectToolchain, toolchainGuidance } from './toolchain.mjs';
 
 const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
@@ -29,7 +30,7 @@ Options:
   --help, -h        Show help
 
 The first interactive prompt selects the language; --lang skips it.
-Backend selection follows frontend selection; --backend skips it.
+Backend selection comes before frontend selection; --backend skips it.
 Python requires >=3.10; native backends require their compiler toolchain.
 Non-interactive defaults: project language or zh-CN, no install, no start.
 Target must be empty, including .git.
@@ -55,7 +56,7 @@ Target must be empty, including .git.
   --help, -h        显示帮助
 
 交互的第一个提示选择语言；显式 --lang 跳过此提示。
-前端选择完成后选择后端；显式 --backend 跳过后端提示。
+先选择后端，再选择前端框架与语言；显式 --backend 跳过后端提示。
 Python 需要 >=3.10；原生后端需要对应编译工具链。
 非交互默认不安装、不启动，使用项目语言或简体中文。
 目标必须为空，包含 .git 也会拒绝。
@@ -203,7 +204,7 @@ export async function runNpm(args, directory, { language = 'zh-CN', env = proces
 /** Injectable prompts/process execution let tests verify behavior without a TTY. */
 export async function main(argv = process.argv.slice(2), {
   cwd = process.cwd(), interactive = Boolean(process.stdin.isTTY && process.stdout.isTTY),
-  prompts, run = runNpm, log = console.log, templatesDir, env = process.env, output = process.stdout
+  prompts, run = runNpm, log = console.log, templatesDir, env = process.env, output = process.stdout, inspect = inspectToolchain
 } = {}) {
   const options = parseArgs(argv, { env, cwd });
   const [major, minor] = process.versions.node.split('.').map(Number);
@@ -236,6 +237,10 @@ export async function main(argv = process.argv.slice(2), {
           validate(value) { try { validateTarget(value || 'ewp-app', cwd, options.language); } catch (error) { return error.message; } }
         }));
       }
+      if (!options.backend) options.backend = normalizeBackend(await answer(p.select({
+        message: question('选择后端', 'Select a backend'), initialValue: 'python',
+        options: BACKENDS.map(value => ({ value, label: colors.command({ python: 'Python', golang: 'Go', rust: 'Rust', cpp: 'C++' }[value]) }))
+      })), options.language);
       if (!options.template) {
         const framework = await answer(p.select({
           message: question('选择框架', 'Select a framework'), initialValue: 'vanilla',
@@ -247,10 +252,6 @@ export async function main(argv = process.argv.slice(2), {
         }));
         options.template = framework + (programmingLanguage === 'ts' ? '-ts' : '');
       }
-      if (!options.backend) options.backend = normalizeBackend(await answer(p.select({
-        message: question('选择后端', 'Select a backend'), initialValue: 'python',
-        options: BACKENDS.map(value => ({ value, label: colors.command({ python: 'Python', golang: 'Go', rust: 'Rust', cpp: 'C++' }[value]) }))
-      })), options.language);
       if (options.ai === undefined) options.ai = await answer(p.multiselect({
         message: question('可选 AI 指引（空格多选，回车跳过）', 'Optional AI guidance (Space to select, Enter to skip)'),
         required: false, initialValues: [],
@@ -270,6 +271,8 @@ export async function main(argv = process.argv.slice(2), {
     step('创建项目文件', 'Create project files');
     const result = createProject({ directory, name: options.name ? basename(options.name) : undefined, template: options.template ?? 'vanilla', backend: options.backend ?? 'python', ai: options.ai ?? [], language: options.language, cwd, templatesDir });
     log(`${colors.success(text('项目已创建：', 'Project created: '))}${colors.command(result.directory)} ${colors.dim(`(${result.template}, ${result.backend})`)}`);
+    const guidance = toolchainGuidance(inspect(result.backend, { env }), options.language);
+    if (guidance) log(colors.warning(guidance));
     const frontend = join(result.directory, 'frontend');
     const runOptions = { language: options.language, env: { ...env, EWP_LANG: options.language } };
     if (install) {

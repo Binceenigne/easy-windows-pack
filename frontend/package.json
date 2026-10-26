@@ -1,6 +1,6 @@
 {
   "name": "easy-windows-pack-workspace",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -9,6 +9,7 @@
   "scripts": {
     "ewp": "node packages/easywindowspack/bin/ewp.mjs",
     "help": "node packages/easywindowspack/bin/ewp.mjs help",
+    "docs": "node packages/easywindowspack/bin/ewp.mjs docs",
     "menu": "node packages/easywindowspack/bin/ewp.mjs menu",
     "info": "node packages/easywindowspack/bin/ewp.mjs info",
     "init": "node packages/easywindowspack/bin/ewp.mjs init",
@@ -29,7 +30,7 @@
     "installer": "node packages/easywindowspack/bin/ewp.mjs installer",
     "bundle": "node packages/easywindowspack/bin/ewp.mjs bundle",
     "test": "node packages/easywindowspack/bin/ewp.mjs test",
-    "test:npm": "npm run prepare:npm && node --test ../tests/npm-runtime.test.mjs ../tests/create-ewp.test.mjs",
+    "test:npm": "npm run prepare:npm && node --test ../tests/npm-runtime.test.mjs ../tests/create-ewp.test.mjs ../tests/native-driver.test.mjs ../tests/toolchain.test.mjs ../tests/menu-docs.test.mjs",
     "test:pack": "node ../tests/npm-pack.integration.mjs",
     "pack:npm": "npm run prepare:npm && npm pack --workspaces --pack-destination ../output/npm",
     "prepare:npm": "node ../scripts/prepare-npm.mjs",
@@ -39,6 +40,6 @@
     "check": "node packages/easywindowspack/bin/ewp.mjs check",
     "prepack": "npm run prepare:npm"
   },
-  "dependencies": { "easywindowspack": "0.1.4" },
+  "dependencies": { "easywindowspack": "0.1.5" },
   "devDependencies": { "vite": "^7.3.7" }
 }

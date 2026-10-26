@@ -8,13 +8,23 @@ frontend 是 private workspace；easywindowspack 提供 ESM runtime 和 ewp CLI�
 
 用户入口为 `npm create ewp@latest`；全局 `npm install -g easywindowspack@latest` 后可用 `ewp create`。例如 `npm create ewp@latest "My App" -- --lang en --template react-ts --no-install --no-start`。已有应用在 frontend 升级 easywindowspack 依赖不会自动覆盖其 scripts/dev.py、README、AI 指引或示例。
 
-交互顺序为人类语言 zh-CN/en、项目名、Vanilla/Vue/React、JS/TS、AI、安装、启动。模板为 vanilla/vue/react 与对应 -ts。显式 --lang 跳过首问，语言保存为 frontend/package.json 的 ewp.language；输出优先级与第三方日志规则见 [开发手册](development.md)。
+交互顺序为人类语言 zh-CN/en、项目名、Python/Go/Rust/C++ 后端、Vanilla/Vue/React、JS/TS、AI、安装、启动。模板为 vanilla/vue/react 与对应 -ts。显式 --lang 跳过首问，语言保存为 frontend/package.json 的 ewp.language；输出优先级与第三方日志规则见 [开发手册](development.md)。
 
 `--dir` 可指定含空格目录；`--ai codex,claude,copilot|none` 多选且默认 none；`--yes` 默认 ewp-app、vanilla、不安装、不启动。`--install/--no-install`、`--start/--no-start` 控制后续步骤；start 与 no-install 冲突。目标必须为空，只有 .git 也拒绝；目录链接/junction、非法 Windows 名称、模板路径越界和符号链接均拒绝。取消返回 130，不创建项目。此类路径安全与 opt-in 约定不由文档模板更改。
+
+创建后的环境检测只提示缺项与官方下载链接，不自动安装工具链，也不阻止生成项目。原生 `init` 每次执行 npm install（包含 devDependencies）→ 工具链检查 → Vite 构建 → 调试宿主构建；任何阶段失败立即停止，再次运行从依赖安装开始，复用环境和编译缓存并保留源码。Python init 继续创建/复用有效 .venv、安装依赖并构建；缺少解释器显示官方下载链接，损坏的已有 .venv 需人工修复。npm 版本未发布、网络不可用或工具链仍缺失时，重试会明确失败而非假报成功。
 
 ## 终端外观与执行阶段 / Terminal appearance and execution stages
 
 runtime 欢迎屏和 creator 使用共享 terminal 工具，各自从 manifest 读取版本。NO_COLOR → FORCE_COLOR → TTY/TERM 决定颜色；创建阶段只计实际执行的 1/2/4 步。Python 固定底栏、plain 回退及日志边界见 [开发手册](development.md)。这些行为的过去验收在 [记录](npm-validation.md)，不是新版本已发布的依据。
+
+## 帮助、菜单与内置手册 / Help, menu and bundled manual
+
+`capabilities.mjs` 统一声明后端支持范围并检测项目可执行前提；menu 按平台、Vite、Python 虚拟环境/打包依赖、原生工具链和 NSIS 3 过滤编号项，展示不可用原因，任务后刷新。init/info/help/docs 不因缺少构建工具而隐藏。原生安装任务在编译前检测 makensis，缺失时提示官方下载链接与 EWP_MAKENSIS。帮助复用共享配色，遵循 NO_COLOR / FORCE_COLOR。
+
+`ewp docs` / `ews docs` 无需项目，打开 runtime 的 `assets/docs/index.html`；`--no-open` 输出 file URL，`--print` 输出当前语言 Markdown。手册的权威源码在 `frontend/packages/easywindowspack/manual/`，prepare 从同一内容生成静态双语 HTML、Markdown、capabilities.json 及嵌入面板模块。视觉色值读取 demo.css，统一彩色品牌 SVG、直角界面、模块分页、页内目录、搜索和代码高亮；动画尊重 reduced-motion，静态 HTML 无脚本仍可读取全文。
+
+六模板及仓库 demo 通过 `easywindowspack/docs` 的 `openDocs({ language })` 按需打开同窗口 Shadow DOM 面板，无 iframe、顶层导航或新增宿主桥接。关闭释放监听并恢复应用焦点。文档使用实际安装的 runtime 依赖，不引用机器上的全局绝对路径；不会复制到生成项目的源码或 docs/，仅随可选导入进入前端构建资源。业务应用删除该导入即可不打包开发手册。验证入口为 `node --test tests/menu-docs.test.mjs`、`node tests/manual-browser.integration.mjs` 和真实 tarball 六模板集成。
 
 ## AI 资源布局 / AI resource layout
 

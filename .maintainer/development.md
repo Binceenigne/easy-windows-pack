@@ -14,7 +14,7 @@
 
 ## 菜单与命令 / Menu and commands
 
-`ewp` 无参数或仅 --lang 显示欢迎屏，版本来自 runtime manifest；help/-h/--help 是完整帮助，均不要求项目。`ewp menu` 或根 startup.cmd 无参数进入菜单，0 退出。以下任务可由 frontend 内 `npm run <task>`、全局 `ewp <task>` 或根 `startup.cmd <task>` 调用；任意 CLI 参数也可用 `npm run ewp -- <task> ...`。
+`ewp` 无参数或仅 --lang 显示欢迎屏，版本来自 runtime manifest；help/-h/--help 为分组彩色速查，项目内按后端和环境调整。`ewp docs`（兼容 `ews docs`）打开双语离线手册，`docs --print` 输出 Markdown，`docs --no-open` 输出本机地址；这些入口均不要求项目。demo 的查看文档按钮复用同一包内手册，在当前窗口展示且可返回。`ewp menu` 或根 startup.cmd 无参数进入菜单，0 退出；菜单按后端、平台和安装依赖过滤任务并解释隐藏原因，执行后重新检测，保留 init 和文档入口。以下任务可由 frontend 内 `npm run <task>`、全局 `ewp <task>` 或根 `startup.cmd <task>` 调用；任意 CLI 参数也可用 `npm run ewp -- <task> ...`。
 
 | 任务 | 行为 |
 | --- | --- |
@@ -23,7 +23,7 @@
 | frontend:preview / preview | 预览已编译前端 |
 | demo [--debug] | 编译后启动桌面，无 HMR；debug 开发者工具 |
 | wheel / build:wheel | 构建 Python wheel |
-| exe / build:exe / build | 默认 legacy 单文件 EXE，output/exe |
+| exe / build:exe / build | legacy output/exe；Python 默认单文件，原生为 EXE + 资源目录 |
 | app / build:app | 按 ewp.pack.json 配置构建，output/apps |
 | installer | 构建应用及 setup，output/installers |
 | bundle | 源码 ZIP、展开目录和 manifest，output/bundles |

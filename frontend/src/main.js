@@ -1,3 +1,4 @@
+import { openDocs } from 'easywindowspack/docs';
 import { mountFrame } from 'easywindowspack';
 import 'easywindowspack/frame.css';
 import colorLogo from './assets/ewp-color.svg';
@@ -9,7 +10,7 @@ import './demo.css';
 const words = {
   'zh-CN': {
     description: '把你的想法，带到桌面。',
-    hint: '编辑', saveHint: '，保存即见更新。', docs: '开始构建', source: 'GitHub',
+    hint: '编辑', saveHint: '，保存即见更新。', docs: '查看文档', source: 'GitHub',
     resources: '开发资源', windowStyle: '试试窗口外观',
     windowHint: '切换上方标题栏，感受不同的桌面风格。',
     browser: '浏览器可预览外观 · 原生操作需桌面运行', desktop: '桌面桥接已就绪',
@@ -18,7 +19,7 @@ const words = {
   },
   en: {
     description: 'Bring your ideas to the desktop.',
-    hint: 'Edit', saveHint: ' and save to see your changes.', docs: 'Start building', source: 'GitHub',
+    hint: 'Edit', saveHint: ' and save to see your changes.', docs: 'Documentation', source: 'GitHub',
     resources: 'Development resources', windowStyle: 'Try the window frame',
     windowHint: 'Switch the title bar above. Find your desktop style.',
     browser: 'Browser previews appearance · Native actions need the desktop app', desktop: 'Desktop bridge ready',
@@ -51,7 +52,7 @@ content.innerHTML = `
     <h1 id="welcome-title">EWP <span class="title-join">+</span> <span class="partner-name">Vanilla</span></h1>
     <p class="description" data-copy="description"></p>
     <nav class="welcome-links">
-      <a id="docsLink" class="welcome-button primary" href="${repo}#readme" target="_blank" rel="noopener noreferrer"><span data-copy="docs"></span><span aria-hidden="true">→</span></a>
+      <button id="docsLink" class="welcome-button primary" type="button"><span data-copy="docs"></span><span aria-hidden="true">→</span></button>
       <a class="welcome-button" href="${repo}" target="_blank" rel="noopener noreferrer"><span data-copy="source"></span><span aria-hidden="true">↗</span></a>
     </nav>
     <p class="hint"><span data-copy="hint"></span> <code>frontend/src/main.js</code><span data-copy="saveHint"></span></p>
@@ -102,12 +103,12 @@ function renderLanguage() {
   query('.frame-switch').setAttribute('aria-label', words[language].windowStyle);
   query('#languageToggle').textContent = language === 'en' ? '中文' : 'EN';
   query('#languageToggle').setAttribute('aria-label', words[language].languageToggle);
-  query('#docsLink').href = language === 'en' ? `${repo}/blob/main/README.en.md` : `${repo}#readme`;
   renderTheme();
   renderStatus();
 }
 
 const on = (element, event, handler) => element.addEventListener(event, handler, { signal: listeners.signal });
+on(query('#docsLink'), 'click', () => { void openDocs({ language }); });
 on(query('#themeToggle'), 'click', () => { theme = theme === 'dark' ? 'light' : 'dark'; renderTheme(); });
 on(query('#languageToggle'), 'click', () => { language = language === 'zh-CN' ? 'en' : 'zh-CN'; renderLanguage(); });
 content.querySelectorAll('[data-window-style]').forEach(button => on(button, 'click', () => {

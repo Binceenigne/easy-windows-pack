@@ -181,7 +181,7 @@ export function projectManifest(name, template, language = 'zh-CN', backend = 'p
   if (!TEMPLATES.includes(template)) throw creatorError('unknownTemplate', { template, templates: TEMPLATES.join(', ') }, language);
   const framework = template.replace(/-ts$/, '');
   const typescript = template.endsWith('-ts');
-  const dependencies = { easywindowspack: '^0.1.4' };
+  const dependencies = { easywindowspack: '^0.1.5' };
   const devDependencies = { vite: '^7.3.7' };
   if (framework === 'vue') {
     dependencies.vue = '^3.5.0';
@@ -212,7 +212,7 @@ export function projectManifest(name, template, language = 'zh-CN', backend = 'p
       'build:app': 'ewp app',
       'build:exe': 'ewp build --exe',
       'build:all': 'ewp full-build', 'full-build': 'ewp full-build',
-      menu: 'ewp menu', info: 'ewp info', help: 'ewp --help', check: 'ewp check',
+      menu: 'ewp menu', info: 'ewp info', help: 'ewp --help', docs: 'ewp docs', check: 'ewp check',
       'frontend:build': 'ewp frontend:build', 'frontend:dev': 'ewp frontend:dev',
       'frontend:preview': 'ewp frontend:preview', test: 'ewp test',
       ...(typescript ? { typecheck: framework === 'vue' ? 'vue-tsc --noEmit' : 'tsc --noEmit' } : {})
@@ -299,7 +299,7 @@ export function projectFiles({ name = 'ewp-app', template = 'vanilla', backend =
     previewHint: 'Native actions are available in the desktop app.',
     hint: 'Edit', saveHint: ' and save to see your changes.',
     editFile: `frontend/src/${framework === 'vanilla' ? `main.${extension}` : framework === 'vue' ? 'App.vue' : `App.${extension}`}`,
-    source: 'GitHub', docs: 'Start building', resources: 'Project resources',
+    source: 'GitHub', docs: 'Documentation', docsLang: 'en', resources: 'Project resources',
     hostDescription: 'Desktop application', hostTitle: 'Desktop App',
     buildFirst: 'Run npm run frontend:build first',
     hostDoc: 'Desktop host: development uses EWP_DEV_URL, production uses the Vite build.',
@@ -313,7 +313,7 @@ export function projectFiles({ name = 'ewp-app', template = 'vanilla', backend =
     previewHint: '原生窗口操作需在桌面运行。',
     hint: '编辑', saveHint: '，保存即见更新。',
     editFile: `frontend/src/${framework === 'vanilla' ? `main.${extension}` : framework === 'vue' ? 'App.vue' : `App.${extension}`}`,
-    source: 'GitHub', docs: '开始构建', resources: '项目资源',
+    source: 'GitHub', docs: '查看文档', docsLang: 'zh-CN', resources: '项目资源',
     hostDescription: '桌面应用', hostTitle: '桌面应用',
     buildFirst: '请先运行 npm run frontend:build',
     hostDoc: '桌面宿主：开发使用 EWP_DEV_URL，生产使用 Vite 编译产物。',

@@ -1,3 +1,4 @@
+import { openDocs } from 'easywindowspack/docs';
 import { mountFrame } from 'easywindowspack';
 import colorLogo from './assets/ewp-color.svg';
 import darkLogo from './assets/ewp-dark.svg';
@@ -24,7 +25,7 @@ content.innerHTML = `
     <h1 id="welcome-title">EWP <span class="title-join">+</span> <span class="partner-name">Vanilla</span></h1>
     <p class="description">__EWP_description__</p>
     <nav class="welcome-links" aria-label="__EWP_resources__">
-      <a class="welcome-button primary" href="https://github.com/Binceenigne/easy-windows-pack#readme" target="_blank" rel="noopener noreferrer">__EWP_docs__ <span aria-hidden="true">→</span></a>
+      <button class="welcome-button primary" type="button">__EWP_docs__ <span aria-hidden="true">→</span></button>
       <a class="welcome-button" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer">__EWP_source__ <span aria-hidden="true">↗</span></a>
     </nav>
     <p class="hint">__EWP_hint__ <code>__EWP_editFile__</code>__EWP_saveHint__</p>
@@ -53,6 +54,7 @@ function renderTheme() {
   content.querySelector<HTMLImageElement>('.footer-logo')!.src = dark ? monoLogo : darkLogo;
   themeButton.setAttribute('aria-pressed', String(dark));
 }
+content.querySelector<HTMLButtonElement>('.welcome-button.primary')!.addEventListener('click', () => { void openDocs({ language: '__EWP_docsLang__' }); }, { signal: listeners.signal });
 themeButton.addEventListener('click', () => { dark = !dark; renderTheme(); }, { signal: listeners.signal });
 content.querySelectorAll<HTMLButtonElement>('[data-window-style]').forEach(button => {
   button.addEventListener('click', () => {

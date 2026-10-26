@@ -419,6 +419,18 @@ test('real npm packs: consumer installation, six builds, types, Chrome and HMR',
           try {
             await production.page.goto(preview.resolvedUrls.local[0]);
             record.welcome = await interact(production.page, expect, manifest.name, template);
+            const appUrl = production.page.url();
+            await production.page.getByRole('button', { name: 'Documentation', exact: false }).click();
+            const manual = production.page.getByRole('dialog', { name: 'Easy Windows Pack documentation', exact: true });
+            await expect(manual.locator('[data-page="overview"]:visible')).toHaveCount(1);
+            await manual.locator('.sidebar a[href="#en-packaging"]').click();
+            await expect(manual.locator('article:visible [data-page]:visible')).toHaveAttribute('data-page', 'packaging');
+            assert.ok(await manual.locator('.toc [data-toc-link]:visible').count() >= 4);
+            await manual.getByRole('button', { name: 'Back to app', exact: true }).click();
+            await expect(manual).toHaveCount(0);
+            assert.equal(production.page.url(), appUrl, 'Documentation must not navigate the application');
+            assert.equal(existsSync(join(project, 'docs/guide.md')), false, 'The manual must stay in the dependency');
+            record.offlineDocumentation = 'package module loaded, in-window navigation and return passed';
             assert.deepEqual(production.errors, [], `${template} production errors`);
             record.productionInteraction = 'passed';
           } finally { await production.page.close(); await closeServer(preview); }

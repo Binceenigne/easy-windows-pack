@@ -326,7 +326,7 @@ test('help runs outside a project without probing Python', async t => {
     process.chdir(tmpdir());
     console.log = value => { output += value; };
     assert.equal(await deadline(main(['--help', '--lang', 'en']), 'CLI help', t.signal), 0);
-    assert.match(output, /Build EXE by default/);
+    assert.match(output, /ewp build \/ ewp exe/);
   } finally { process.chdir(original); console.log = log; }
 });
 
@@ -432,7 +432,7 @@ test('global help, version and create help execute through a real directory syml
 });
 
 test('all menu tasks and aliases parse and Python receives language, task and debug safely', () => {
-  for (const task of MENU_TASKS) assert.ok(parseArgs([task.command, ...(task.args ?? [])]).task);
+  for (const task of MENU_TASKS) { const parsed = parseArgs([task.command, ...(task.args ?? [])]); assert.ok(parsed.task || parsed.command === 'help'); }
   assert.ok(MENU_TASKS.some(task => task.command === 'app'));
   assert.ok(MENU_TASKS.some(task => task.command === 'installer'));
   for (const [alias, command] of Object.entries({ browser: 'frontend:dev', frontend: 'frontend:build', preview: 'frontend:preview', 'full-build': 'build:all', 'build:wheel': 'wheel', 'build:exe': 'exe', 'build:app': 'app' })) {
@@ -454,11 +454,12 @@ test('all menu tasks and aliases parse and Python receives language, task and de
 });
 
 test('menu dispatches every task, recovers after failures and handles exit without Python', async () => {
+  const inspect = () => ({ backend: 'python', platform: 'win32', frontendReady: true, venvReady: true, runtimeReady: true, wheelReady: true, packagerReady: true, toolchain: { available: true, missing: [] }, installer: { available: true }, builtFrontend: true, nodeTests: true, packaging: {} });
   const answers = ['invalid', ...MENU_TASKS.map((_, index) => String(index + 1)), '0'];
   const calls = [];
   const output = [];
   assert.equal(await runMenu(root, 'en', {
-    choose: async () => answers.shift(), log: line => output.push(line),
+    inspect, choose: async () => answers.shift(), log: line => output.push(line),
     execute: async (directory, options) => {
       assert.equal(directory, root);
       calls.push(options);
@@ -472,9 +473,9 @@ test('menu dispatches every task, recovers after failures and handles exit witho
   assert.equal(calls.find(options => options.command === 'build:all').task, 'full-build');
   assert.ok(output.some(line => line.includes('Invalid choice')));
   assert.ok(output.some(line => line.includes('Task failed with exit code 2')));
-  for (const task of MENU_TASKS) assert.ok(output.some(line => line.includes(`npm run ${task.command}`)));
-  assert.equal(await runMenu(root, 'zh-CN', { choose: async () => null, log: () => {} }), 130);
-  assert.equal(await runMenu(root, 'en', { choose: async () => '1', execute: async () => 130, log: () => {} }), 130);
+  for (const task of MENU_TASKS) assert.ok(output.some(line => line.includes(`ewp ${task.command}`)));
+  assert.equal(await runMenu(root, 'zh-CN', { inspect, choose: async () => null, log: () => {} }), 130);
+  assert.equal(await runMenu(root, 'en', { inspect, choose: async () => '1', execute: async () => 130, log: () => {} }), 130);
   const directory = mkdtempSync(join(tmpdir(), 'ewp-menu-'));
   try {
     mkdirSync(join(directory, 'scripts'));
@@ -502,7 +503,7 @@ test('help describes every task and both entry locations in each language', () =
 test('published entry points and optional framework peers match the runtime contract', () => {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'easywindowspack');
-  assert.equal(pkg.version, '0.1.4');
+  assert.equal(pkg.version, '0.1.5');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.engines.node, '>=22.12.0');
   assert.equal(pkg.type, 'module');

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildSpec, loadPackConfig, stageApp, installerScript } from '../scripts/backend.mjs';
+import { buildSpec, loadPackConfig, stageApp, installerScript, initialize, installFrontend } from '../scripts/backend.mjs';
 
 function project(t, backend) {
   const root = mkdtempSync(join(tmpdir(), 'ewp-native-'));
@@ -12,6 +12,53 @@ function project(t, backend) {
   writeFileSync(join(root, 'frontend/package.json'), JSON.stringify({ name: 'sample-app', version: '0.1.0', ewp: { backend, language: 'en' } }));
   return root;
 }
+test('init can retry every failed stage and repeat success without erasing project data', async t => {
+  const root = project(t, 'rust');
+  mkdirSync(join(root, 'backend'));
+  writeFileSync(join(root, 'backend/keep.rs'), 'user code');
+  const initialManifest = readFileSync(join(root, 'frontend/package.json'), 'utf8');
+  const stages = ['install', 'check', 'frontend', 'backend'];
+  for (const failed of stages) {
+    const calls = [];
+    let failure = failed;
+    const services = Object.fromEntries(stages.map(stage => [stage, async (path, options) => {
+      assert.equal(path, root);
+      if (stage === 'install') assert.equal(options.language, 'en');
+      if (stage === 'backend') assert.equal(options.debug, true);
+      calls.push(stage);
+      if (failure === stage) throw new Error(`${stage} unavailable`);
+    }]));
+    services.log = () => calls.push('ready');
+    await assert.rejects(initialize(root, {}, services), new RegExp(`${failed} unavailable`));
+    assert.deepEqual(calls, stages.slice(0, stages.indexOf(failed) + 1));
+    failure = null;
+    for (let retry = 0; retry < 2; retry++) {
+      calls.length = 0;
+      assert.equal(await initialize(root, {}, services), 0);
+      assert.deepEqual(calls, [...stages, 'ready']);
+      assert.equal(readFileSync(join(root, 'backend/keep.rs'), 'utf8'), 'user code');
+      assert.equal(readFileSync(join(root, 'frontend/package.json'), 'utf8'), initialManifest);
+    }
+  }
+});
+
+test('init installs frontend dev dependencies in the project before loading Vite', async t => {
+  const root = project(t, 'rust');
+  const npmCli = join(root, 'npm-cli.js');
+  writeFileSync(npmCli, '// npm fixture');
+  const env = { npm_execpath: npmCli, NODE_ENV: 'production' };
+  let calls = 0;
+  await installFrontend(root, { env, language: 'en', execute: async (command, args, options) => {
+    calls++;
+    assert.equal(command, process.execPath);
+    assert.deepEqual(args, [npmCli, 'install', '--include=dev', '--no-audit', '--no-fund']);
+    assert.equal(options.cwd, join(root, 'frontend'));
+    assert.equal(options.env, env);
+    assert.equal(existsSync(join(root, 'frontend/node_modules')), false);
+  } });
+  assert.equal(calls, 1);
+});
+
 test('native compiler plans preserve paths, debug/release and CGO', t => {
   for (const backend of ['cpp', 'rust', 'golang']) {
     const root = project(t, backend);

@@ -81,6 +81,37 @@ export async function buildBackend(root, options = {}) {
   return spec.executable;
 }
 
+export async function installFrontend(root, { language = 'zh-CN', env = process.env, execute = run } = {}) {
+  const candidates = [env.npm_execpath,
+    join(dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js'),
+    join(dirname(process.execPath), '../lib/node_modules/npm/bin/npm-cli.js')];
+  const cli = candidates.find(path => path && /npm-cli\.js$/.test(path) && existsSync(path));
+  if (!cli && process.platform === 'win32') fail(language,
+    '找不到 npm CLI。请安装 Node.js：https://nodejs.org/en/download ，然后重试 init。',
+    'npm CLI is missing. Install Node.js: https://nodejs.org/en/download , then retry init.');
+  const args = ['install', '--include=dev', '--no-audit', '--no-fund'];
+  await execute(cli ? process.execPath : 'npm', cli ? [resolve(cli), ...args] : args,
+    { cwd: join(root, 'frontend'), env, language });
+}
+
+export async function checkToolchain(root, options) {
+  const require = createRequire(join(root, 'frontend/package.json'));
+  const runtimeRequire = createRequire(require.resolve('easywindowspack/frame.css'));
+  const { inspectToolchain, toolchainGuidance } = await import(pathToFileURL(runtimeRequire.resolve('create-ewp/toolchain')).href);
+  const result = inspectToolchain(backendName(root));
+  if (!result.available) throw new Error(toolchainGuidance(result, languageOf(root, options)));
+}
+
+export async function initialize(root, options = {}, { install = installFrontend, check = checkToolchain, frontend = frontendBuild, backend = buildBackend, log = console.log } = {}) {
+  const language = languageOf(root, options);
+  await install(root, { language });
+  await check(root, { language });
+  await frontend(root);
+  await backend(root, { language, debug: true });
+  log(say(language, '环境已就绪。', 'Environment ready.'));
+  return 0;
+}
+
 async function frontendBuild(root) {
   const require = createRequire(join(root, 'frontend/package.json'));
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
@@ -326,11 +357,11 @@ export async function task(root, options = {}) {
   if (!['init', 'demo', 'exe', 'app', 'installer', 'build', 'full-build', 'build:all'].includes(command)) {
     fail(language, `不支持的原生任务：${command}`, `Unsupported native task: ${command}`);
   }
-  const config = ['init', 'demo'].includes(command) ? null : loadPackConfig(root, options);
+  if (command === 'init') return initialize(root, options);
+  const config = command === 'demo' ? null : loadPackConfig(root, options);
   if (['full-build', 'build:all'].includes(command)) await task(root, { ...options, task: 'test' });
   await frontendBuild(root);
-  const executable = await buildBackend(root, { language, debug: command === 'init' || (command === 'demo' && options.debug) });
-  if (command === 'init') { console.log(say(language, `${backend} 环境已就绪。`, `${backend} environment ready.`)); return 0; }
+  const executable = await buildBackend(root, { language, debug: command === 'demo' && options.debug });
   if (command === 'demo') {
     await run(executable, ['--assets', join(root, 'output/frontend'), '--title', projectManifest(root).name, ...(options.debug ? ['--debug'] : [])], { cwd: root, language });
     return 0;

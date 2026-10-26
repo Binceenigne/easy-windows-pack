@@ -1,3 +1,4 @@
+import { openDocs } from 'easywindowspack/docs';
 import { useEffect, useState } from 'react';
 import Frame from './Frame';
 import colorLogo from './assets/ewp-color.svg';
@@ -30,7 +31,7 @@ export default function App() {
           <h1 id="welcome-title">EWP <span className="title-join">+</span> <span className="partner-name">React</span></h1>
           <p className="description">__EWP_description__</p>
           <nav className="welcome-links" aria-label="__EWP_resources__">
-            <a className="welcome-button primary" href="https://github.com/Binceenigne/easy-windows-pack#readme" target="_blank" rel="noopener noreferrer">__EWP_docs__ <span aria-hidden="true">→</span></a>
+            <button className="welcome-button primary" type="button" onClick={() => { void openDocs({ language: '__EWP_docsLang__' }); }}>__EWP_docs__ <span aria-hidden="true">→</span></button>
             <a className="welcome-button" href="https://github.com/Binceenigne/easy-windows-pack" target="_blank" rel="noopener noreferrer">__EWP_source__ <span aria-hidden="true">↗</span></a>
           </nav>
           <p className="hint">__EWP_hint__ <code>__EWP_editFile__</code>__EWP_saveHint__</p>
