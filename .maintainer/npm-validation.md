@@ -17,7 +17,7 @@
 | `create-ewp-0.1.5.tgz` (238,178 bytes) | `521c52b29b2f6b7a470bd227ef7bf334b306d373` | `a68c9aa7183005cf21d78c8ca301903d5ddb6ac65d67a948d49b3f9ccae76afb` | waiting for publish authentication |
 | `easywindowspack-0.1.5.tgz` (245,039 bytes) | `6d9208d140675198b10ac19999e2617e6047c24a` | `6b596c2c10fc85ffc12b922100a60aa5e7588be00f0bf4ee720d95b1806adb95` | not published |
 
-用户已授权发布。npm CLI 登录有效，creator 发布等待官方安全密钥验证；两包 registry latest 暂为 `0.1.4`。GitHub HTTPS 推送使用旧账号返回 403，SSH 无可用公钥，已启动 GitHub CLI 设备登录。发布成功后应校验两包 latest / 哈希及独立 registry 安装，再更新本节状态。
+用户已授权发布。GitHub 身份修复后已成功推送 `main`，`git ls-remote` 核验远程包含已验证提交 `c5e223f898afce9bf4ea9bd88e7887f9dcdfe5d7`（含此前的模板 SVG 修复）。npm CLI 登录有效，creator 发布仍等待官方网页/安全密钥验证；先前链接超时，新认证页停在 Cloudflare 检查。最新 registry 查询两包 latest 仍为 `0.1.4`，`0.1.5` 尚未公开发布。发布成功后应校验两包 latest / 哈希及独立 registry 安装，再更新本节状态。
 
 ## 2026-10-26 0.1.4 重新准备发布 / Refreshed release preparation
 
