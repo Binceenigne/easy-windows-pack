@@ -16,10 +16,14 @@ Node 发布回归首次仅版本断言仍为 0.1.5 而失败；同步断言后 r
 
 | Archive | SHA-1 | SHA-256 | Registry status |
 | --- | --- | --- | --- |
-| `create-ewp-0.1.6.tgz` (238,820 bytes) | `9fb19a5842a9a5b5d22b18b91a97bda432d5c760` | `96bebc88a070255aa7fdd22ecfdbabddebf4d92397fc58957f4490ff1b95737e` | awaiting npm login; not published |
-| `easywindowspack-0.1.6.tgz` (246,102 bytes) | `8d2e0a289d437477081daf516e8d35e1f65ae0b7` | `52864e1adca1fbb0f19a4cd96d1bab4cccd794ac98abde6155659bad32a0c035` | not published |
+| `create-ewp-0.1.6.tgz` (238,820 bytes) | `9fb19a5842a9a5b5d22b18b91a97bda432d5c760` | `96bebc88a070255aa7fdd22ecfdbabddebf4d92397fc58957f4490ff1b95737e` | published; latest 0.1.6; registry hashes and bytes verified |
+| `easywindowspack-0.1.6.tgz` (246,102 bytes) | `8d2e0a289d437477081daf516e8d35e1f65ae0b7` | `52864e1adca1fbb0f19a4cd96d1bab4cccd794ac98abde6155659bad32a0c035` | published; latest 0.1.6; registry hashes and bytes verified |
 
-用户已授权推送和发布。npm whoami 返回 E401，已通过官方 CLI 发起外部浏览器登录，等待账户持有人认证。发布顺序 creator → runtime；发布后仍需核验 registry latest、哈希、下载字节和独立安装，不能将上述本地归档验证视为已公开发布。
+用户已授权推送和发布，完成官方 CLI 外部浏览器登录及发布认证。两包按 creator → runtime 顺序公开发布，registry version / latest 均为 `0.1.6`；SHA-1、SHA-512 integrity 和重新下载的 tarball 字节均匹配上述已验证归档。先前 E401、过期认证和发布后短暂的 registry E404 均为已解决的中间状态，未重复发布已被 npm 接收的归档。
+
+独立目录从官方 registry 安装两包并生成 Vue TS/Python 项目，锁文件确认 runtime 及 creator 均为 registry 的 `0.1.6`；生成 Python/原生驱动均含本次兼容修复。版本、文档 URL、`ews docs --print --lang en` 的排错说明、runtime check、TypeScript 检查与前端构建全部通过。本机全局两包亦已更新至正式 `0.1.6`，版本及 ewp/ews 文档入口核验通过。已有项目的驱动脚本不会被全局或项目依赖升级自动改写；本轮未重新验证原生宿主或 EXE。
+
+发布后证据：`output/npm-016-publish-creator-refresh.log`、`output/npm-016-publish-runtime.log`、`output/npm-016-registry-validation.log`、`output/npm-016-global-install.log`、`output/npm-016-global-validation.json`；报告 `build/npm-registry-016-4e89988a-23bd-4d2e-985a-08d67e534446/report.json`。功能提交 `9c74005bbae38c368f9b59c62c4ae7bf7b08f161` 已推送 GitHub main 并通过 `git ls-remote` 核验。
 
 ## 2026-10-26 0.1.5 菜单、帮助与离线文档 / Menu, help and offline documentation
 
