@@ -713,6 +713,29 @@ class DevTests(unittest.TestCase):
         self.assertIn("缺少 npm，请安装 Node.js 并重新打开终端", self.output.getvalue())
         self.assertNotIn("Missing npm", self.output.getvalue())
 
+    def test_npm_install_reloads_script_policy_without_inherited_allow_scripts(self):
+        self.fake_package()
+        policy = self.root / "frontend/.npmrc"
+        policy.write_text("allow-scripts=esbuild\n", encoding="utf-8")
+        for key in ("npm_config_allow_scripts", "NPM_CONFIG_ALLOW_SCRIPTS"):
+            with self.subTest(key=key), patch.dict(os.environ, {
+                key: "esbuild", "npm_lifecycle_event": "init",
+                "npm_config_ignore_scripts": "true", "npm_config_strict_allow_scripts": "true",
+                "npm_config_userconfig": str(self.root / "user.npmrc"),
+            }), patch.object(dev, "run_command") as run:
+                dev.run_npm(self.root, ["install"])
+                env = {name.lower(): value for name, value in run.call_args.kwargs["env"].items()}
+                self.assertNotIn("npm_config_allow_scripts", env)
+                self.assertEqual(env["npm_config_ignore_scripts"], "true")
+                self.assertEqual(env["npm_config_strict_allow_scripts"], "true")
+                self.assertEqual(env["npm_config_userconfig"], str(self.root / "user.npmrc"))
+                self.assertEqual(os.environ[key], "esbuild")
+                self.assertEqual(policy.read_text(encoding="utf-8"), "allow-scripts=esbuild\n")
+                run.reset_mock()
+                dev.run_npm(self.root, ["run", "frontend:build"])
+                env = {name.lower(): value for name, value in run.call_args.kwargs["env"].items()}
+                self.assertEqual(env[key.lower()], "esbuild")
+
     def test_npm_requires_frontend_manifest_before_lookup_or_execution(self):
         # Neither a stale root manifest nor a workspace child is the frontend project.
         (self.root / "package.json").touch()

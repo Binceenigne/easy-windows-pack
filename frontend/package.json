@@ -1,6 +1,6 @@
 {
   "name": "easy-windows-pack-workspace",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -40,6 +40,6 @@
     "check": "node packages/easywindowspack/bin/ewp.mjs check",
     "prepack": "npm run prepare:npm"
   },
-  "dependencies": { "easywindowspack": "0.1.5" },
+  "dependencies": { "easywindowspack": "0.1.6" },
   "devDependencies": { "vite": "^7.3.7" }
 }

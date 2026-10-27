@@ -14,6 +14,8 @@ frontend 是 private workspace；easywindowspack 提供 ESM runtime 和 ewp CLI�
 
 创建后的环境检测只提示缺项与官方下载链接，不自动安装工具链，也不阻止生成项目。原生 `init` 每次执行 npm install（包含 devDependencies）→ 工具链检查 → Vite 构建 → 调试宿主构建；任何阶段失败立即停止，再次运行从依赖安装开始，复用环境和编译缓存并保留源码。Python init 继续创建/复用有效 .venv、安装依赖并构建；缺少解释器显示官方下载链接，损坏的已有 .venv 需人工修复。npm 版本未发布、网络不可用或工具链仍缺失时，重试会明确失败而非假报成功。
 
+npm 12.0.0 会把 `.npmrc` 的 `allow-scripts` 导出为 `npm_config_allow_scripts`，导致 `npm run init` 内再次安装时报 `EALLOWSCRIPTS`；npm 12.2.1 已停止导出该项。creator、Python 与原生驱动仅在内部 install 时移除这个无效的环境覆盖，让 npm 重新读取项目 `allowScripts` / `.npmrc` 和用户配置；不改配置文件、不放开所有安装脚本，保留 ignore-scripts、strict-allow-scripts 等其他策略。已有项目不会随 npm 依赖升级而改写驱动脚本；遇到此错误可先从项目根直接运行全局 `ewp init`，或更新 npm 至 12.2.1+，再重试，无需重建项目或删除有效 `.venv`。
+
 ## 终端外观与执行阶段 / Terminal appearance and execution stages
 
 runtime 欢迎屏和 creator 使用共享 terminal 工具，各自从 manifest 读取版本。NO_COLOR → FORCE_COLOR → TTY/TERM 决定颜色；创建阶段只计实际执行的 1/2/4 步。Python 固定底栏、plain 回退及日志边界见 [开发手册](development.md)。这些行为的过去验收在 [记录](npm-validation.md)，不是新版本已发布的依据。

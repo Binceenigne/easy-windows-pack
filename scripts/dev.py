@@ -523,6 +523,9 @@ def run_npm(root: Path, arguments: Sequence[str], log: TextIO | None = None) -> 
         raise DevError(text("缺少 npm，请安装 Node.js 并重新打开终端",
                     "Missing npm; install Node.js and reopen the terminal", root))
     env = child_environment(root)
+    if arguments and arguments[0] == "install":
+        # npm 12.0 exports .npmrc policy, then rejects it as an environment override.
+        env = {key: value for key, value in env.items() if key.lower() != "npm_config_allow_scripts"}
     with language_context(root, env["EWP_LANG"]):
         run_command([npm, *arguments], root=frontend, log=log, env=env)
 

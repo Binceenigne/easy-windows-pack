@@ -53,10 +53,32 @@ test('init installs frontend dev dependencies in the project before loading Vite
     assert.equal(command, process.execPath);
     assert.deepEqual(args, [npmCli, 'install', '--include=dev', '--no-audit', '--no-fund']);
     assert.equal(options.cwd, join(root, 'frontend'));
-    assert.equal(options.env, env);
+    assert.deepEqual(options.env, env);
     assert.equal(existsSync(join(root, 'frontend/node_modules')), false);
   } });
   assert.equal(calls, 1);
+});
+
+test('native init reloads script policy without changing caller configuration', async t => {
+  const root = project(t, 'rust');
+  const npmCli = join(root, 'npm-cli.js');
+  writeFileSync(npmCli, '// npm fixture');
+  const npmrc = join(root, 'frontend/.npmrc');
+  writeFileSync(npmrc, 'allow-scripts=esbuild\n');
+  for (const key of ['npm_config_allow_scripts', 'NPM_CONFIG_ALLOW_SCRIPTS']) {
+    const env = { npm_execpath: npmCli, [key]: 'esbuild', npm_lifecycle_event: 'init',
+      npm_config_ignore_scripts: 'true', npm_config_strict_allow_scripts: 'true',
+      npm_config_userconfig: join(root, 'user.npmrc') };
+    const original = { ...env };
+    await installFrontend(root, { env, execute: async (_command, _args, options) => {
+      assert.ok(Object.keys(options.env).every(name => name.toLowerCase() !== 'npm_config_allow_scripts'));
+      const expected = { ...env };
+      delete expected[key];
+      assert.deepEqual(options.env, expected);
+    } });
+    assert.deepEqual(env, original);
+    assert.equal(readFileSync(npmrc, 'utf8'), 'allow-scripts=esbuild\n');
+  }
 });
 
 test('native compiler plans preserve paths, debug/release and CGO', t => {

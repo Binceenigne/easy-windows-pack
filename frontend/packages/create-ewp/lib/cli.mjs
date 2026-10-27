@@ -171,7 +171,12 @@ export function npmCommand(args, { env = process.env, platform = process.platfor
 
 export async function runNpm(args, directory, { language = 'zh-CN', env = process.env } = {}) {
   const spec = npmCommand(args, { language, env });
-  const child = spawn(spec.command, spec.args, { ...spec.options, cwd: directory, env: { ...env, EWP_LANG: language }, stdio: 'inherit', shell: false, detached: process.platform !== 'win32' });
+  const childEnv = { ...env, EWP_LANG: language };
+  if (args[0] === 'install') {
+    // Reload file-based policy instead of npm 12.0's invalid inherited override.
+    for (const key of Object.keys(childEnv)) if (key.toLowerCase() === 'npm_config_allow_scripts') delete childEnv[key];
+  }
+  const child = spawn(spec.command, spec.args, { ...spec.options, cwd: directory, env: childEnv, stdio: 'inherit', shell: false, detached: process.platform !== 'win32' });
   let interrupted = false;
   const interrupt = () => {
     interrupted = true;

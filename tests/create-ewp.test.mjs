@@ -188,7 +188,7 @@ test('four backends × six templates × two languages × all AI combinations gen
       const pkg = JSON.parse(read('frontend/package.json'));
       assert.equal(pkg.name, 'my-app');
       assert.equal(pkg.version, '0.1.0');
-      assert.equal(pkg.dependencies.easywindowspack, '^0.1.5');
+      assert.equal(pkg.dependencies.easywindowspack, '^0.1.6');
       assert.deepEqual(pkg.ewp, { language, backend });
       assert.equal(result.backend, backend);
       assert.equal(pkg.scripts.ewp, 'ewp');
@@ -833,6 +833,35 @@ test('npm launch executes in a directory with spaces without shell path interpol
   assert.match(result.stdout, /\d+\.\d+\.\d+/);
   for (const language of LANGUAGES) {
     assert.throws(() => npmCommand([], { env: {}, platform: 'win32', execPath: join(cwd, 'node.exe'), language }), language === 'en' ? /npm was not found/ : /找不到 npm/);
+  }
+});
+
+test('creator install reloads script policy while preserving other npm settings', async t => {
+  const cwd = temporary(t);
+  const cli = join(cwd, 'npm-cli.js');
+  writeFileSync(cli, `require('node:fs').writeFileSync('npm-env.json', JSON.stringify(process.env));`);
+  const npmrc = join(cwd, '.npmrc');
+  writeFileSync(npmrc, 'allow-scripts=esbuild\n');
+  for (const key of ['npm_config_allow_scripts', 'NPM_CONFIG_ALLOW_SCRIPTS']) {
+    const env = { ...process.env, npm_execpath: cli, [key]: 'esbuild', npm_lifecycle_event: 'npx',
+      npm_config_ignore_scripts: 'true', npm_config_strict_allow_scripts: 'true',
+      npm_config_userconfig: join(cwd, 'user.npmrc') };
+    const original = { ...env };
+    for (const args of [['install'], ['run', 'init']]) {
+      await runNpm(args, cwd, { language: 'en', env });
+      const child = JSON.parse(readFileSync(join(cwd, 'npm-env.json'), 'utf8'));
+      if (args[0] === 'install') {
+        assert.ok(Object.keys(child).every(name => name.toLowerCase() !== 'npm_config_allow_scripts'));
+      } else {
+        assert.equal(child[key.toLowerCase()] ?? child[key], 'esbuild');
+      }
+      assert.equal(child.npm_config_ignore_scripts, 'true');
+      assert.equal(child.npm_config_strict_allow_scripts, 'true');
+      assert.equal(child.npm_config_userconfig, join(cwd, 'user.npmrc'));
+      assert.equal(child.EWP_LANG, 'en');
+    }
+    assert.deepEqual(env, original);
+    assert.equal(readFileSync(npmrc, 'utf8'), 'allow-scripts=esbuild\n');
   }
 });
 

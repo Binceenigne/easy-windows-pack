@@ -503,7 +503,7 @@ test('help describes every task and both entry locations in each language', () =
 test('published entry points and optional framework peers match the runtime contract', () => {
   const pkg = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
   assert.equal(pkg.name, 'easywindowspack');
-  assert.equal(pkg.version, '0.1.5');
+  assert.equal(pkg.version, '0.1.6');
   assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.engines.node, '>=22.12.0');
   assert.equal(pkg.type, 'module');

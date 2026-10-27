@@ -4,6 +4,23 @@
 
 本页分别记录各版本发布验收与迁移前的历史索引；各日期、通过数、发布状态和哈希仅属于对应阶段。build/output 中的证据是本地忽略文件，可能未随 Git 分发。本地 pack 不等同于公开发布。
 
+## 2026-10-27 0.1.6 嵌套 npm 初始化兼容 / Nested npm initialization
+
+修复 npm 12.0.0 将 `.npmrc` 的 `allow-scripts` 导出为环境覆盖，导致 `npm run init` 内部安装报 `EALLOWSCRIPTS` 的兼容问题。creator、Python 和原生安装入口仅在 install 子进程移除该无效覆盖，重新读取文件策略；不改用户配置，保留显式拒绝、ignore-scripts 和 strict-allow-scripts。已有项目的驱动不会随依赖升级被覆盖，可直接从项目根运行全局 `ewp init`，或更新 npm 至 12.2.1+ 后重试。两包及生成依赖统一为 `0.1.6`。
+
+Node 发布回归首次仅版本断言仍为 0.1.5 而失败；同步断言后 runtime 全部 **23 passed / 2 conditional skips**，合计 **463 passed / 0 failed / 5 conditional skips**。真实归档定向集成 **3/3 passed**，覆盖归档 consumer、外部目录创建、Vue TS 类型与构建、Edge 交互/HMR 和窗口内文档。未重复六模板全矩阵或原生宿主编译。
+
+初始化专项验证使用同一修复源码：Python 定向 **14 passed**；完整 test_dev 的既有启动器失败与 HEAD 基线一致。真实 npm 12.0.0 / 12.2.1 × creator/Python/native 共六组合均重复安装成功，允许脚本运行且拒绝脚本不运行。生成 Vue TS/Python 应用先复现原错误，再验证修复后的完整 init 重试及再次 init，保留有效 `.venv` 和源码，pip editable/Vite/check/typecheck 通过；已发布 0.1.5 脚本直接 `ewp init` 的恢复方式亦通过。
+
+证据：`output/npm-016-tests.log`、`output/npm-016-runtime-tests.log`、`output/npm-016-pack.log`、`output/npm-016-pack-integration.log`；归档报告 `build/npm-pack-validation/pack validation yFm5HF/report.json`。专项证据 `build/npm-policy-repro/policy-report.json`、`python-report.json`、`generated-init-report.json` 及 `output/npm-policy-generated-init.log`。
+
+| Archive | SHA-1 | SHA-256 | Registry status |
+| --- | --- | --- | --- |
+| `create-ewp-0.1.6.tgz` (238,820 bytes) | `9fb19a5842a9a5b5d22b18b91a97bda432d5c760` | `96bebc88a070255aa7fdd22ecfdbabddebf4d92397fc58957f4490ff1b95737e` | awaiting npm login; not published |
+| `easywindowspack-0.1.6.tgz` (246,102 bytes) | `8d2e0a289d437477081daf516e8d35e1f65ae0b7` | `52864e1adca1fbb0f19a4cd96d1bab4cccd794ac98abde6155659bad32a0c035` | not published |
+
+用户已授权推送和发布。npm whoami 返回 E401，已通过官方 CLI 发起外部浏览器登录，等待账户持有人认证。发布顺序 creator → runtime；发布后仍需核验 registry latest、哈希、下载字节和独立安装，不能将上述本地归档验证视为已公开发布。
+
 ## 2026-10-26 0.1.5 菜单、帮助与离线文档 / Menu, help and offline documentation
 
 本轮将菜单改为按后端、平台与工具可用性过滤，帮助按任务分组并着色；新增 `ewp docs` / `ews docs`、双语离线手册和 `easywindowspack/docs` 的窗口内阅读入口。六模板直接复用安装包中的按需文档模块，不在生成项目源码或 docs/ 复制全文；页面采用 demo 配色、统一彩色 SVG 和直角界面，支持模块导航、页内目录、搜索、高亮及 reduced-motion。

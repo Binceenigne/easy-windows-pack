@@ -90,8 +90,10 @@ export async function installFrontend(root, { language = 'zh-CN', env = process.
     '找不到 npm CLI。请安装 Node.js：https://nodejs.org/en/download ，然后重试 init。',
     'npm CLI is missing. Install Node.js: https://nodejs.org/en/download , then retry init.');
   const args = ['install', '--include=dev', '--no-audit', '--no-fund'];
+  // Reload file-based policy instead of npm 12.0's invalid inherited override.
+  const installEnv = Object.fromEntries(Object.entries(env).filter(([key]) => key.toLowerCase() !== 'npm_config_allow_scripts'));
   await execute(cli ? process.execPath : 'npm', cli ? [resolve(cli), ...args] : args,
-    { cwd: join(root, 'frontend'), env, language });
+    { cwd: join(root, 'frontend'), env: installEnv, language });
 }
 
 export async function checkToolchain(root, options) {
